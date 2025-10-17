@@ -1,65 +1,84 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Filter } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export default function Controls() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const navigate = useNavigate();
 
-  const controlCategories = [
-    { id: "all", name: "Tutti", count: 93 },
-    { id: "organizational", name: "Organizzativi", count: 37 },
-    { id: "people", name: "Persone", count: 8 },
-    { id: "physical", name: "Fisici", count: 14 },
-    { id: "technological", name: "Tecnologici", count: 34 },
-  ];
+  const { data: controls, isLoading } = useQuery({
+    queryKey: ["controls"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("controls")
+        .select("*")
+        .order("control_id");
+      
+      if (error) {
+        toast.error("Errore nel caricamento dei controlli");
+        throw error;
+      }
+      
+      return data;
+    },
+  });
 
-  const mockControls = [
-    {
-      id: "A.5.1",
-      name: "Politiche per la sicurezza delle informazioni",
-      category: "Organizzativi",
-      status: "compliant",
-      implementation: 100,
-      lastReview: "2024-12-01",
-    },
-    {
-      id: "A.5.2",
-      name: "Ruoli e responsabilità per la sicurezza delle informazioni",
-      category: "Organizzativi",
-      status: "partial",
-      implementation: 75,
-      lastReview: "2024-11-28",
-    },
-    {
-      id: "A.5.3",
-      name: "Segregazione dei compiti",
-      category: "Organizzativi",
-      status: "non-compliant",
-      implementation: 40,
-      lastReview: "2024-11-20",
-    },
-    {
-      id: "A.6.1",
-      name: "Screening",
-      category: "Persone",
-      status: "compliant",
-      implementation: 100,
-      lastReview: "2024-12-05",
-    },
-  ];
+  const controlCategories = useMemo(() => {
+    if (!controls) return [
+      { id: "all", name: "Tutti", count: 0 },
+      { id: "Organizzativi", name: "Organizzativi", count: 0 },
+      { id: "Persone", name: "Persone", count: 0 },
+      { id: "Fisici", name: "Fisici", count: 0 },
+      { id: "Tecnologici", name: "Tecnologici", count: 0 },
+    ];
+
+    const categoryCounts = controls.reduce((acc, control) => {
+      acc[control.domain] = (acc[control.domain] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return [
+      { id: "all", name: "Tutti", count: controls.length },
+      { id: "Organizzativi", name: "Organizzativi", count: categoryCounts["Organizzativi"] || 0 },
+      { id: "Persone", name: "Persone", count: categoryCounts["Persone"] || 0 },
+      { id: "Fisici", name: "Fisici", count: categoryCounts["Fisici"] || 0 },
+      { id: "Tecnologici", name: "Tecnologici", count: categoryCounts["Tecnologici"] || 0 },
+    ];
+  }, [controls]);
+
+  const filteredControls = useMemo(() => {
+    if (!controls) return [];
+
+    return controls.filter((control) => {
+      const matchesSearch = 
+        control.control_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        control.title.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesCategory = 
+        selectedCategory === "all" || control.domain === selectedCategory;
+
+      return matchesSearch && matchesCategory;
+    });
+  }, [controls, searchQuery, selectedCategory]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "compliant":
-        return <Badge className="bg-success text-success-foreground">Conforme</Badge>;
-      case "partial":
-        return <Badge className="bg-warning text-warning-foreground">Parziale</Badge>;
-      case "non-compliant":
-        return <Badge variant="destructive">Non Conforme</Badge>;
+      case "implemented":
+        return <Badge className="bg-success text-success-foreground">Implementato</Badge>;
+      case "in_progress":
+        return <Badge className="bg-warning text-warning-foreground">In Corso</Badge>;
+      case "not_implemented":
+        return <Badge variant="destructive">Non Implementato</Badge>;
       default:
         return <Badge variant="outline">Da Valutare</Badge>;
     }
@@ -87,7 +106,7 @@ export default function Controls() {
           </div>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="all" className="w-full">
+          <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
             <TabsList className="grid w-full grid-cols-5">
               {controlCategories.map((category) => (
                 <TabsTrigger key={category.id} value={category.id}>
@@ -115,37 +134,48 @@ export default function Controls() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {mockControls.map((control) => (
-              <div
-                key={control.id}
-                className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-smooth cursor-pointer"
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <Badge variant="outline" className="font-mono">
-                      {control.id}
-                    </Badge>
-                    <h3 className="font-semibold text-foreground">
-                      {control.name}
-                    </h3>
+          {isLoading ? (
+            <div className="space-y-3">
+              {[...Array(4)].map((_, i) => (
+                <Skeleton key={i} className="h-32 w-full" />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredControls.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">
+                  Nessun controllo trovato
+                </p>
+              ) : (
+                filteredControls.map((control) => (
+                  <div
+                    key={control.id}
+                    onClick={() => navigate(`/controls/${control.id}`)}
+                    className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-smooth cursor-pointer"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <Badge variant="outline" className="font-mono">
+                          {control.control_id}
+                        </Badge>
+                        <h3 className="font-semibold text-foreground">
+                          {control.title}
+                        </h3>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <span>Categoria: {control.domain}</span>
+                        <span>Responsabile: {control.responsible || "Non assegnato"}</span>
+                        {control.last_verification_date && (
+                          <span>Ultima verifica: {new Date(control.last_verification_date).toLocaleDateString("it-IT")}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="ml-4">{getStatusBadge(control.status)}</div>
                   </div>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span>Categoria: {control.category}</span>
-                    <span>Implementazione: {control.implementation}%</span>
-                    <span>Ultima revisione: {control.lastReview}</span>
-                  </div>
-                  <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden max-w-xs">
-                    <div
-                      className="h-full bg-primary transition-smooth"
-                      style={{ width: `${control.implementation}%` }}
-                    />
-                  </div>
-                </div>
-                <div className="ml-4">{getStatusBadge(control.status)}</div>
-              </div>
-            ))}
-          </div>
+                ))
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -7,6 +7,7 @@ import { AppLayout } from "./components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import Assets from "./pages/Assets";
 import Controls from "./pages/Controls";
+import ControlDetail from "./pages/ControlDetail";
 import SoA from "./pages/SoA";
 import Audits from "./pages/Audits";
 import Policies from "./pages/Policies";
@@ -43,6 +44,14 @@ const App = () => (
             element={
               <AppLayout>
                 <Controls />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/controls/:id"
+            element={
+              <AppLayout>
+                <ControlDetail />
               </AppLayout>
             }
           />
