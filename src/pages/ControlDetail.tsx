@@ -57,19 +57,30 @@ export default function ControlDetail() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: ControlFormData) => {
-      const { error } = await supabase
+      console.log("Updating control with data:", data);
+      const { data: result, error } = await supabase
         .from("controls")
         .update(data)
-        .eq("id", id);
+        .eq("id", id)
+        .select()
+        .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error("Update error:", error);
+        throw error;
+      }
+      
+      console.log("Update successful:", result);
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["control", id] });
+      queryClient.invalidateQueries({ queryKey: ["controls"] });
       toast.success("Controllo aggiornato con successo");
     },
-    onError: () => {
-      toast.error("Errore nell'aggiornamento del controllo");
+    onError: (error: any) => {
+      console.error("Mutation error:", error);
+      toast.error(error.message || "Errore nell'aggiornamento del controllo");
     },
   });
 
