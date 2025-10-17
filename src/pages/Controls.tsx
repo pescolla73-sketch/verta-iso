@@ -16,22 +16,30 @@ export default function Controls() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const navigate = useNavigate();
 
-  const { data: controls, isLoading } = useQuery({
+  const { data: controls, isLoading, error: queryError } = useQuery({
     queryKey: ["controls"],
     queryFn: async () => {
+      console.log("Fetching controls from Supabase...");
       const { data, error } = await supabase
         .from("controls")
         .select("*")
         .order("control_id");
       
       if (error) {
-        toast.error("Errore nel caricamento dei controlli");
+        console.error("Supabase error:", error);
+        toast.error(`Errore nel caricamento dei controlli: ${error.message}`);
         throw error;
       }
       
-      return data;
+      console.log("Controls fetched:", data?.length || 0, "records");
+      return data || [];
     },
   });
+
+  // Log query error if present
+  if (queryError) {
+    console.error("Query error:", queryError);
+  }
 
   const controlCategories = useMemo(() => {
     if (!controls) return [
