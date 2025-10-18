@@ -92,7 +92,7 @@ export default function ControlDetail() {
     switch (status) {
       case "implemented":
         return "Implementato";
-      case "partially_implemented":
+      case "partial":
         return "Parzialmente Implementato";
       case "not_implemented":
         return "Non Implementato";
@@ -107,7 +107,7 @@ export default function ControlDetail() {
     switch (status) {
       case "implemented":
         return <Badge className="bg-success text-success-foreground">Implementato</Badge>;
-      case "partially_implemented":
+      case "partial":
         return <Badge className="bg-warning text-warning-foreground">Parzialmente Implementato</Badge>;
       case "not_implemented":
         return <Badge variant="destructive">Non Implementato</Badge>;
@@ -186,7 +186,13 @@ export default function ControlDetail() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Stato</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select 
+                      onValueChange={(value) => {
+                        console.log("Status selected:", value);
+                        field.onChange(value);
+                      }} 
+                      value={field.value}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Seleziona stato" />
@@ -194,7 +200,7 @@ export default function ControlDetail() {
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="not_implemented">Non Implementato</SelectItem>
-                        <SelectItem value="partially_implemented">Parzialmente Implementato</SelectItem>
+                        <SelectItem value="partial">Parzialmente Implementato</SelectItem>
                         <SelectItem value="implemented">Implementato</SelectItem>
                         <SelectItem value="not_applicable">Non Applicabile</SelectItem>
                       </SelectContent>
