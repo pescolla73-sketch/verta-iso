@@ -83,10 +83,12 @@ export default function Controls() {
     switch (status) {
       case "implemented":
         return <Badge className="bg-success text-success-foreground">Implementato</Badge>;
-      case "in_progress":
-        return <Badge className="bg-warning text-warning-foreground">In Corso</Badge>;
+      case "partial":
+        return <Badge className="bg-warning text-warning-foreground">Parzialmente Implementato</Badge>;
       case "not_implemented":
         return <Badge variant="destructive">Non Implementato</Badge>;
+      case "not_applicable":
+        return <Badge variant="outline">Non Applicabile</Badge>;
       default:
         return <Badge variant="outline">Da Valutare</Badge>;
     }
