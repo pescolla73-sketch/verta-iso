@@ -91,6 +91,10 @@ export type Database = {
           control_id: string
           created_at: string | null
           domain: string
+          guida_errori: string | null
+          guida_evidenze: string | null
+          guida_implementazione: string | null
+          guida_significato: string | null
           id: string
           implementation_notes: string | null
           last_verification_date: string | null
@@ -104,6 +108,10 @@ export type Database = {
           control_id: string
           created_at?: string | null
           domain: string
+          guida_errori?: string | null
+          guida_evidenze?: string | null
+          guida_implementazione?: string | null
+          guida_significato?: string | null
           id?: string
           implementation_notes?: string | null
           last_verification_date?: string | null
@@ -117,6 +125,10 @@ export type Database = {
           control_id?: string
           created_at?: string | null
           domain?: string
+          guida_errori?: string | null
+          guida_evidenze?: string | null
+          guida_implementazione?: string | null
+          guida_significato?: string | null
           id?: string
           implementation_notes?: string | null
           last_verification_date?: string | null

@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
-import { ArrowLeft } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { ArrowLeft, BookOpen, CheckCircle2, FileText, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -244,6 +245,72 @@ export default function ControlDetail() {
               </Button>
             </form>
           </Form>
+
+          {(control.guida_significato || control.guida_implementazione || control.guida_evidenze || control.guida_errori) && (
+            <div className="pt-6 border-t">
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="guida">
+                  <AccordionTrigger className="text-lg font-semibold">
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="h-5 w-5" />
+                      Guida all'implementazione
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-6 pt-4">
+                      {control.guida_significato && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <BookOpen className="h-4 w-4 text-primary" />
+                            <h4 className="font-semibold text-base">Cosa significa</h4>
+                          </div>
+                          <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
+                            {control.guida_significato}
+                          </p>
+                        </div>
+                      )}
+
+                      {control.guida_implementazione && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <CheckCircle2 className="h-4 w-4 text-success" />
+                            <h4 className="font-semibold text-base">Come implementarlo</h4>
+                          </div>
+                          <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
+                            {control.guida_implementazione}
+                          </p>
+                        </div>
+                      )}
+
+                      {control.guida_evidenze && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <FileText className="h-4 w-4 text-info" />
+                            <h4 className="font-semibold text-base">Evidenze da caricare</h4>
+                          </div>
+                          <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
+                            {control.guida_evidenze}
+                          </p>
+                        </div>
+                      )}
+
+                      {control.guida_errori && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <AlertTriangle className="h-4 w-4 text-warning" />
+                            <h4 className="font-semibold text-base">Errori comuni</h4>
+                          </div>
+                          <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
+                            {control.guida_errori}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4 pt-4 border-t">
             <div>
