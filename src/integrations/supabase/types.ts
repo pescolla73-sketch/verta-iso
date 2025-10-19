@@ -176,6 +176,69 @@ export type Database = {
         }
         Relationships: []
       }
+      organization: {
+        Row: {
+          backup_operator: string | null
+          ceo: string | null
+          ciso: string | null
+          communication_manager: string | null
+          created_at: string | null
+          cto: string | null
+          dpo: string | null
+          help_desk_manager: string | null
+          hr_manager: string | null
+          id: string
+          incident_response_manager: string | null
+          it_manager: string | null
+          name: string
+          responsabile_paghe: string | null
+          scope: string | null
+          sector: string | null
+          system_administrator: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          backup_operator?: string | null
+          ceo?: string | null
+          ciso?: string | null
+          communication_manager?: string | null
+          created_at?: string | null
+          cto?: string | null
+          dpo?: string | null
+          help_desk_manager?: string | null
+          hr_manager?: string | null
+          id?: string
+          incident_response_manager?: string | null
+          it_manager?: string | null
+          name: string
+          responsabile_paghe?: string | null
+          scope?: string | null
+          sector?: string | null
+          system_administrator?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          backup_operator?: string | null
+          ceo?: string | null
+          ciso?: string | null
+          communication_manager?: string | null
+          created_at?: string | null
+          cto?: string | null
+          dpo?: string | null
+          help_desk_manager?: string | null
+          hr_manager?: string | null
+          id?: string
+          incident_response_manager?: string | null
+          it_manager?: string | null
+          name?: string
+          responsabile_paghe?: string | null
+          scope?: string | null
+          sector?: string | null
+          system_administrator?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       policies: {
         Row: {
           approval_date: string | null

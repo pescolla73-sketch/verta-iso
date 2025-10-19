@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Wand2, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
 
 const POLICY_TYPES = [
   { value: "information_security", label: "Politica di Sicurezza delle Informazioni" },
@@ -28,15 +29,76 @@ export default function PolicyGeneratorModal({
   onPolicyGenerated 
 }: PolicyGeneratorModalProps) {
   const [selectedPolicy, setSelectedPolicy] = useState("");
-  const [organizationName, setOrganizationName] = useState("");
-  const [sector, setSector] = useState("");
-  const [ciso, setCiso] = useState("");
-  const [dpo, setDpo] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  
+  // Additional role fields based on policy type
+  const [itManager, setItManager] = useState("");
+  const [helpDeskManager, setHelpDeskManager] = useState("");
+  const [hrManager, setHrManager] = useState("");
+  const [responsabilePaghe, setResponsabilePaghe] = useState("");
+  const [systemAdministrator, setSystemAdministrator] = useState("");
+  const [backupOperator, setBackupOperator] = useState("");
+  const [incidentResponseManager, setIncidentResponseManager] = useState("");
+  const [communicationManager, setCommunicationManager] = useState("");
+
+  // Fetch organization data
+  const { data: organization } = useQuery({
+    queryKey: ["organization"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("organization")
+        .select("*")
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Update additional fields when organization data loads
+  useEffect(() => {
+    if (organization) {
+      setItManager(organization.it_manager || "");
+      setHelpDeskManager(organization.help_desk_manager || "");
+      setHrManager(organization.hr_manager || "");
+      setResponsabilePaghe(organization.responsabile_paghe || "");
+      setSystemAdministrator(organization.system_administrator || "");
+      setBackupOperator(organization.backup_operator || "");
+      setIncidentResponseManager(organization.incident_response_manager || "");
+      setCommunicationManager(organization.communication_manager || "");
+    }
+  }, [organization]);
+
+  // Get additional fields based on policy type
+  const getAdditionalRoles = () => {
+    const roles: any = {};
+    
+    switch (selectedPolicy) {
+      case "access_control":
+        if (itManager) roles.itManager = itManager;
+        if (helpDeskManager) roles.helpDeskManager = helpDeskManager;
+        break;
+      case "backup":
+        if (systemAdministrator) roles.systemAdministrator = systemAdministrator;
+        if (backupOperator) roles.backupOperator = backupOperator;
+        break;
+      case "incident_response":
+        if (incidentResponseManager) roles.incidentResponseManager = incidentResponseManager;
+        if (communicationManager) roles.communicationManager = communicationManager;
+        break;
+      case "hr_policy":
+        if (hrManager) roles.hrManager = hrManager;
+        if (responsabilePaghe) roles.responsabilePaghe = responsabilePaghe;
+        break;
+    }
+    
+    return roles;
+  };
 
   const handleGenerate = async () => {
-    if (!selectedPolicy || !organizationName) {
-      toast.error("Seleziona un tipo di politica e inserisci il nome dell'organizzazione");
+    if (!selectedPolicy || !organization) {
+      toast.error("Seleziona un tipo di politica");
       return;
     }
 
@@ -54,10 +116,14 @@ export default function PolicyGeneratorModal({
         .limit(5);
 
       const organizationData = {
-        name: organizationName,
-        sector,
-        ciso,
-        dpo,
+        name: organization.name,
+        sector: organization.sector,
+        scope: organization.scope,
+        ciso: organization.ciso,
+        dpo: organization.dpo,
+        ceo: organization.ceo,
+        cto: organization.cto,
+        ...getAdditionalRoles(),
         criticalAssets: assets?.map(a => a.name) || [],
         implementedControls: controls?.length || 0,
       };
@@ -92,10 +158,6 @@ export default function PolicyGeneratorModal({
       
       // Reset form
       setSelectedPolicy("");
-      setOrganizationName("");
-      setSector("");
-      setCiso("");
-      setDpo("");
     } catch (error: any) {
       console.error("Error generating policy:", error);
       toast.error(error.message || "Errore nella generazione della politica");
@@ -104,11 +166,114 @@ export default function PolicyGeneratorModal({
     }
   };
 
+  // Render additional fields based on policy type
+  const renderAdditionalFields = () => {
+    switch (selectedPolicy) {
+      case "access_control":
+        return (
+          <>
+            <div>
+              <Label htmlFor="itManager">IT Manager</Label>
+              <Input
+                id="itManager"
+                value={itManager}
+                onChange={(e) => setItManager(e.target.value)}
+                placeholder="Nome IT Manager"
+              />
+            </div>
+            <div>
+              <Label htmlFor="helpDeskManager">Help Desk Manager</Label>
+              <Input
+                id="helpDeskManager"
+                value={helpDeskManager}
+                onChange={(e) => setHelpDeskManager(e.target.value)}
+                placeholder="Nome Help Desk Manager"
+              />
+            </div>
+          </>
+        );
+      case "backup":
+        return (
+          <>
+            <div>
+              <Label htmlFor="systemAdministrator">System Administrator</Label>
+              <Input
+                id="systemAdministrator"
+                value={systemAdministrator}
+                onChange={(e) => setSystemAdministrator(e.target.value)}
+                placeholder="Nome System Administrator"
+              />
+            </div>
+            <div>
+              <Label htmlFor="backupOperator">Backup Operator</Label>
+              <Input
+                id="backupOperator"
+                value={backupOperator}
+                onChange={(e) => setBackupOperator(e.target.value)}
+                placeholder="Nome Backup Operator"
+              />
+            </div>
+          </>
+        );
+      case "incident_response":
+        return (
+          <>
+            <div>
+              <Label htmlFor="incidentResponseManager">Incident Response Manager</Label>
+              <Input
+                id="incidentResponseManager"
+                value={incidentResponseManager}
+                onChange={(e) => setIncidentResponseManager(e.target.value)}
+                placeholder="Nome Incident Response Manager"
+              />
+            </div>
+            <div>
+              <Label htmlFor="communicationManager">Communication Manager</Label>
+              <Input
+                id="communicationManager"
+                value={communicationManager}
+                onChange={(e) => setCommunicationManager(e.target.value)}
+                placeholder="Nome Communication Manager"
+              />
+            </div>
+          </>
+        );
+      case "hr_policy":
+        return (
+          <>
+            <div>
+              <Label htmlFor="hrManager">HR Manager</Label>
+              <Input
+                id="hrManager"
+                value={hrManager}
+                onChange={(e) => setHrManager(e.target.value)}
+                placeholder="Nome HR Manager"
+              />
+            </div>
+            <div>
+              <Label htmlFor="responsabilePaghe">Responsabile Paghe</Label>
+              <Input
+                id="responsabilePaghe"
+                value={responsabilePaghe}
+                onChange={(e) => setResponsabilePaghe(e.target.value)}
+                placeholder="Nome Responsabile Paghe"
+              />
+            </div>
+          </>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Genera Nuova Politica</DialogTitle>
+          <DialogDescription>
+            Seleziona il tipo di politica da generare. I campi organizzativi sono precompilati dal database.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div>
@@ -127,49 +292,97 @@ export default function PolicyGeneratorModal({
             </Select>
           </div>
 
-          <div>
-            <Label htmlFor="orgName">Nome Organizzazione *</Label>
-            <Input
-              id="orgName"
-              value={organizationName}
-              onChange={(e) => setOrganizationName(e.target.value)}
-              placeholder="Es: Acme Corporation S.p.A."
-            />
+          <div className="border-t pt-4">
+            <p className="text-sm font-medium text-muted-foreground mb-3">
+              Dati Organizzazione (dal database)
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="orgName">Nome Organizzazione</Label>
+                <Input
+                  id="orgName"
+                  value={organization?.name || ""}
+                  disabled
+                  className="bg-muted text-muted-foreground cursor-not-allowed"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="sector">Settore</Label>
+                <Input
+                  id="sector"
+                  value={organization?.sector || ""}
+                  disabled
+                  className="bg-muted text-muted-foreground cursor-not-allowed"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="scope">Ambito</Label>
+                <Input
+                  id="scope"
+                  value={organization?.scope || ""}
+                  disabled
+                  className="bg-muted text-muted-foreground cursor-not-allowed"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="ciso">CISO</Label>
+                <Input
+                  id="ciso"
+                  value={organization?.ciso || ""}
+                  disabled
+                  className="bg-muted text-muted-foreground cursor-not-allowed"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="dpo">DPO</Label>
+                <Input
+                  id="dpo"
+                  value={organization?.dpo || ""}
+                  disabled
+                  className="bg-muted text-muted-foreground cursor-not-allowed"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="ceo">CEO</Label>
+                <Input
+                  id="ceo"
+                  value={organization?.ceo || ""}
+                  disabled
+                  className="bg-muted text-muted-foreground cursor-not-allowed"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="cto">CTO</Label>
+                <Input
+                  id="cto"
+                  value={organization?.cto || ""}
+                  disabled
+                  className="bg-muted text-muted-foreground cursor-not-allowed"
+                />
+              </div>
+            </div>
           </div>
 
-          <div>
-            <Label htmlFor="sector">Settore</Label>
-            <Input
-              id="sector"
-              value={sector}
-              onChange={(e) => setSector(e.target.value)}
-              placeholder="Es: Tecnologia, Sanità, Finanza"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="ciso">CISO</Label>
-            <Input
-              id="ciso"
-              value={ciso}
-              onChange={(e) => setCiso(e.target.value)}
-              placeholder="Nome del Chief Information Security Officer"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="dpo">DPO</Label>
-            <Input
-              id="dpo"
-              value={dpo}
-              onChange={(e) => setDpo(e.target.value)}
-              placeholder="Nome del Data Protection Officer"
-            />
-          </div>
+          {selectedPolicy && (
+            <div className="border-t pt-4">
+              <p className="text-sm font-medium text-muted-foreground mb-3">
+                Ruoli Aggiuntivi Specifici
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                {renderAdditionalFields()}
+              </div>
+            </div>
+          )}
 
           <Button 
             onClick={handleGenerate} 
-            disabled={isGenerating || !selectedPolicy || !organizationName}
+            disabled={isGenerating || !selectedPolicy || !organization}
             className="w-full gap-2"
           >
             {isGenerating ? (
