@@ -2,63 +2,61 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, FileText, Wand2 } from "lucide-react";
+import { Plus, Search, FileText } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import PolicyGeneratorModal from "@/components/PolicyGeneratorModal";
 
 export default function Policies() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const mockPolicies = [
-    {
-      id: 1,
-      name: "Politica di Sicurezza delle Informazioni",
-      version: "v2.1",
-      status: "Approvata",
-      approvedBy: "CEO",
-      lastReview: "2024-12-01",
-      nextReview: "2025-06-01",
+  const { data: policies = [], refetch } = useQuery({
+    queryKey: ["policies"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("policies")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data;
     },
-    {
-      id: 2,
-      name: "Politica di Gestione degli Accessi",
-      version: "v1.5",
-      status: "In Revisione",
-      approvedBy: "CISO",
-      lastReview: "2024-11-15",
-      nextReview: "2025-05-15",
-    },
-    {
-      id: 3,
-      name: "Politica di Backup e Recovery",
-      version: "v1.2",
-      status: "Approvata",
-      approvedBy: "CTO",
-      lastReview: "2024-10-20",
-      nextReview: "2025-04-20",
-    },
-    {
-      id: 4,
-      name: "Politica di Risposta agli Incidenti",
-      version: "v1.0",
-      status: "Bozza",
-      approvedBy: "-",
-      lastReview: "-",
-      nextReview: "-",
-    },
-  ];
+  });
+
+  const filteredPolicies = policies.filter(policy =>
+    policy.policy_name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const statsData = {
+    total: policies.length,
+    approved: policies.filter(p => p.status === "approved").length,
+    inReview: policies.filter(p => p.status === "in_review").length,
+    draft: policies.filter(p => p.status === "draft").length,
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "Approvata":
-        return <Badge className="bg-success text-success-foreground">{status}</Badge>;
-      case "In Revisione":
-        return <Badge className="bg-warning text-warning-foreground">{status}</Badge>;
-      case "Bozza":
-        return <Badge variant="outline">{status}</Badge>;
+      case "approved":
+        return <Badge className="bg-success text-success-foreground">Approvata</Badge>;
+      case "in_review":
+        return <Badge className="bg-warning text-warning-foreground">In Revisione</Badge>;
+      case "draft":
+        return <Badge variant="outline">Bozza</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "approved": return "Approvata";
+      case "in_review": return "In Revisione";
+      case "draft": return "Bozza";
+      default: return status;
     }
   };
 
@@ -71,24 +69,18 @@ export default function Policies() {
             Documenta e gestisci le politiche di sicurezza
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate("/policies/generate")} className="gap-2">
-            <Wand2 className="h-4 w-4" />
-            Genera Politica
-          </Button>
-          <Button className="gap-2">
-            <Plus className="h-4 w-4" />
-            Nuova Politica
-          </Button>
-        </div>
+        <Button onClick={() => setIsModalOpen(true)} className="gap-2">
+          <Plus className="h-4 w-4" />
+          Genera Nuova Politica
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {[
-          { label: "Totali", value: 12, variant: "default" },
-          { label: "Approvate", value: 8, variant: "success" },
-          { label: "In Revisione", value: 3, variant: "warning" },
-          { label: "Bozze", value: 1, variant: "outline" },
+          { label: "Totali", value: statsData.total },
+          { label: "Approvate", value: statsData.approved },
+          { label: "In Revisione", value: statsData.inReview },
+          { label: "Bozze", value: statsData.draft },
         ].map((stat) => (
           <Card key={stat.label} className="shadow-card">
             <CardContent className="p-6">
@@ -123,15 +115,16 @@ export default function Policies() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {mockPolicies.map((policy) => (
+            {filteredPolicies.map((policy) => (
               <div
                 key={policy.id}
+                onClick={() => navigate(`/policies/${policy.id}`)}
                 className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-smooth cursor-pointer"
               >
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <h3 className="font-semibold text-foreground">
-                      {policy.name}
+                      {policy.policy_name}
                     </h3>
                     {getStatusBadge(policy.status)}
                     <Badge variant="outline">{policy.version}</Badge>
@@ -139,15 +132,15 @@ export default function Policies() {
                   <div className="grid grid-cols-3 gap-4 text-sm text-muted-foreground">
                     <div>
                       <span className="font-medium">Approvata da:</span>{" "}
-                      {policy.approvedBy}
+                      {policy.approved_by || "-"}
                     </div>
                     <div>
-                      <span className="font-medium">Ultima revisione:</span>{" "}
-                      {policy.lastReview}
+                      <span className="font-medium">Data creazione:</span>{" "}
+                      {new Date(policy.created_at).toLocaleDateString('it-IT')}
                     </div>
                     <div>
-                      <span className="font-medium">Prossima revisione:</span>{" "}
-                      {policy.nextReview}
+                      <span className="font-medium">Stato:</span>{" "}
+                      {getStatusLabel(policy.status)}
                     </div>
                   </div>
                 </div>
@@ -156,6 +149,12 @@ export default function Policies() {
           </div>
         </CardContent>
       </Card>
+
+      <PolicyGeneratorModal 
+        open={isModalOpen} 
+        onOpenChange={setIsModalOpen}
+        onPolicyGenerated={refetch}
+      />
     </div>
   );
 }

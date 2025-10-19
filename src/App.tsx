@@ -11,7 +11,7 @@ import ControlDetail from "./pages/ControlDetail";
 import SoA from "./pages/SoA";
 import Audits from "./pages/Audits";
 import Policies from "./pages/Policies";
-import PolicyGenerator from "./pages/PolicyGenerator";
+import PolicyDetail from "./pages/PolicyDetail";
 import Roles from "./pages/Roles";
 import NotFound from "./pages/NotFound";
 
@@ -81,10 +81,10 @@ const App = () => (
             }
           />
           <Route
-            path="/policies/generate"
+            path="/policies/:id"
             element={
               <AppLayout>
-                <PolicyGenerator />
+                <PolicyDetail />
               </AppLayout>
             }
           />
