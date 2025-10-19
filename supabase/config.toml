@@ -1,1 +1,4 @@
 project_id = "qqxkxaxjtsieautehahh"
+
+[functions.generate-policy]
+verify_jwt = false

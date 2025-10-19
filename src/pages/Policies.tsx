@@ -2,10 +2,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, FileText } from "lucide-react";
+import { Plus, Search, FileText, Wand2 } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function Policies() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
 
   const mockPolicies = [
@@ -69,10 +71,16 @@ export default function Policies() {
             Documenta e gestisci le politiche di sicurezza
           </p>
         </div>
-        <Button className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nuova Politica
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate("/policies/generate")} className="gap-2">
+            <Wand2 className="h-4 w-4" />
+            Genera Politica
+          </Button>
+          <Button className="gap-2">
+            <Plus className="h-4 w-4" />
+            Nuova Politica
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
