@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -17,6 +18,7 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   // Get current user's profile with selected organization
   const { data: profile } = useQuery({
@@ -76,10 +78,22 @@ export function AppLayout({ children }: AppLayoutProps) {
         .eq("id", user.id);
       
       if (error) throw error;
+      
+      // Get org name for toast
+      const { data: org } = await supabase
+        .from("organization")
+        .select("name")
+        .eq("id", orgId)
+        .single();
+      
+      return org;
     },
-    onSuccess: () => {
+    onSuccess: (org) => {
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["currentOrganization"] });
+      toast({ 
+        title: `Organizzazione selezionata: ${org?.name || ""}`,
+      });
     },
   });
 

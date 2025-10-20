@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -111,7 +111,7 @@ export default function Settings() {
   });
 
   // Update form data when currentOrg changes
-  useState(() => {
+  useEffect(() => {
     if (currentOrg) {
       setOrgData({
         name: currentOrg.name || "",
@@ -133,7 +133,7 @@ export default function Settings() {
         communication_manager: currentOrg.communication_manager || "",
       });
     }
-  });
+  }, [currentOrg]);
 
   // Create organization mutation
   const createOrgMutation = useMutation({
@@ -188,11 +188,22 @@ export default function Settings() {
         .eq("id", user.id);
       
       if (error) throw error;
+      
+      // Get org name for toast
+      const { data: org } = await supabase
+        .from("organization")
+        .select("name")
+        .eq("id", orgId)
+        .single();
+      
+      return org;
     },
-    onSuccess: () => {
+    onSuccess: (org) => {
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["currentOrganization"] });
-      toast({ title: "Organizzazione selezionata" });
+      toast({ 
+        title: `Organizzazione selezionata: ${org?.name || ""}`,
+      });
     },
   });
 
