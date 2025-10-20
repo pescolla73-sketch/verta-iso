@@ -138,6 +138,12 @@ export default function PolicyGeneratorModal({
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
+      // Get current authenticated user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("Utente non autenticato");
+      }
+
       const policyLabel = POLICY_TYPES.find(p => p.value === selectedPolicy)?.label || "Nuova Politica";
       
       const { error: saveError } = await supabase
@@ -148,6 +154,8 @@ export default function PolicyGeneratorModal({
           content: data.content,
           status: "draft",
           version: "1.0",
+          user_id: user.id,
+          organization_id: organization.id,
         });
 
       if (saveError) throw saveError;

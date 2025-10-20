@@ -246,10 +246,12 @@ export type Database = {
           content: string | null
           created_at: string | null
           id: string
+          organization_id: string | null
           policy_name: string
           policy_type: string
           status: string | null
           updated_at: string | null
+          user_id: string | null
           version: string | null
         }
         Insert: {
@@ -258,10 +260,12 @@ export type Database = {
           content?: string | null
           created_at?: string | null
           id?: string
+          organization_id?: string | null
           policy_name: string
           policy_type: string
           status?: string | null
           updated_at?: string | null
+          user_id?: string | null
           version?: string | null
         }
         Update: {
@@ -270,13 +274,23 @@ export type Database = {
           content?: string | null
           created_at?: string | null
           id?: string
+          organization_id?: string | null
           policy_name?: string
           policy_type?: string
           status?: string | null
           updated_at?: string | null
+          user_id?: string | null
           version?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "policies_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
