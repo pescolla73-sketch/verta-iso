@@ -13,6 +13,7 @@ import Audits from "./pages/Audits";
 import Policies from "./pages/Policies";
 import PolicyDetail from "./pages/PolicyDetail";
 import Roles from "./pages/Roles";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -93,6 +94,14 @@ const App = () => (
             element={
               <AppLayout>
                 <Roles />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <AppLayout>
+                <Settings />
               </AppLayout>
             }
           />

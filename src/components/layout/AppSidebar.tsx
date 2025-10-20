@@ -7,6 +7,7 @@ import {
   ClipboardCheck,
   ScrollText,
   Users,
+  Settings,
   Menu,
 } from "lucide-react";
 import {
@@ -30,6 +31,7 @@ const menuItems = [
   { title: "Audit", url: "/audits", icon: ClipboardCheck },
   { title: "Politiche", url: "/policies", icon: ScrollText },
   { title: "Ruoli", url: "/roles", icon: Users },
+  { title: "Impostazioni", url: "/settings", icon: Settings },
 ];
 
 export function AppSidebar() {

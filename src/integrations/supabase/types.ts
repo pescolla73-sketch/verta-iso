@@ -298,6 +298,7 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          selected_organization_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -305,6 +306,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id: string
+          selected_organization_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -312,9 +314,18 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          selected_organization_id?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_selected_organization_id_fkey"
+            columns: ["selected_organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
