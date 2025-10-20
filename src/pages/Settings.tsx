@@ -76,14 +76,24 @@ export default function Settings() {
   const { data: currentOrg, refetch: refetchCurrentOrg } = useQuery({
     queryKey: ["currentOrganization", profile?.selected_organization_id],
     queryFn: async () => {
-      if (!profile?.selected_organization_id) return null;
+      if (!profile?.selected_organization_id) {
+        console.log("No organization selected");
+        return null;
+      }
       
-      const { data } = await supabase
+      console.log("Fetching organization:", profile.selected_organization_id);
+      const { data, error } = await supabase
         .from("organization")
         .select("*")
         .eq("id", profile.selected_organization_id)
         .single();
       
+      if (error) {
+        console.error("Error fetching organization:", error);
+        return null;
+      }
+      
+      console.log("Current organization loaded:", data);
       return data;
     },
     enabled: !!profile?.selected_organization_id,
@@ -112,7 +122,9 @@ export default function Settings() {
 
   // Update form data when currentOrg changes
   useEffect(() => {
+    console.log("currentOrg changed:", currentOrg);
     if (currentOrg) {
+      console.log("Updating form data with org:", currentOrg.name);
       setOrgData({
         name: currentOrg.name || "",
         sector: currentOrg.sector || "",
@@ -132,6 +144,8 @@ export default function Settings() {
         incident_response_manager: currentOrg.incident_response_manager || "",
         communication_manager: currentOrg.communication_manager || "",
       });
+    } else {
+      console.log("No current organization, clearing form");
     }
   }, [currentOrg]);
 
@@ -179,6 +193,7 @@ export default function Settings() {
   // Select organization mutation
   const selectOrgMutation = useMutation({
     mutationFn: async (orgId: string) => {
+      console.log("Selecting organization:", orgId);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
       
@@ -187,7 +202,10 @@ export default function Settings() {
         .update({ selected_organization_id: orgId })
         .eq("id", user.id);
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error updating profile:", error);
+        throw error;
+      }
       
       // Get org name for toast
       const { data: org } = await supabase
@@ -196,6 +214,7 @@ export default function Settings() {
         .eq("id", orgId)
         .single();
       
+      console.log("Organization selected:", org);
       return org;
     },
     onSuccess: (org) => {
@@ -203,6 +222,13 @@ export default function Settings() {
       queryClient.invalidateQueries({ queryKey: ["currentOrganization"] });
       toast({ 
         title: `Organizzazione selezionata: ${org?.name || ""}`,
+      });
+    },
+    onError: (error) => {
+      console.error("Select organization error:", error);
+      toast({ 
+        title: "Errore nella selezione", 
+        variant: "destructive" 
       });
     },
   });
@@ -303,7 +329,10 @@ export default function Settings() {
                       ? "ring-2 ring-primary"
                       : "hover:border-primary"
                   }`}
-                  onClick={() => selectOrgMutation.mutate(org.id)}
+                  onClick={() => {
+                    console.log("Card clicked for org:", org.name, org.id);
+                    selectOrgMutation.mutate(org.id);
+                  }}
                 >
                   <CardHeader>
                     <div className="flex items-start justify-between">
@@ -343,7 +372,7 @@ export default function Settings() {
             <Card>
               <CardContent className="pt-6">
                 <p className="text-center text-muted-foreground">
-                  Nessuna organizzazione selezionata
+                  Nessuna organizzazione selezionata. {isAdmin ? "Seleziona un'organizzazione dalla tab Organizzazioni." : "Seleziona un'organizzazione dal menu in alto."}
                 </p>
               </CardContent>
             </Card>

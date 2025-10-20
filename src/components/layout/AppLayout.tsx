@@ -95,6 +95,13 @@ export function AppLayout({ children }: AppLayoutProps) {
         title: `Organizzazione selezionata: ${org?.name || ""}`,
       });
     },
+    onError: (error) => {
+      console.error("[AppLayout] Select organization error:", error);
+      toast({ 
+        title: "Errore nella selezione", 
+        variant: "destructive" 
+      });
+    },
   });
 
   return (
@@ -122,7 +129,10 @@ export function AppLayout({ children }: AppLayoutProps) {
                   {organizations?.map((org) => (
                     <DropdownMenuItem
                       key={org.id}
-                      onClick={() => selectOrgMutation.mutate(org.id)}
+                      onClick={() => {
+                        console.log("[AppLayout] Dropdown item clicked:", org.name, org.id);
+                        selectOrgMutation.mutate(org.id);
+                      }}
                       className={
                         org.id === profile?.selected_organization_id
                           ? "bg-accent font-medium"
