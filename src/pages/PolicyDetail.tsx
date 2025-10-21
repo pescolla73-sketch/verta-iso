@@ -34,7 +34,9 @@ export default function PolicyDetail() {
 
   const updatePolicyMutation = useMutation({
     mutationFn: async ({ content, version }: { content: string; version: string }) => {
-      console.log('Updating policy:', { id, content: content.substring(0, 50), version });
+      console.log('Updating policy ID:', id);
+      console.log('Content length:', content?.length);
+      console.log('New version:', version);
       
       const { data, error } = await supabase
         .from("policies")
@@ -43,34 +45,32 @@ export default function PolicyDetail() {
           version, 
           updated_at: new Date().toISOString() 
         })
-        .eq("id", id)
-        .select()
-        .maybeSingle();
+        .match({ id })
+        .select();
 
       if (error) {
-        console.error("Policy update error:", error);
+        console.error('Update error:', error);
+        toast.error('Errore nel salvataggio');
         throw error;
       }
       
-      if (!data) {
-        console.error("No policy found with id:", id);
+      if (!data || data.length === 0) {
+        console.error('No policy found with id:', id);
+        toast.error('Politica non trovata');
         throw new Error("Politica non trovata");
       }
       
-      console.log('Policy updated successfully:', data);
-      return data;
+      console.log('Policy updated successfully:', data[0]);
+      return data[0];
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["policy", id] });
       queryClient.invalidateQueries({ queryKey: ["policies"] });
       setIsEditing(false);
-      toast.success("Politica aggiornata con successo!");
+      toast.success("Politica aggiornata!");
     },
     onError: (error) => {
       console.error("Update mutation error:", error);
-      toast.error("Errore durante l'aggiornamento della politica", {
-        description: error.message,
-      });
     },
   });
 
