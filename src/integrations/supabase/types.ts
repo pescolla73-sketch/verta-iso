@@ -142,6 +142,7 @@ export type Database = {
       }
       evidences: {
         Row: {
+          control_id: string | null
           created_at: string | null
           description: string | null
           file_name: string | null
@@ -153,6 +154,7 @@ export type Database = {
           uploaded_by: string | null
         }
         Insert: {
+          control_id?: string | null
           created_at?: string | null
           description?: string | null
           file_name?: string | null
@@ -164,6 +166,7 @@ export type Database = {
           uploaded_by?: string | null
         }
         Update: {
+          control_id?: string | null
           created_at?: string | null
           description?: string | null
           file_name?: string | null
@@ -174,7 +177,15 @@ export type Database = {
           updated_at?: string | null
           uploaded_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "evidences_control_id_fkey"
+            columns: ["control_id"]
+            isOneToOne: false
+            referencedRelation: "controls"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       organization: {
         Row: {
