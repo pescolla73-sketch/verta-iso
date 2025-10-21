@@ -34,22 +34,40 @@ export default function PolicyDetail() {
 
   const updatePolicyMutation = useMutation({
     mutationFn: async ({ content, version }: { content: string; version: string }) => {
+      console.log('Updating policy:', { id, content: content.substring(0, 50), version });
+      
       const { data, error } = await supabase
         .from("policies")
-        .update({ content, version, updated_at: new Date().toISOString() })
+        .update({ 
+          content, 
+          version, 
+          updated_at: new Date().toISOString() 
+        })
         .eq("id", id)
         .select()
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Policy update error:", error);
+        throw error;
+      }
+      
+      if (!data) {
+        console.error("No policy found with id:", id);
+        throw new Error("Politica non trovata");
+      }
+      
+      console.log('Policy updated successfully:', data);
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["policy", id] });
+      queryClient.invalidateQueries({ queryKey: ["policies"] });
       setIsEditing(false);
       toast.success("Politica aggiornata con successo!");
     },
     onError: (error) => {
+      console.error("Update mutation error:", error);
       toast.error("Errore durante l'aggiornamento della politica", {
         description: error.message,
       });
