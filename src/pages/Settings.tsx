@@ -193,41 +193,62 @@ export default function Settings() {
   // Select organization mutation
   const selectOrgMutation = useMutation({
     mutationFn: async (orgId: string) => {
-      console.log("Selecting organization:", orgId);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      console.log("[Settings] Starting organization selection:", orgId);
       
-      const { error } = await supabase
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) {
+        console.error("[Settings] Error getting user:", userError);
+        throw new Error("User authentication failed");
+      }
+      if (!user) {
+        console.error("[Settings] No user found");
+        throw new Error("Not authenticated");
+      }
+      console.log("[Settings] User ID:", user.id);
+      
+      // Update profile with selected organization
+      console.log("[Settings] Updating profile with org:", orgId);
+      const { error: updateError } = await supabase
         .from("profiles")
         .update({ selected_organization_id: orgId })
         .eq("id", user.id);
       
-      if (error) {
-        console.error("Error updating profile:", error);
-        throw error;
+      if (updateError) {
+        console.error("[Settings] Error updating profile:", updateError);
+        throw updateError;
       }
+      console.log("[Settings] Profile updated successfully");
       
       // Get org name for toast
-      const { data: org } = await supabase
+      const { data: org, error: orgError } = await supabase
         .from("organization")
         .select("name")
         .eq("id", orgId)
         .single();
       
-      console.log("Organization selected:", org);
+      if (orgError) {
+        console.error("[Settings] Error fetching org name:", orgError);
+      }
+      console.log("[Settings] Organization data:", org);
+      
       return org;
     },
     onSuccess: (org) => {
+      console.log("[Settings] Selection successful, invalidating queries");
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["currentOrganization"] });
       toast({ 
         title: `Organizzazione selezionata: ${org?.name || ""}`,
       });
     },
-    onError: (error) => {
-      console.error("Select organization error:", error);
+    onError: (error: any) => {
+      console.error("[Settings] Full error object:", error);
+      console.error("[Settings] Error message:", error?.message);
+      console.error("[Settings] Error details:", error?.details);
       toast({ 
         title: "Errore nella selezione", 
+        description: error?.message || "Impossibile selezionare l'organizzazione",
         variant: "destructive" 
       });
     },
