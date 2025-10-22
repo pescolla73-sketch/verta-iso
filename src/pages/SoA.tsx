@@ -196,52 +196,10 @@ export default function SoA() {
           <CardTitle>Documenti SoA Generati</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {[
-              {
-                id: 1,
-                name: "SoA_2024_Q4.pdf",
-                date: "15 Dicembre 2024",
-                version: "v1.2",
-              },
-              {
-                id: 2,
-                name: "SoA_2024_Q3.pdf",
-                date: "15 Settembre 2024",
-                version: "v1.1",
-              },
-              {
-                id: 3,
-                name: "SoA_2024_Q2.pdf",
-                date: "15 Giugno 2024",
-                version: "v1.0",
-              },
-            ].map((doc) => (
-              <div
-                key={doc.id}
-                className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-smooth"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                    <FileText className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">{doc.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {doc.date} • {doc.version}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="icon">
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon">
-                    <Download className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+          <div className="flex items-center justify-center p-8 text-center">
+            <p className="text-muted-foreground">
+              Nessun SoA salvato. Genera e scarica il SoA aggiornato usando i pulsanti sopra.
+            </p>
           </div>
         </CardContent>
       </Card>
