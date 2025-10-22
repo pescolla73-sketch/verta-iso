@@ -44,7 +44,7 @@ function getDomainLabel(domain: string): string {
   return domainMap[domain] || domain;
 }
 
-function calculateStatistics(controls: Control[]) {
+export function calculateStatistics(controls: Control[]) {
   const total = controls.length;
   const implemented = controls.filter(c => c.status === 'implemented').length;
   const partiallyImplemented = controls.filter(c => c.status === 'partially_implemented').length;

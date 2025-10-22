@@ -1,14 +1,27 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, Download, Eye, FileDown, Printer } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { FileText, Download, FileDown, Printer, Trash2 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { generateSoAPDF, generateSoAWord, generateSoAHTML } from "@/utils/soaExport";
+import { generateSoAPDF, generateSoAWord, generateSoAHTML, calculateStatistics } from "@/utils/soaExport";
 import { toast } from "sonner";
 import { useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function SoA() {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: controls = [] } = useQuery({
     queryKey: ['controls'],
@@ -37,6 +50,47 @@ export default function SoA() {
     },
   });
 
+  const { data: soaDocuments = [] } = useQuery({
+    queryKey: ['soa_documents'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('soa_documents')
+        .select('*')
+        .order('generated_date', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('soa_documents')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['soa_documents'] });
+      toast.success('SoA eliminato con successo');
+    },
+    onError: (error) => {
+      console.error('Errore eliminazione SoA:', error);
+      toast.error('Errore nell\'eliminazione del SoA');
+    },
+  });
+
+  const getNextVersion = () => {
+    if (soaDocuments.length === 0) return 'v1.0';
+    
+    const latestVersion = soaDocuments[0].version;
+    const versionNumber = parseFloat(latestVersion.replace('v', ''));
+    const nextVersion = (versionNumber + 0.1).toFixed(1);
+    return `v${nextVersion}`;
+  };
+
   const stats = {
     total: controls.length,
     applicable: controls.filter(c => c.status !== 'not_applicable').length,
@@ -51,13 +105,35 @@ export default function SoA() {
 
     setIsGenerating(true);
     try {
+      const nextVersion = getNextVersion();
+      const stats = calculateStatistics(controls);
+      
       await generateSoAPDF({
         controls,
         organization,
         date: new Date().toLocaleDateString('it-IT'),
-        version: 'v1.0',
+        version: nextVersion,
       });
-      toast.success('SoA PDF generato con successo!');
+
+      // Save metadata to database
+      const { error } = await supabase
+        .from('soa_documents')
+        .insert({
+          organization_id: organization.id,
+          version: nextVersion,
+          generated_date: new Date().toISOString().split('T')[0],
+          compliance_percentage: stats.compliancePercentage,
+          total_controls: stats.total,
+          implemented: stats.implemented,
+          partially_implemented: stats.partiallyImplemented,
+          not_implemented: stats.notImplemented,
+          not_applicable: stats.notApplicable,
+        });
+
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ['soa_documents'] });
+      toast.success(`SoA ${nextVersion} generato e salvato!`);
     } catch (error) {
       console.error('Errore generazione PDF:', error);
       toast.error('Errore nella generazione del PDF');
@@ -96,17 +172,51 @@ export default function SoA() {
     }
 
     try {
+      const nextVersion = getNextVersion();
       generateSoAHTML({
         controls,
         organization,
         date: new Date().toLocaleDateString('it-IT'),
-        version: 'v1.0',
+        version: nextVersion,
       });
       toast.success('SoA HTML generato - pronto per la stampa!');
     } catch (error) {
       console.error('Errore generazione HTML:', error);
       toast.error('Errore nella generazione del HTML');
     }
+  };
+
+  const handleRedownload = async (doc: any) => {
+    if (!organization) {
+      toast.error('Dati organizzazione mancanti');
+      return;
+    }
+
+    try {
+      await generateSoAPDF({
+        controls,
+        organization,
+        date: new Date(doc.generated_date).toLocaleDateString('it-IT'),
+        version: doc.version,
+      });
+      toast.success(`SoA ${doc.version} scaricato!`);
+    } catch (error) {
+      console.error('Errore download PDF:', error);
+      toast.error('Errore nel download del PDF');
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    setSelectedDocId(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (selectedDocId) {
+      deleteMutation.mutate(selectedDocId);
+    }
+    setDeleteDialogOpen(false);
+    setSelectedDocId(null);
   };
 
   return (
@@ -196,13 +306,71 @@ export default function SoA() {
           <CardTitle>Documenti SoA Generati</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center p-8 text-center">
-            <p className="text-muted-foreground">
-              Nessun SoA salvato. Genera e scarica il SoA aggiornato usando i pulsanti sopra.
-            </p>
-          </div>
+          {soaDocuments.length === 0 ? (
+            <div className="flex items-center justify-center p-8 text-center">
+              <p className="text-muted-foreground">
+                Nessun SoA salvato. Genera e scarica il SoA aggiornato usando i pulsanti sopra.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {soaDocuments.map((doc) => (
+                <div
+                  key={doc.id}
+                  className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-smooth"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                      <FileText className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">
+                        SoA_{doc.version}.pdf
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(doc.generated_date).toLocaleDateString('it-IT')} • {doc.version} • Conformità: {doc.compliance_percentage}%
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => handleRedownload(doc)}
+                      title="Scarica"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => handleDelete(doc.id)}
+                      title="Elimina"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sei sicuro di voler eliminare questo documento SoA? Questa azione non può essere annullata.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>Elimina</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

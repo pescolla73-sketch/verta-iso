@@ -338,6 +338,62 @@ export type Database = {
           },
         ]
       }
+      soa_documents: {
+        Row: {
+          compliance_percentage: number
+          created_at: string
+          file_url: string | null
+          generated_date: string
+          id: string
+          implemented: number
+          not_applicable: number
+          not_implemented: number
+          organization_id: string | null
+          partially_implemented: number
+          total_controls: number
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          compliance_percentage: number
+          created_at?: string
+          file_url?: string | null
+          generated_date?: string
+          id?: string
+          implemented?: number
+          not_applicable?: number
+          not_implemented?: number
+          organization_id?: string | null
+          partially_implemented?: number
+          total_controls?: number
+          updated_at?: string
+          version: string
+        }
+        Update: {
+          compliance_percentage?: number
+          created_at?: string
+          file_url?: string | null
+          generated_date?: string
+          id?: string
+          implemented?: number
+          not_applicable?: number
+          not_implemented?: number
+          organization_id?: string | null
+          partially_implemented?: number
+          total_controls?: number
+          updated_at?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "soa_documents_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string | null
