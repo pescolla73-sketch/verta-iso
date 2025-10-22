@@ -1,13 +1,5 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
 import { Document, Packer, Paragraph, Table, TableCell, TableRow, WidthType, AlignmentType, HeadingLevel, TextRun } from 'docx';
-
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-    lastAutoTable: { finalY: number };
-  }
-}
 
 interface Control {
   control_id: string;
@@ -77,86 +69,242 @@ function calculateStatistics(controls: Control[]) {
 export async function generateSoAPDF(data: SoAData) {
   const doc = new jsPDF();
   const stats = calculateStatistics(data.controls);
+  let y = 20;
 
   // Cover Page
   doc.setFontSize(24);
-  doc.text('Statement of Applicability', 105, 40, { align: 'center' });
+  doc.text('Statement of Applicability', 105, y, { align: 'center' });
+  y += 15;
+  
   doc.setFontSize(18);
-  doc.text('ISO/IEC 27001:2022', 105, 55, { align: 'center' });
+  doc.text('ISO/IEC 27001:2022', 105, y, { align: 'center' });
+  y += 25;
   
   doc.setFontSize(12);
-  doc.text(`Organizzazione: ${data.organization.name}`, 20, 80);
+  doc.text(`Organizzazione: ${data.organization.name}`, 20, y);
+  y += 10;
+  
   if (data.organization.sector) {
-    doc.text(`Settore: ${data.organization.sector}`, 20, 90);
+    doc.text(`Settore: ${data.organization.sector}`, 20, y);
+    y += 10;
   }
   if (data.organization.scope) {
-    doc.text(`Ambito: ${data.organization.scope}`, 20, 100);
+    doc.text(`Ambito: ${data.organization.scope}`, 20, y);
+    y += 10;
   }
-  doc.text(`Data: ${data.date}`, 20, 110);
-  doc.text(`Versione: ${data.version}`, 20, 120);
+  doc.text(`Data: ${data.date}`, 20, y);
+  y += 10;
+  doc.text(`Versione: ${data.version}`, 20, y);
 
-  // Statistics Summary
+  // Statistics Page
   doc.addPage();
+  y = 20;
   doc.setFontSize(16);
-  doc.text('Riepilogo Statistiche', 20, 20);
+  doc.text('Riepilogo Statistiche', 20, y);
+  y += 15;
   
   doc.setFontSize(11);
-  const statsData = [
-    ['Controlli Totali', stats.total.toString()],
-    ['Controlli Applicabili', stats.applicable.toString()],
-    ['Controlli Non Applicabili', stats.notApplicable.toString()],
-    ['Implementati', stats.implemented.toString()],
-    ['Parzialmente Implementati', stats.partiallyImplemented.toString()],
-    ['Non Implementati', stats.notImplemented.toString()],
-    ['Percentuale di Conformità', `${stats.compliancePercentage}%`],
-  ];
+  doc.text(`Controlli Totali: ${stats.total}`, 20, y);
+  y += 8;
+  doc.text(`Controlli Applicabili: ${stats.applicable}`, 20, y);
+  y += 8;
+  doc.text(`Controlli Non Applicabili: ${stats.notApplicable}`, 20, y);
+  y += 8;
+  doc.text(`Implementati: ${stats.implemented}`, 20, y);
+  y += 8;
+  doc.text(`Parzialmente Implementati: ${stats.partiallyImplemented}`, 20, y);
+  y += 8;
+  doc.text(`Non Implementati: ${stats.notImplemented}`, 20, y);
+  y += 8;
+  doc.text(`Percentuale di Conformità: ${stats.compliancePercentage}%`, 20, y);
 
-  doc.autoTable({
-    startY: 30,
-    head: [['Metrica', 'Valore']],
-    body: statsData,
-    theme: 'grid',
-    headStyles: { fillColor: [66, 66, 66] },
-  });
-
-  // Controls Table
+  // Controls List
   doc.addPage();
+  y = 20;
   doc.setFontSize(16);
-  doc.text('Controlli ISO 27001:2022', 20, 20);
+  doc.text('Controlli ISO 27001:2022', 20, y);
+  y += 15;
+  
+  doc.setFontSize(9);
+  const sortedControls = data.controls.sort((a, b) => 
+    a.control_id.localeCompare(b.control_id)
+  );
 
-  const tableData = data.controls
-    .sort((a, b) => a.control_id.localeCompare(b.control_id))
-    .map(control => [
-      control.control_id,
-      control.title.substring(0, 50) + (control.title.length > 50 ? '...' : ''),
-      getDomainLabel(control.domain),
-      control.status === 'not_applicable' ? 'No' : 'Sì',
-      getStatusLabel(control.status),
-      control.responsible || '-',
-      control.last_verification_date || '-',
-    ]);
+  sortedControls.forEach((control, index) => {
+    if (y > 270) {
+      doc.addPage();
+      y = 20;
+    }
 
-  doc.autoTable({
-    startY: 30,
-    head: [['ID', 'Titolo', 'Dominio', 'Applicabile', 'Stato', 'Responsabile', 'Ultima Verifica']],
-    body: tableData,
-    theme: 'grid',
-    headStyles: { fillColor: [66, 66, 66], fontSize: 9 },
-    bodyStyles: { fontSize: 8 },
-    columnStyles: {
-      0: { cellWidth: 15 },
-      1: { cellWidth: 50 },
-      2: { cellWidth: 25 },
-      3: { cellWidth: 20 },
-      4: { cellWidth: 30 },
-      5: { cellWidth: 25 },
-      6: { cellWidth: 25 },
-    },
-    margin: { left: 10, right: 10 },
+    const line = `${control.control_id} | ${control.title.substring(0, 60)}${control.title.length > 60 ? '...' : ''} | ${getStatusLabel(control.status)}`;
+    doc.text(line, 20, y);
+    y += 6;
   });
 
   // Save PDF
   doc.save(`SoA_${data.organization.name.replace(/\s+/g, '_')}_${data.version}.pdf`);
+}
+
+export function generateSoAHTML(data: SoAData) {
+  const stats = calculateStatistics(data.controls);
+  
+  const html = `
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Statement of Applicability - ${data.organization.name}</title>
+  <style>
+    @media print {
+      @page { margin: 2cm; }
+      body { margin: 0; }
+    }
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 20px;
+      font-size: 11pt;
+    }
+    .cover {
+      text-align: center;
+      margin-bottom: 50px;
+      page-break-after: always;
+    }
+    .cover h1 {
+      font-size: 28pt;
+      margin-bottom: 10px;
+    }
+    .cover h2 {
+      font-size: 20pt;
+      color: #666;
+      margin-bottom: 40px;
+    }
+    .info {
+      text-align: left;
+      margin: 20px auto;
+      max-width: 400px;
+    }
+    .stats {
+      margin: 30px 0;
+      page-break-after: always;
+    }
+    .stats h3 {
+      font-size: 18pt;
+      margin-bottom: 20px;
+    }
+    .stat-line {
+      margin: 10px 0;
+      padding: 10px;
+      background: #f5f5f5;
+      border-left: 4px solid #424242;
+    }
+    .controls h3 {
+      font-size: 18pt;
+      margin-bottom: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+      font-size: 9pt;
+    }
+    th {
+      background-color: #424242;
+      color: white;
+    }
+    tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+    .status-implemented { color: #2e7d32; font-weight: bold; }
+    .status-partial { color: #f57c00; font-weight: bold; }
+    .status-not { color: #c62828; font-weight: bold; }
+    .status-na { color: #757575; }
+  </style>
+</head>
+<body>
+  <div class="cover">
+    <h1>Statement of Applicability</h1>
+    <h2>ISO/IEC 27001:2022</h2>
+    <div class="info">
+      <p><strong>Organizzazione:</strong> ${data.organization.name}</p>
+      ${data.organization.sector ? `<p><strong>Settore:</strong> ${data.organization.sector}</p>` : ''}
+      ${data.organization.scope ? `<p><strong>Ambito:</strong> ${data.organization.scope}</p>` : ''}
+      <p><strong>Data:</strong> ${data.date}</p>
+      <p><strong>Versione:</strong> ${data.version}</p>
+    </div>
+  </div>
+
+  <div class="stats">
+    <h3>Riepilogo Statistiche</h3>
+    <div class="stat-line"><strong>Controlli Totali:</strong> ${stats.total}</div>
+    <div class="stat-line"><strong>Controlli Applicabili:</strong> ${stats.applicable}</div>
+    <div class="stat-line"><strong>Controlli Non Applicabili:</strong> ${stats.notApplicable}</div>
+    <div class="stat-line"><strong>Implementati:</strong> ${stats.implemented}</div>
+    <div class="stat-line"><strong>Parzialmente Implementati:</strong> ${stats.partiallyImplemented}</div>
+    <div class="stat-line"><strong>Non Implementati:</strong> ${stats.notImplemented}</div>
+    <div class="stat-line"><strong>Percentuale di Conformità:</strong> ${stats.compliancePercentage}%</div>
+  </div>
+
+  <div class="controls">
+    <h3>Controlli ISO 27001:2022</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Titolo</th>
+          <th>Dominio</th>
+          <th>Applicabile</th>
+          <th>Stato</th>
+          <th>Responsabile</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${data.controls
+          .sort((a, b) => a.control_id.localeCompare(b.control_id))
+          .map(control => {
+            const statusClass = 
+              control.status === 'implemented' ? 'status-implemented' :
+              control.status === 'partially_implemented' ? 'status-partial' :
+              control.status === 'not_applicable' ? 'status-na' : 'status-not';
+            
+            return `
+              <tr>
+                <td>${control.control_id}</td>
+                <td>${control.title}</td>
+                <td>${getDomainLabel(control.domain)}</td>
+                <td>${control.status === 'not_applicable' ? 'No' : 'Sì'}</td>
+                <td class="${statusClass}">${getStatusLabel(control.status)}</td>
+                <td>${control.responsible || '-'}</td>
+              </tr>
+            `;
+          }).join('')}
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>
+  `;
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `SoA_${data.organization.name.replace(/\s+/g, '_')}_${data.version}.html`;
+  link.click();
+  window.URL.revokeObjectURL(url);
+  
+  // Also open in new window for printing
+  const printWindow = window.open('', '_blank');
+  if (printWindow) {
+    printWindow.document.write(html);
+    printWindow.document.close();
+  }
 }
 
 export async function generateSoAWord(data: SoAData) {

@@ -1,9 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, Download, Eye, FileDown } from "lucide-react";
+import { FileText, Download, Eye, FileDown, Printer } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { generateSoAPDF, generateSoAWord } from "@/utils/soaExport";
+import { generateSoAPDF, generateSoAWord, generateSoAHTML } from "@/utils/soaExport";
 import { toast } from "sonner";
 import { useState } from "react";
 
@@ -89,6 +89,26 @@ export default function SoA() {
     }
   };
 
+  const handleGenerateHTML = () => {
+    if (!organization) {
+      toast.error('Dati organizzazione mancanti');
+      return;
+    }
+
+    try {
+      generateSoAHTML({
+        controls,
+        organization,
+        date: new Date().toLocaleDateString('it-IT'),
+        version: 'v1.0',
+      });
+      toast.success('SoA HTML generato - pronto per la stampa!');
+    } catch (error) {
+      console.error('Errore generazione HTML:', error);
+      toast.error('Errore nella generazione del HTML');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -106,6 +126,14 @@ export default function SoA() {
           >
             <Download className="h-4 w-4" />
             Scarica PDF
+          </Button>
+          <Button 
+            variant="outline" 
+            className="gap-2"
+            onClick={handleGenerateHTML}
+          >
+            <Printer className="h-4 w-4" />
+            Stampa HTML
           </Button>
           <Button 
             variant="outline" 
