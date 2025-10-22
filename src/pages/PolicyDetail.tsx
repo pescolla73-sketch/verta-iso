@@ -34,24 +34,40 @@ export default function PolicyDetail() {
 
   const updatePolicyMutation = useMutation({
     mutationFn: async ({ content, version }: { content: string; version: string }) => {
+      console.log('=== BEFORE UPDATE ===');
       console.log('Policy ID:', id, 'Type:', typeof id);
-      console.log('Content length:', content?.length);
+      console.log('New content length:', content?.length);
+      console.log('New version:', version);
+      console.log('First 100 chars:', content?.substring(0, 100));
       
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('policies')
         .update({ 
           content, 
           version,
           updated_at: new Date().toISOString() 
         })
-        .eq('id', id);
+        .eq('id', id)
+        .select();
+
+      console.log('=== AFTER UPDATE ===');
+      console.log('Update result data:', data);
+      console.log('Update error:', error);
+      console.log('Data length:', data?.length);
 
       if (error) {
         console.error('Save error:', error);
         toast.error(`Errore: ${error.message}`);
         throw error;
       }
+
+      if (!data || data.length === 0) {
+        console.error('❌ No rows updated! RLS might be blocking the update.');
+        toast.error('Nessuna riga aggiornata - controlla i permessi');
+        throw new Error('No rows updated');
+      }
       
+      console.log('✅ Successfully updated:', data[0]);
       toast.success('Policy salvata!');
     },
     onSuccess: () => {
