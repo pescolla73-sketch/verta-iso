@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, Plus, Trash2 } from "lucide-react";
+import { Building2, Plus, Trash2, Upload, X } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +25,9 @@ export default function Settings() {
   const queryClient = useQueryClient();
   const [deleteOrgId, setDeleteOrgId] = useState<string | null>(null);
   const [newOrgName, setNewOrgName] = useState("");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Get current user and their role
   const { data: userRole } = useQuery({
@@ -130,6 +133,7 @@ export default function Settings() {
         sector: currentOrg.sector || "",
         scope: currentOrg.scope || "",
       });
+      setLogoPreview(currentOrg.logo_url || null);
       setRolesData({
         ciso: currentOrg.ciso || "",
         dpo: currentOrg.dpo || "",
@@ -259,9 +263,30 @@ export default function Settings() {
     mutationFn: async () => {
       if (!currentOrg?.id) throw new Error("No organization selected");
       
+      let logoUrl = logoPreview;
+
+      // Upload logo if a new file was selected
+      if (logoFile) {
+        const fileExt = logoFile.name.split('.').pop();
+        const fileName = `${currentOrg.id}-${Date.now()}.${fileExt}`;
+        const filePath = `${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('organization-logos')
+          .upload(filePath, logoFile, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('organization-logos')
+          .getPublicUrl(filePath);
+
+        logoUrl = publicUrl;
+      }
+
       const { error } = await supabase
         .from("organization")
-        .update(orgData)
+        .update({ ...orgData, logo_url: logoUrl })
         .eq("id", currentOrg.id);
       
       if (error) throw error;
@@ -269,6 +294,7 @@ export default function Settings() {
     onSuccess: () => {
       refetchCurrentOrg();
       queryClient.invalidateQueries({ queryKey: ["organizations"] });
+      setLogoFile(null);
       toast({ title: "Dati organizzazione aggiornati" });
     },
     onError: () => {
@@ -434,6 +460,63 @@ export default function Settings() {
                     onChange={(e) => setOrgData({ ...orgData, scope: e.target.value })}
                     rows={4}
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Logo Aziendale</Label>
+                  <div className="flex items-center gap-4">
+                    {logoPreview && (
+                      <div className="relative w-32 h-32 border rounded-lg overflow-hidden bg-muted">
+                        <img 
+                          src={logoPreview} 
+                          alt="Logo preview" 
+                          className="w-full h-full object-contain"
+                        />
+                        <Button
+                          size="icon"
+                          variant="destructive"
+                          className="absolute top-1 right-1 h-6 w-6"
+                          onClick={() => {
+                            setLogoPreview(null);
+                            setLogoFile(null);
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/jpg,image/svg+xml"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setLogoFile(file);
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setLogoPreview(reader.result as string);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="gap-2"
+                      >
+                        <Upload className="h-4 w-4" />
+                        {logoPreview ? "Cambia Logo" : "Carica Logo"}
+                      </Button>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        PNG, JPG, SVG (max 5MB)
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 <Button

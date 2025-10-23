@@ -201,6 +201,7 @@ export type Database = {
           id: string
           incident_response_manager: string | null
           it_manager: string | null
+          logo_url: string | null
           name: string
           responsabile_paghe: string | null
           scope: string | null
@@ -221,6 +222,7 @@ export type Database = {
           id?: string
           incident_response_manager?: string | null
           it_manager?: string | null
+          logo_url?: string | null
           name: string
           responsabile_paghe?: string | null
           scope?: string | null
@@ -241,6 +243,7 @@ export type Database = {
           id?: string
           incident_response_manager?: string | null
           it_manager?: string | null
+          logo_url?: string | null
           name?: string
           responsabile_paghe?: string | null
           scope?: string | null

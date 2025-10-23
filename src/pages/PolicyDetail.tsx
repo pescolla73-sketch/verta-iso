@@ -8,8 +8,33 @@ import { ArrowLeft, Download, FileText, Edit, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { jsPDF } from "jspdf";
-import { Document, Packer, Paragraph, TextRun } from "docx";
+import { Document, Packer, Paragraph, TextRun, ImageRun, AlignmentType } from "docx";
 import { useState } from "react";
+
+// Helper function to load image for PDF
+async function loadImageForPDF(url: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx?.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+// Helper to convert image URL to buffer for docx
+async function imageUrlToBuffer(url: string): Promise<Uint8Array> {
+  const response = await fetch(url);
+  const arrayBuffer = await response.arrayBuffer();
+  return new Uint8Array(arrayBuffer);
+}
 
 export default function PolicyDetail() {
   const { id } = useParams();
@@ -23,7 +48,7 @@ export default function PolicyDetail() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("policies")
-        .select("*")
+        .select("*, organization:organization_id(*)")
         .eq("id", id)
         .single();
 
@@ -119,17 +144,40 @@ export default function PolicyDetail() {
     }
   };
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
     if (!policy) return;
 
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 20;
     const maxWidth = pageWidth - 2 * margin;
+    let y = 20;
+
+    // Add logo if available
+    if (policy.organization?.logo_url) {
+      try {
+        const img = await loadImageForPDF(policy.organization.logo_url);
+        doc.addImage(img, 'PNG', margin, y, 30, 30);
+        y += 35;
+      } catch (error) {
+        console.error('Error loading logo:', error);
+      }
+    }
+
+    // Add organization name and metadata
+    doc.setFontSize(16);
+    doc.text(policy.organization?.name || '', margin, y);
+    y += 10;
+    
+    doc.setFontSize(14);
+    doc.text(policy.policy_name, margin, y);
+    y += 8;
+    
+    doc.setFontSize(10);
+    doc.text(`Versione: ${policy.version} | Data: ${new Date().toLocaleDateString('it-IT')}`, margin, y);
+    y += 15;
     
     const lines = doc.splitTextToSize(policy.content || "", maxWidth);
-    
-    let y = 20;
     const lineHeight = 7;
     const pageHeight = doc.internal.pageSize.getHeight();
 
@@ -149,7 +197,39 @@ export default function PolicyDetail() {
   const handleDownloadWord = async () => {
     if (!policy) return;
 
-    const paragraphs = (policy.content || "").split('\n').map(text => 
+    // Add logo if available
+    const logoImage = policy.organization?.logo_url 
+      ? [new Paragraph({
+          children: [
+            new ImageRun({
+              data: await imageUrlToBuffer(policy.organization.logo_url),
+              transformation: { width: 100, height: 100 },
+              type: 'png',
+            }),
+          ],
+          alignment: AlignmentType.LEFT,
+          spacing: { after: 200 },
+        })]
+      : [];
+
+    // Add header information
+    const headerParagraphs = [
+      ...logoImage,
+      new Paragraph({
+        children: [new TextRun({ text: policy.organization?.name || '', bold: true, size: 28 })],
+        spacing: { after: 200 },
+      }),
+      new Paragraph({
+        children: [new TextRun({ text: policy.policy_name, bold: true, size: 24 })],
+        spacing: { after: 200 },
+      }),
+      new Paragraph({
+        children: [new TextRun({ text: `Versione: ${policy.version} | Data: ${new Date().toLocaleDateString('it-IT')}`, size: 20 })],
+        spacing: { after: 400 },
+      }),
+    ];
+
+    const contentParagraphs = (policy.content || "").split('\n').map(text => 
       new Paragraph({
         children: [new TextRun(text)],
         spacing: { after: 200 }
@@ -159,7 +239,7 @@ export default function PolicyDetail() {
     const doc = new Document({
       sections: [{
         properties: {},
-        children: paragraphs
+        children: [...headerParagraphs, ...contentParagraphs]
       }]
     });
 
