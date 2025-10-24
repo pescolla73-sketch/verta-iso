@@ -394,46 +394,73 @@ export type Database = {
       }
       soa_documents: {
         Row: {
+          approval_date: string | null
+          approved_by: string | null
+          classification: string | null
           compliance_percentage: number
           created_at: string
+          document_id: string | null
           file_url: string | null
           generated_date: string
           id: string
           implemented: number
+          issue_date: string | null
+          next_review_date: string | null
           not_applicable: number
           not_implemented: number
           organization_id: string | null
           partially_implemented: number
+          prepared_by: string | null
+          revision_date: string | null
+          status: string | null
           total_controls: number
           updated_at: string
           version: string
         }
         Insert: {
+          approval_date?: string | null
+          approved_by?: string | null
+          classification?: string | null
           compliance_percentage: number
           created_at?: string
+          document_id?: string | null
           file_url?: string | null
           generated_date?: string
           id?: string
           implemented?: number
+          issue_date?: string | null
+          next_review_date?: string | null
           not_applicable?: number
           not_implemented?: number
           organization_id?: string | null
           partially_implemented?: number
+          prepared_by?: string | null
+          revision_date?: string | null
+          status?: string | null
           total_controls?: number
           updated_at?: string
           version: string
         }
         Update: {
+          approval_date?: string | null
+          approved_by?: string | null
+          classification?: string | null
           compliance_percentage?: number
           created_at?: string
+          document_id?: string | null
           file_url?: string | null
           generated_date?: string
           id?: string
           implemented?: number
+          issue_date?: string | null
+          next_review_date?: string | null
           not_applicable?: number
           not_implemented?: number
           organization_id?: string | null
           partially_implemented?: number
+          prepared_by?: string | null
+          revision_date?: string | null
+          status?: string | null
           total_controls?: number
           updated_at?: string
           version?: string

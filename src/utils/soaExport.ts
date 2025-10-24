@@ -1,5 +1,14 @@
 import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { Document, Packer, Paragraph, Table, TableCell, TableRow, WidthType, AlignmentType, HeadingLevel, TextRun, ImageRun } from 'docx';
+import { 
+  ProfessionalPDF, 
+  Organization as BrandedOrg, 
+  DocumentMetadata,
+  calculateNextReviewDate,
+  formatItalianDate,
+  generateDocumentId
+} from './pdfBranding';
 
 // Helper function to load image
 async function loadImage(url: string): Promise<string> {
@@ -41,6 +50,17 @@ interface Organization {
   sector: string | null;
   scope: string | null;
   logo_url: string | null;
+  ciso?: string | null;
+  piva?: string | null;
+  isms_scope?: string | null;
+  website?: string | null;
+  contact_phone?: string | null;
+  contact_email?: string | null;
+  legal_address_street?: string | null;
+  legal_address_city?: string | null;
+  legal_address_zip?: string | null;
+  legal_address_province?: string | null;
+  legal_address_country?: string | null;
 }
 
 interface SoAData {
@@ -48,6 +68,13 @@ interface SoAData {
   organization: Organization;
   date: string;
   version: string;
+  metadata?: {
+    status?: 'draft' | 'approved' | 'in_review';
+    classification?: 'confidential' | 'internal' | 'public';
+    preparedBy?: string;
+    approvedBy?: string;
+    approvalDate?: string;
+  };
 }
 
 function getStatusLabel(status: string): string {
@@ -93,93 +120,101 @@ export function calculateStatistics(controls: Control[]) {
 }
 
 export async function generateSoAPDF(data: SoAData) {
-  const doc = new jsPDF();
   const stats = calculateStatistics(data.controls);
-  let y = 20;
+  const today = new Date().toISOString().split('T')[0];
+  const nextReview = calculateNextReviewDate(today);
+  
+  // Prepare document metadata
+  const documentId = generateDocumentId('SoA', data.organization.name, data.version);
+  const metadata: DocumentMetadata = {
+    documentType: 'STATEMENT OF APPLICABILITY',
+    documentId,
+    version: data.version,
+    issueDate: formatItalianDate(today),
+    revisionDate: formatItalianDate(today),
+    nextReviewDate: formatItalianDate(nextReview),
+    status: data.metadata?.status || 'draft',
+    classification: data.metadata?.classification || 'confidential',
+    preparedBy: data.metadata?.preparedBy || data.organization.ciso || 'Non specificato',
+    approvedBy: data.metadata?.approvedBy,
+    approvalDate: data.metadata?.approvalDate ? formatItalianDate(data.metadata.approvalDate) : undefined,
+  };
 
-  // Add logo if available
-  if (data.organization.logo_url) {
-    try {
-      const img = await loadImage(data.organization.logo_url);
-      doc.addImage(img, 'PNG', 20, y, 30, 30);
-      y += 5;
-    } catch (error) {
-      console.error('Error loading logo:', error);
-    }
-  }
+  // Create professional PDF
+  const pdf = new ProfessionalPDF(data.organization as BrandedOrg, metadata);
+  await pdf.initialize();
 
-  // Cover Page
-  doc.setFontSize(24);
-  doc.text('Statement of Applicability', 105, y, { align: 'center' });
-  y += 15;
-  
-  doc.setFontSize(18);
-  doc.text('ISO/IEC 27001:2022', 105, y, { align: 'center' });
-  y += 25;
-  
-  doc.setFontSize(12);
-  doc.text(`Organizzazione: ${data.organization.name}`, 20, y);
-  y += 10;
-  
-  if (data.organization.sector) {
-    doc.text(`Settore: ${data.organization.sector}`, 20, y);
-    y += 10;
-  }
-  if (data.organization.scope) {
-    doc.text(`Ambito: ${data.organization.scope}`, 20, y);
-    y += 10;
-  }
-  doc.text(`Data: ${data.date}`, 20, y);
-  y += 10;
-  doc.text(`Versione: ${data.version}`, 20, y);
+  // Add cover page (automatically done by header on first page)
+  pdf.addPage();
 
   // Statistics Page
-  doc.addPage();
-  y = 20;
-  doc.setFontSize(16);
-  doc.text('Riepilogo Statistiche', 20, y);
+  let y = pdf.getContentStartY();
+  pdf.setFontSize(16);
+  pdf.setFont('helvetica', 'bold');
+  pdf.addText('Riepilogo Statistiche', y);
   y += 15;
-  
-  doc.setFontSize(11);
-  doc.text(`Controlli Totali: ${stats.total}`, 20, y);
-  y += 8;
-  doc.text(`Controlli Applicabili: ${stats.applicable}`, 20, y);
-  y += 8;
-  doc.text(`Controlli Non Applicabili: ${stats.notApplicable}`, 20, y);
-  y += 8;
-  doc.text(`Implementati: ${stats.implemented}`, 20, y);
-  y += 8;
-  doc.text(`Parzialmente Implementati: ${stats.partiallyImplemented}`, 20, y);
-  y += 8;
-  doc.text(`Non Implementati: ${stats.notImplemented}`, 20, y);
-  y += 8;
-  doc.text(`Percentuale di Conformità: ${stats.compliancePercentage}%`, 20, y);
 
-  // Controls List
-  doc.addPage();
-  y = 20;
-  doc.setFontSize(16);
-  doc.text('Controlli ISO 27001:2022', 20, y);
+  const statsData = [
+    ['Metrica', 'Valore'],
+    ['Controlli Totali', stats.total.toString()],
+    ['Controlli Applicabili', stats.applicable.toString()],
+    ['Controlli Non Applicabili', stats.notApplicable.toString()],
+    ['Implementati', stats.implemented.toString()],
+    ['Parzialmente Implementati', stats.partiallyImplemented.toString()],
+    ['Non Implementati', stats.notImplemented.toString()],
+    ['Percentuale di Conformità', `${stats.compliancePercentage}%`],
+  ];
+
+  autoTable(pdf.getDoc(), {
+    startY: y,
+    head: [statsData[0]],
+    body: statsData.slice(1),
+    theme: 'grid',
+    headStyles: { fillColor: [66, 66, 66], textColor: 255, fontStyle: 'bold' },
+    margin: { left: 20, right: 20 },
+  });
+
+  // Controls Table
+  pdf.addPage();
+  y = pdf.getContentStartY();
+  pdf.setFontSize(16);
+  pdf.setFont('helvetica', 'bold');
+  pdf.addText('Controlli ISO 27001:2022', y);
   y += 15;
-  
-  doc.setFontSize(9);
+
   const sortedControls = data.controls.sort((a, b) => 
     a.control_id.localeCompare(b.control_id)
   );
 
-  sortedControls.forEach((control, index) => {
-    if (y > 270) {
-      doc.addPage();
-      y = 20;
-    }
+  const controlsData = sortedControls.map(control => [
+    control.control_id,
+    control.title,
+    getDomainLabel(control.domain),
+    control.status === 'not_applicable' ? 'No' : 'Sì',
+    getStatusLabel(control.status),
+    control.responsible || '-',
+  ]);
 
-    const line = `${control.control_id} | ${control.title.substring(0, 60)}${control.title.length > 60 ? '...' : ''} | ${getStatusLabel(control.status)}`;
-    doc.text(line, 20, y);
-    y += 6;
+  autoTable(pdf.getDoc(), {
+    startY: y,
+    head: [['ID', 'Titolo', 'Dominio', 'Applicabile', 'Stato', 'Responsabile']],
+    body: controlsData,
+    theme: 'grid',
+    headStyles: { fillColor: [66, 66, 66], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+    bodyStyles: { fontSize: 8 },
+    columnStyles: {
+      0: { cellWidth: 20 },
+      1: { cellWidth: 60 },
+      2: { cellWidth: 25 },
+      3: { cellWidth: 20 },
+      4: { cellWidth: 35 },
+      5: { cellWidth: 30 },
+    },
+    margin: { left: 20, right: 20 },
   });
 
-  // Save PDF
-  doc.save(`SoA_${data.organization.name.replace(/\s+/g, '_')}_${data.version}.pdf`);
+  // Finalize and save
+  await pdf.finalize(`SoA_${data.organization.name.replace(/\s+/g, '_')}_${data.version}.pdf`);
 }
 
 export function generateSoAHTML(data: SoAData) {

@@ -107,12 +107,22 @@ export default function SoA() {
     try {
       const nextVersion = getNextVersion();
       const stats = calculateStatistics(controls);
+      const today = new Date().toISOString().split('T')[0];
+      const nextReviewDate = new Date();
+      nextReviewDate.setMonth(nextReviewDate.getMonth() + 6);
+      
+      const documentId = `SoA-${organization.name.replace(/\s+/g, '')}-${new Date().getFullYear()}-${nextVersion}`;
       
       await generateSoAPDF({
         controls,
         organization,
         date: new Date().toLocaleDateString('it-IT'),
         version: nextVersion,
+        metadata: {
+          status: 'draft',
+          classification: 'confidential',
+          preparedBy: organization.ciso || 'Non specificato',
+        },
       });
 
       // Save metadata to database
@@ -120,8 +130,15 @@ export default function SoA() {
         .from('soa_documents')
         .insert({
           organization_id: organization.id,
+          document_id: documentId,
           version: nextVersion,
-          generated_date: new Date().toISOString().split('T')[0],
+          generated_date: today,
+          issue_date: today,
+          revision_date: today,
+          next_review_date: nextReviewDate.toISOString().split('T')[0],
+          status: 'draft',
+          classification: 'confidential',
+          prepared_by: organization.ciso,
           compliance_percentage: stats.compliancePercentage,
           total_controls: stats.total,
           implemented: stats.implemented,
