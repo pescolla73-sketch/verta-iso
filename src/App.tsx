@@ -13,6 +13,7 @@ import Audits from "./pages/Audits";
 import Policies from "./pages/Policies";
 import PolicyDetail from "./pages/PolicyDetail";
 import Roles from "./pages/Roles";
+import SetupAzienda from "./pages/SetupAzienda";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -94,6 +95,14 @@ const App = () => (
             element={
               <AppLayout>
                 <Roles />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/setup-azienda"
+            element={
+              <AppLayout>
+                <SetupAzienda />
               </AppLayout>
             }
           />

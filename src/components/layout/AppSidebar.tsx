@@ -8,7 +8,7 @@ import {
   ScrollText,
   Users,
   Settings,
-  Menu,
+  Building2,
 } from "lucide-react";
 import {
   Sidebar,
@@ -31,6 +31,7 @@ const menuItems = [
   { title: "Audit", url: "/audits", icon: ClipboardCheck },
   { title: "Politiche", url: "/policies", icon: ScrollText },
   { title: "Ruoli", url: "/roles", icon: Users },
+  { title: "Setup Azienda", url: "/setup-azienda", icon: Building2 },
   { title: "Impostazioni", url: "/settings", icon: Settings },
 ];
 
