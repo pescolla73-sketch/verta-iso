@@ -193,6 +193,9 @@ export type Database = {
           ceo: string | null
           ciso: string | null
           communication_manager: string | null
+          contact_email: string | null
+          contact_pec: string | null
+          contact_phone: string | null
           created_at: string | null
           cto: string | null
           dpo: string | null
@@ -200,20 +203,37 @@ export type Database = {
           hr_manager: string | null
           id: string
           incident_response_manager: string | null
+          isms_boundaries: string | null
+          isms_scope: string | null
           it_manager: string | null
+          legal_address_city: string | null
+          legal_address_country: string | null
+          legal_address_province: string | null
+          legal_address_street: string | null
+          legal_address_zip: string | null
           logo_url: string | null
           name: string
+          operational_address_city: string | null
+          operational_address_country: string | null
+          operational_address_province: string | null
+          operational_address_street: string | null
+          operational_address_zip: string | null
+          piva: string | null
           responsabile_paghe: string | null
           scope: string | null
           sector: string | null
           system_administrator: string | null
           updated_at: string | null
+          website: string | null
         }
         Insert: {
           backup_operator?: string | null
           ceo?: string | null
           ciso?: string | null
           communication_manager?: string | null
+          contact_email?: string | null
+          contact_pec?: string | null
+          contact_phone?: string | null
           created_at?: string | null
           cto?: string | null
           dpo?: string | null
@@ -221,20 +241,37 @@ export type Database = {
           hr_manager?: string | null
           id?: string
           incident_response_manager?: string | null
+          isms_boundaries?: string | null
+          isms_scope?: string | null
           it_manager?: string | null
+          legal_address_city?: string | null
+          legal_address_country?: string | null
+          legal_address_province?: string | null
+          legal_address_street?: string | null
+          legal_address_zip?: string | null
           logo_url?: string | null
           name: string
+          operational_address_city?: string | null
+          operational_address_country?: string | null
+          operational_address_province?: string | null
+          operational_address_street?: string | null
+          operational_address_zip?: string | null
+          piva?: string | null
           responsabile_paghe?: string | null
           scope?: string | null
           sector?: string | null
           system_administrator?: string | null
           updated_at?: string | null
+          website?: string | null
         }
         Update: {
           backup_operator?: string | null
           ceo?: string | null
           ciso?: string | null
           communication_manager?: string | null
+          contact_email?: string | null
+          contact_pec?: string | null
+          contact_phone?: string | null
           created_at?: string | null
           cto?: string | null
           dpo?: string | null
@@ -242,14 +279,28 @@ export type Database = {
           hr_manager?: string | null
           id?: string
           incident_response_manager?: string | null
+          isms_boundaries?: string | null
+          isms_scope?: string | null
           it_manager?: string | null
+          legal_address_city?: string | null
+          legal_address_country?: string | null
+          legal_address_province?: string | null
+          legal_address_street?: string | null
+          legal_address_zip?: string | null
           logo_url?: string | null
           name?: string
+          operational_address_city?: string | null
+          operational_address_country?: string | null
+          operational_address_province?: string | null
+          operational_address_street?: string | null
+          operational_address_zip?: string | null
+          piva?: string | null
           responsabile_paghe?: string | null
           scope?: string | null
           sector?: string | null
           system_administrator?: string | null
           updated_at?: string | null
+          website?: string | null
         }
         Relationships: []
       }

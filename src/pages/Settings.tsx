@@ -19,6 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import OrganizationForm from "@/components/OrganizationForm";
 
 export default function Settings() {
   const { toast } = useToast();
@@ -106,7 +107,26 @@ export default function Settings() {
     name: "",
     sector: "",
     scope: "",
+    piva: "",
+    website: "",
+    legal_address_street: "",
+    legal_address_city: "",
+    legal_address_zip: "",
+    legal_address_province: "",
+    legal_address_country: "Italia",
+    operational_address_street: "",
+    operational_address_city: "",
+    operational_address_zip: "",
+    operational_address_province: "",
+    operational_address_country: "",
+    isms_scope: "",
+    isms_boundaries: "",
+    contact_email: "",
+    contact_phone: "",
+    contact_pec: "",
   });
+
+  const [operationalAddressDifferent, setOperationalAddressDifferent] = useState(false);
 
   const [rolesData, setRolesData] = useState({
     ciso: "",
@@ -132,8 +152,26 @@ export default function Settings() {
         name: currentOrg.name || "",
         sector: currentOrg.sector || "",
         scope: currentOrg.scope || "",
+        piva: currentOrg.piva || "",
+        website: currentOrg.website || "",
+        legal_address_street: currentOrg.legal_address_street || "",
+        legal_address_city: currentOrg.legal_address_city || "",
+        legal_address_zip: currentOrg.legal_address_zip || "",
+        legal_address_province: currentOrg.legal_address_province || "",
+        legal_address_country: currentOrg.legal_address_country || "Italia",
+        operational_address_street: currentOrg.operational_address_street || "",
+        operational_address_city: currentOrg.operational_address_city || "",
+        operational_address_zip: currentOrg.operational_address_zip || "",
+        operational_address_province: currentOrg.operational_address_province || "",
+        operational_address_country: currentOrg.operational_address_country || "",
+        isms_scope: currentOrg.isms_scope || "",
+        isms_boundaries: currentOrg.isms_boundaries || "",
+        contact_email: currentOrg.contact_email || "",
+        contact_phone: currentOrg.contact_phone || "",
+        contact_pec: currentOrg.contact_pec || "",
       });
       setLogoPreview(currentOrg.logo_url || null);
+      setOperationalAddressDifferent(!!(currentOrg.operational_address_street || currentOrg.operational_address_city));
       setRolesData({
         ciso: currentOrg.ciso || "",
         dpo: currentOrg.dpo || "",
@@ -424,109 +462,19 @@ export default function Settings() {
               </CardContent>
             </Card>
           ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>Dati Organizzazione</CardTitle>
-                <CardDescription>
-                  Modifica i dati dell'organizzazione corrente
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nome Organizzazione</Label>
-                  <Input
-                    id="name"
-                    value={orgData.name}
-                    onChange={(e) => setOrgData({ ...orgData, name: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="sector">Settore</Label>
-                  <Input
-                    id="sector"
-                    placeholder="es. Tecnologia, Sanità, Finanza"
-                    value={orgData.sector}
-                    onChange={(e) => setOrgData({ ...orgData, sector: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="scope">Ambito ISMS / Scope</Label>
-                  <Textarea
-                    id="scope"
-                    placeholder="Descrivi l'ambito del sistema di gestione della sicurezza delle informazioni"
-                    value={orgData.scope}
-                    onChange={(e) => setOrgData({ ...orgData, scope: e.target.value })}
-                    rows={4}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Logo Aziendale</Label>
-                  <div className="flex items-center gap-4">
-                    {logoPreview && (
-                      <div className="relative w-32 h-32 border rounded-lg overflow-hidden bg-muted">
-                        <img 
-                          src={logoPreview} 
-                          alt="Logo preview" 
-                          className="w-full h-full object-contain"
-                        />
-                        <Button
-                          size="icon"
-                          variant="destructive"
-                          className="absolute top-1 right-1 h-6 w-6"
-                          onClick={() => {
-                            setLogoPreview(null);
-                            setLogoFile(null);
-                          }}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
-                    <div className="flex-1">
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/png,image/jpeg,image/jpg,image/svg+xml"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            setLogoFile(file);
-                            const reader = new FileReader();
-                            reader.onloadend = () => {
-                              setLogoPreview(reader.result as string);
-                            };
-                            reader.readAsDataURL(file);
-                          }
-                        }}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="gap-2"
-                      >
-                        <Upload className="h-4 w-4" />
-                        {logoPreview ? "Cambia Logo" : "Carica Logo"}
-                      </Button>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        PNG, JPG, SVG (max 5MB)
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <Button
-                  onClick={() => updateOrgDataMutation.mutate()}
-                  disabled={updateOrgDataMutation.isPending}
-                >
-                  Salva
-                </Button>
-              </CardContent>
-            </Card>
+            <OrganizationForm
+              orgData={orgData}
+              setOrgData={setOrgData}
+              operationalAddressDifferent={operationalAddressDifferent}
+              setOperationalAddressDifferent={setOperationalAddressDifferent}
+              logoPreview={logoPreview}
+              setLogoPreview={setLogoPreview}
+              logoFile={logoFile}
+              setLogoFile={setLogoFile}
+              fileInputRef={fileInputRef}
+              onSave={() => updateOrgDataMutation.mutate()}
+              isSaving={updateOrgDataMutation.isPending}
+            />
           )}
         </TabsContent>
 
