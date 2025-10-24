@@ -1,6 +1,6 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
-import { Bell, User, Building2 } from "lucide-react";
+import { Bell, User, Building2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,6 +11,15 @@ import {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect } from "react";
+
+// Development mode constants
+const DEV_MODE = true; // Set to false for production
+const DEMO_USER = {
+  id: 'demo-user-123',
+  email: 'demo@test.com',
+  full_name: 'Demo User'
+};
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -19,12 +28,26 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [isDemoMode, setIsDemoMode] = useState(false);
 
   // Get current user's profile with selected organization
   const { data: profile } = useQuery({
     queryKey: ["profile"],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
+      
+      // Development mode: use mock user if no auth session
+      if (!user && DEV_MODE) {
+        console.log("[AppLayout] No auth session - using DEMO mode");
+        setIsDemoMode(true);
+        return {
+          id: DEMO_USER.id,
+          email: DEMO_USER.email,
+          full_name: DEMO_USER.full_name,
+          selected_organization_id: null
+        };
+      }
+      
       if (!user) return null;
       
       const { data } = await supabase
@@ -71,6 +94,32 @@ export function AppLayout({ children }: AppLayoutProps) {
     mutationFn: async (orgId: string) => {
       console.log("[AppLayout] Starting organization selection:", orgId);
       
+      // Development mode: skip auth checks
+      if (DEV_MODE && isDemoMode) {
+        console.log("[AppLayout] DEMO MODE - Simulating organization selection");
+        
+        // Just get org data without updating profile
+        const { data: org, error: orgError } = await supabase
+          .from("organization")
+          .select("name")
+          .eq("id", orgId)
+          .single();
+        
+        if (orgError) {
+          console.error("[AppLayout] Error fetching org:", orgError);
+          throw orgError;
+        }
+        
+        // Update local profile state
+        queryClient.setQueryData(["profile"], (old: any) => ({
+          ...old,
+          selected_organization_id: orgId
+        }));
+        
+        return org;
+      }
+      
+      // Production mode: normal auth flow
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError) {
         console.error("[AppLayout] Error getting user:", userError);
@@ -133,6 +182,13 @@ export function AppLayout({ children }: AppLayoutProps) {
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col">
+          {/* Development Mode Banner */}
+          {isDemoMode && DEV_MODE && (
+            <div className="bg-yellow-500/20 border-b border-yellow-500/50 px-6 py-2 flex items-center gap-2 text-sm">
+              <AlertTriangle className="h-4 w-4 text-yellow-600" />
+              <span className="font-medium text-yellow-700">⚠️ MODALITÀ SVILUPPO - Utente Demo Attivo</span>
+            </div>
+          )}
           <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6 shadow-card">
             <div className="flex items-center gap-4">
               <SidebarTrigger />
