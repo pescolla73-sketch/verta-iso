@@ -190,20 +190,33 @@ export function AppLayout({ children }: AppLayoutProps) {
             </div>
           )}
           <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6 shadow-card">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <SidebarTrigger />
               <h2 className="text-lg font-semibold text-foreground">
                 Gestione ISO 27001:2022
               </h2>
-            </div>
-            <div className="flex items-center gap-3">
+              {currentOrg && (
+                <>
+                  <span className="text-muted-foreground">|</span>
+                  <span className="text-lg font-bold text-foreground">
+                    {currentOrg.name}
+                  </span>
+                  <span className="text-muted-foreground">|</span>
+                </>
+              )}
               {/* Organization Selector */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <Building2 className="h-4 w-4" />
-                    {currentOrg?.name || "Seleziona Organizzazione"}
-                  </Button>
+                  {currentOrg ? (
+                    <Button variant="ghost" size="icon" title="Cambia organizzazione">
+                      <Building2 className="h-5 w-5" />
+                    </Button>
+                  ) : (
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Building2 className="h-4 w-4" />
+                      Seleziona Organizzazione
+                    </Button>
+                  )}
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56 bg-card z-50">
                   {organizations?.map((org) => (
@@ -224,7 +237,8 @@ export function AppLayout({ children }: AppLayoutProps) {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
-
+            </div>
+            <div className="flex items-center gap-3">
               <Button variant="ghost" size="icon">
                 <Bell className="h-5 w-5" />
               </Button>
