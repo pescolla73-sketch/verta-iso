@@ -99,12 +99,20 @@ export default function SetupAzienda() {
   // Save organization mutation
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!organization?.id) throw new Error("No organization found");
+      console.log("[SetupAzienda] Starting save mutation...");
+      console.log("[SetupAzienda] Organization ID:", organization?.id);
+      console.log("[SetupAzienda] Organization data to save:", orgData);
+      
+      if (!organization?.id) {
+        console.error("[SetupAzienda] No organization ID found!");
+        throw new Error("No organization found");
+      }
 
       let logoUrl = logoPreview;
 
       // Upload logo if a new file was selected
       if (logoFile) {
+        console.log("[SetupAzienda] Uploading logo file:", logoFile.name);
         const fileExt = logoFile.name.split('.').pop();
         const fileName = `${organization.id}-${Date.now()}.${fileExt}`;
         const filePath = `${fileName}`;
@@ -113,32 +121,50 @@ export default function SetupAzienda() {
           .from('organization-logos')
           .upload(filePath, logoFile, { upsert: true });
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error("[SetupAzienda] Logo upload error:", uploadError);
+          throw uploadError;
+        }
 
         const { data: { publicUrl } } = supabase.storage
           .from('organization-logos')
           .getPublicUrl(filePath);
 
         logoUrl = publicUrl;
+        console.log("[SetupAzienda] Logo uploaded successfully:", logoUrl);
       }
 
-      const { error } = await supabase
-        .from("organization")
-        .update({ 
-          ...orgData, 
-          logo_url: logoUrl,
-          // Clear operational address if not different
-          operational_address_street: operationalAddressDifferent ? orgData.operational_address_street : null,
-          operational_address_city: operationalAddressDifferent ? orgData.operational_address_city : null,
-          operational_address_zip: operationalAddressDifferent ? orgData.operational_address_zip : null,
-          operational_address_province: operationalAddressDifferent ? orgData.operational_address_province : null,
-          operational_address_country: operationalAddressDifferent ? orgData.operational_address_country : null,
-        })
-        .eq("id", organization.id);
+      const updateData = { 
+        ...orgData, 
+        logo_url: logoUrl,
+        // Clear operational address if not different
+        operational_address_street: operationalAddressDifferent ? orgData.operational_address_street : null,
+        operational_address_city: operationalAddressDifferent ? orgData.operational_address_city : null,
+        operational_address_zip: operationalAddressDifferent ? orgData.operational_address_zip : null,
+        operational_address_province: operationalAddressDifferent ? orgData.operational_address_province : null,
+        operational_address_country: operationalAddressDifferent ? orgData.operational_address_country : null,
+      };
 
-      if (error) throw error;
+      console.log("[SetupAzienda] Updating organization with data:", updateData);
+
+      const { data, error } = await supabase
+        .from("organization")
+        .update(updateData)
+        .eq("id", organization.id)
+        .select();
+
+      console.log("[SetupAzienda] Update response:", { data, error });
+
+      if (error) {
+        console.error("[SetupAzienda] Database update error:", error);
+        throw error;
+      }
+
+      console.log("[SetupAzienda] Save completed successfully!");
+      return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("[SetupAzienda] Save mutation success, data:", data);
       queryClient.invalidateQueries({ queryKey: ["setup-organization"] });
       setLogoFile(null);
       toast({ 
@@ -146,11 +172,28 @@ export default function SetupAzienda() {
         description: "Le informazioni dell'organizzazione sono state aggiornate"
       });
     },
-    onError: (error) => {
-      console.error("Save error:", error);
+    onError: (error: any) => {
+      console.error("[SetupAzienda] Save mutation error:", error);
+      console.error("[SetupAzienda] Error details:", {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint,
+      });
+      
+      let errorMessage = "Si è verificato un errore durante il salvataggio dei dati";
+      
+      if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      if (error?.code === "42501") {
+        errorMessage = "Permessi insufficienti. Questa operazione richiede autenticazione.";
+      }
+      
       toast({ 
         title: "Errore nel salvataggio", 
-        description: "Si è verificato un errore durante il salvataggio dei dati",
+        description: errorMessage,
         variant: "destructive" 
       });
     },
