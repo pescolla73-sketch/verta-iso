@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Document, Packer, Paragraph, Table, TableCell, TableRow, WidthType, AlignmentType, HeadingLevel, TextRun, ImageRun } from 'docx';
-import { 
+import { Document, Packer, Paragraph, Table, TableCell, TableRow, WidthType, AlignmentType, HeadingLevel, TextRun } from 'docx';
+import {
   ProfessionalPDF, 
   Organization as BrandedOrg, 
   DocumentMetadata,
@@ -9,31 +9,6 @@ import {
   formatItalianDate,
   generateDocumentId
 } from './pdfBranding';
-
-// Helper function to load image
-async function loadImage(url: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext('2d');
-      ctx?.drawImage(img, 0, 0);
-      resolve(canvas.toDataURL('image/png'));
-    };
-    img.onerror = reject;
-    img.src = url;
-  });
-}
-
-// Helper to convert image URL to buffer for docx
-async function imageUrlToBuffer(url: string): Promise<Uint8Array> {
-  const response = await fetch(url);
-  const arrayBuffer = await response.arrayBuffer();
-  return new Uint8Array(arrayBuffer);
-}
 
 interface Control {
   control_id: string;
@@ -49,7 +24,6 @@ interface Organization {
   name: string;
   sector: string | null;
   scope: string | null;
-  logo_url: string | null;
   ciso?: string | null;
   piva?: string | null;
   isms_scope?: string | null;
@@ -142,7 +116,6 @@ export async function generateSoAPDF(data: SoAData) {
 
   // Create professional PDF
   const pdf = new ProfessionalPDF(data.organization as BrandedOrg, metadata);
-  await pdf.initialize();
 
   // Add cover page (automatically done by header on first page)
   pdf.addPage();
@@ -219,10 +192,6 @@ export async function generateSoAPDF(data: SoAData) {
 
 export function generateSoAHTML(data: SoAData) {
   const stats = calculateStatistics(data.controls);
-  
-  const logoHtml = data.organization.logo_url 
-    ? `<img src="${data.organization.logo_url}" alt="Logo" style="max-width: 100px; max-height: 100px; margin-bottom: 20px;" />`
-    : '';
 
   const html = `
 <!DOCTYPE html>
@@ -305,7 +274,6 @@ export function generateSoAHTML(data: SoAData) {
 </head>
 <body>
   <div class="cover">
-    ${logoHtml}
     <h1>Statement of Applicability</h1>
     <h2>ISO/IEC 27001:2022</h2>
     <div class="info">
@@ -387,27 +355,11 @@ export function generateSoAHTML(data: SoAData) {
 export async function generateSoAWord(data: SoAData) {
   const stats = calculateStatistics(data.controls);
 
-    // Add logo if available
-    const logoImage = data.organization.logo_url 
-      ? [new Paragraph({
-          children: [
-            new ImageRun({
-              data: await imageUrlToBuffer(data.organization.logo_url),
-              transformation: { width: 100, height: 100 },
-              type: 'png',
-            }),
-          ],
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 400 },
-        })]
-      : [];
-
   const doc = new Document({
     sections: [
       {
         properties: {},
         children: [
-          ...logoImage,
           // Cover Page
           new Paragraph({
             text: 'Statement of Applicability',

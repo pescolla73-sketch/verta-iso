@@ -15,7 +15,6 @@ export interface Organization {
   legal_address_zip?: string | null;
   legal_address_province?: string | null;
   legal_address_country?: string | null;
-  logo_url?: string | null;
   ciso?: string | null;
   ceo?: string | null;
 }
@@ -46,23 +45,6 @@ const CLASSIFICATION_LABELS = {
   public: 'PUBBLICO',
 };
 
-// Helper function to load image
-async function loadImage(url: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext('2d');
-      ctx?.drawImage(img, 0, 0);
-      resolve(canvas.toDataURL('image/png'));
-    };
-    img.onerror = reject;
-    img.src = url;
-  });
-}
 
 export class ProfessionalPDF {
   private doc: jsPDF;
@@ -71,11 +53,9 @@ export class ProfessionalPDF {
   private pageHeight: number;
   private pageWidth: number;
   private margin: number = 20;
-  private headerHeight: number = 70;
+  private headerHeight: number = 45;
   private footerHeight: number = 25;
   private contentStartY: number;
-  private logoLoaded: boolean = false;
-  private logoData: string | null = null;
 
   constructor(organization: Organization, metadata: DocumentMetadata) {
     this.doc = new jsPDF();
@@ -86,52 +66,34 @@ export class ProfessionalPDF {
     this.contentStartY = this.margin + this.headerHeight + 10;
   }
 
-  async initialize() {
-    // Load logo if available
-    if (this.organization.logo_url) {
-      try {
-        this.logoData = await loadImage(this.organization.logo_url);
-        this.logoLoaded = true;
-      } catch (error) {
-        console.error('Error loading logo:', error);
-      }
-    }
-  }
 
   private addHeader(isFirstPage: boolean = false) {
     const startY = this.margin;
     
-    // Logo (max 60px height, maintaining aspect ratio)
-    if (this.logoLoaded && this.logoData) {
-      const logoHeight = 60;
-      const logoWidth = 60; // Will maintain aspect ratio
-      this.doc.addImage(this.logoData, 'PNG', this.margin, startY, logoWidth, logoHeight, undefined, 'FAST');
-    }
-
-    // Organization info (next to logo)
+    // Company info - text only
     this.doc.setFontSize(12);
     this.doc.setFont('helvetica', 'bold');
-    const orgX = this.margin + 70; // Position next to logo
-    let orgY = startY + 15;
+    let y = startY;
     
-    this.doc.text(this.organization.name, orgX, orgY);
-    orgY += 8;
+    this.doc.text(this.organization.name, this.margin, y);
+    y += 7;
     
     this.doc.setFont('helvetica', 'normal');
     this.doc.setFontSize(9);
     
     if (this.organization.piva) {
-      this.doc.text(`P.IVA: ${this.organization.piva}`, orgX, orgY);
-      orgY += 6;
+      this.doc.text(`P.IVA: ${this.organization.piva}`, this.margin, y);
+      y += 6;
     }
     if (this.organization.website) {
-      this.doc.text(this.organization.website, orgX, orgY);
+      this.doc.text(this.organization.website, this.margin, y);
+      y += 6;
     }
 
     // Separator line
     this.doc.setDrawColor(200, 200, 200);
     this.doc.setLineWidth(0.5);
-    this.doc.line(this.margin, startY + 70, this.pageWidth - this.margin, startY + 70);
+    this.doc.line(this.margin, startY + this.headerHeight, this.pageWidth - this.margin, startY + this.headerHeight);
 
     if (isFirstPage) {
       this.addCoverPageMetadata();
