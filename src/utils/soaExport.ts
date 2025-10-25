@@ -144,7 +144,7 @@ export async function generateSoAPDF(data: SoAData) {
     body: statsData.slice(1),
     theme: 'grid',
     headStyles: { fillColor: [66, 66, 66], textColor: 255, fontStyle: 'bold' },
-    margin: { left: 20, right: 20 },
+    margin: { left: 20, right: 20, bottom: 50 },
   });
 
   // Controls Table
@@ -183,7 +183,7 @@ export async function generateSoAPDF(data: SoAData) {
       4: { cellWidth: 35 },
       5: { cellWidth: 30 },
     },
-    margin: { left: 20, right: 20 },
+    margin: { left: 20, right: 20, bottom: 50 },
   });
 
   // Finalize and save

@@ -53,8 +53,8 @@ export class ProfessionalPDF {
   private pageHeight: number;
   private pageWidth: number;
   private margin: number = 20;
-  private headerHeight: number = 45;
-  private footerHeight: number = 25;
+  private headerHeight: number = 30;
+  private footerHeight: number = 40;
   private contentStartY: number;
 
   constructor(organization: Organization, metadata: DocumentMetadata) {
@@ -70,30 +70,20 @@ export class ProfessionalPDF {
   private addHeader(isFirstPage: boolean = false) {
     const startY = this.margin;
     
-    // Company info - text only
-    this.doc.setFontSize(12);
-    this.doc.setFont('helvetica', 'bold');
-    let y = startY;
-    
-    this.doc.text(this.organization.name, this.margin, y);
-    y += 7;
-    
-    this.doc.setFont('helvetica', 'normal');
+    // Compact single-line header: Company | P.IVA | Website
     this.doc.setFontSize(9);
+    this.doc.setFont('helvetica', 'normal');
     
-    if (this.organization.piva) {
-      this.doc.text(`P.IVA: ${this.organization.piva}`, this.margin, y);
-      y += 6;
-    }
-    if (this.organization.website) {
-      this.doc.text(this.organization.website, this.margin, y);
-      y += 6;
-    }
+    const headerParts = [this.organization.name];
+    if (this.organization.piva) headerParts.push(`P.IVA: ${this.organization.piva}`);
+    if (this.organization.website) headerParts.push(this.organization.website);
+    
+    this.doc.text(headerParts.join(' | '), this.margin, startY);
 
     // Separator line
     this.doc.setDrawColor(200, 200, 200);
     this.doc.setLineWidth(0.5);
-    this.doc.line(this.margin, startY + this.headerHeight, this.pageWidth - this.margin, startY + this.headerHeight);
+    this.doc.line(this.margin, startY + 5, this.pageWidth - this.margin, startY + 5);
 
     if (isFirstPage) {
       this.addCoverPageMetadata();
@@ -101,18 +91,18 @@ export class ProfessionalPDF {
   }
 
   private addCoverPageMetadata() {
-    let y = this.margin + 45;
+    let y = this.margin + 15;
     const centerX = this.pageWidth / 2;
 
     // Document Title
-    this.doc.setFontSize(20);
+    this.doc.setFontSize(18);
     this.doc.setFont('helvetica', 'bold');
     this.doc.text(this.metadata.documentType.toUpperCase(), centerX, y, { align: 'center' });
-    y += 10;
+    y += 8;
 
-    this.doc.setFontSize(16);
+    this.doc.setFontSize(14);
     this.doc.text('ISO/IEC 27001:2022', centerX, y, { align: 'center' });
-    y += 20;
+    y += 15;
 
     // Organization details
     this.doc.setFontSize(10);
@@ -154,7 +144,7 @@ export class ProfessionalPDF {
   }
 
   private addFooter(pageNumber: number, totalPages: number) {
-    const footerY = this.pageHeight - this.footerHeight;
+    const footerY = this.pageHeight - this.margin - 15;
     
     // Footer separator line
     this.doc.setDrawColor(200, 200, 200);
@@ -164,36 +154,29 @@ export class ProfessionalPDF {
     this.doc.setFontSize(8);
     this.doc.setFont('helvetica', 'normal');
 
-    // Line 1: Document metadata
-    const docDate = formatItalianDate(this.metadata.revisionDate || this.metadata.issueDate);
-    const docInfo = `${this.metadata.documentType} ${this.metadata.version} - ${docDate}`;
-    this.doc.text(docInfo, this.margin, footerY + 2);
-
-    // Line 2: Company address
+    // Line 1: Document metadata and company address
     const addressParts = [];
     if (this.organization.legal_address_street) addressParts.push(this.organization.legal_address_street);
     if (this.organization.legal_address_zip && this.organization.legal_address_city) {
       addressParts.push(`${this.organization.legal_address_zip} ${this.organization.legal_address_city}`);
     }
     
-    let footerLine2 = `${this.organization.name}`;
-    if (addressParts.length > 0) {
-      footerLine2 += ` - ${addressParts.join(', ')}`;
-    }
-    this.doc.text(footerLine2, this.margin, footerY + 7);
+    const addressStr = addressParts.length > 0 ? ` - ${addressParts.join(', ')}` : '';
+    const footerLine1 = `${this.metadata.documentType} ${this.metadata.version} - ${this.metadata.revisionDate} | ${this.organization.name}${addressStr}`;
+    this.doc.text(footerLine1, this.margin, footerY + 2);
 
-    // Line 3: Classification and page number
+    // Line 2: Classification and page number
     this.doc.setFont('helvetica', 'bold');
     this.doc.text(
       CLASSIFICATION_LABELS[this.metadata.classification],
       this.margin,
-      footerY + 12
+      footerY + 8
     );
     
     this.doc.text(
       `Pagina ${pageNumber} di ${totalPages}`,
       this.pageWidth - this.margin,
-      footerY + 12,
+      footerY + 8,
       { align: 'right' }
     );
   }
@@ -203,7 +186,7 @@ export class ProfessionalPDF {
   }
 
   getContentMaxY(): number {
-    return this.pageHeight - this.footerHeight - 10;
+    return this.pageHeight - this.footerHeight - 20;
   }
 
   addPage() {
@@ -221,7 +204,12 @@ export class ProfessionalPDF {
   addTable(data: any, options?: any) {
     autoTable(this.doc, {
       ...options,
-      margin: { left: this.margin, right: this.margin },
+      margin: { 
+        left: this.margin, 
+        right: this.margin,
+        bottom: this.footerHeight + 10,
+        top: this.contentStartY
+      },
       didDrawPage: (data) => {
         // Headers and footers are added separately
       },
