@@ -101,35 +101,37 @@ export class ProfessionalPDF {
   private addHeader(isFirstPage: boolean = false) {
     const startY = this.margin;
     
-    // Logo
+    // Logo (max 60px height, maintaining aspect ratio)
     if (this.logoLoaded && this.logoData) {
-      this.doc.addImage(this.logoData, 'PNG', this.margin, startY, 30, 30);
+      const logoHeight = 60;
+      const logoWidth = 60; // Will maintain aspect ratio
+      this.doc.addImage(this.logoData, 'PNG', this.margin, startY, logoWidth, logoHeight, undefined, 'FAST');
     }
 
-    // Organization info (right side)
-    this.doc.setFontSize(10);
+    // Organization info (next to logo)
+    this.doc.setFontSize(12);
     this.doc.setFont('helvetica', 'bold');
-    const orgX = this.pageWidth - this.margin - 60;
-    let orgY = startY;
+    const orgX = this.margin + 70; // Position next to logo
+    let orgY = startY + 15;
     
-    this.doc.text(this.organization.name, orgX, orgY, { align: 'right', maxWidth: 60 });
-    orgY += 5;
+    this.doc.text(this.organization.name, orgX, orgY);
+    orgY += 8;
     
     this.doc.setFont('helvetica', 'normal');
-    this.doc.setFontSize(8);
+    this.doc.setFontSize(9);
     
     if (this.organization.piva) {
-      this.doc.text(`P.IVA: ${this.organization.piva}`, orgX, orgY, { align: 'right' });
-      orgY += 4;
+      this.doc.text(`P.IVA: ${this.organization.piva}`, orgX, orgY);
+      orgY += 6;
     }
     if (this.organization.website) {
-      this.doc.text(this.organization.website, orgX, orgY, { align: 'right' });
+      this.doc.text(this.organization.website, orgX, orgY);
     }
 
     // Separator line
     this.doc.setDrawColor(200, 200, 200);
     this.doc.setLineWidth(0.5);
-    this.doc.line(this.margin, startY + 35, this.pageWidth - this.margin, startY + 35);
+    this.doc.line(this.margin, startY + 70, this.pageWidth - this.margin, startY + 70);
 
     if (isFirstPage) {
       this.addCoverPageMetadata();
@@ -192,51 +194,46 @@ export class ProfessionalPDF {
   private addFooter(pageNumber: number, totalPages: number) {
     const footerY = this.pageHeight - this.footerHeight;
     
+    // Footer separator line
+    this.doc.setDrawColor(200, 200, 200);
+    this.doc.setLineWidth(0.5);
+    this.doc.line(this.margin, footerY - 5, this.pageWidth - this.margin, footerY - 5);
+    
     this.doc.setFontSize(8);
     this.doc.setFont('helvetica', 'normal');
 
-    // Company address line
+    // Line 1: Document metadata
+    const docDate = formatItalianDate(this.metadata.revisionDate || this.metadata.issueDate);
+    const docInfo = `${this.metadata.documentType} ${this.metadata.version} - ${docDate}`;
+    this.doc.text(docInfo, this.margin, footerY + 2);
+
+    // Line 2: Company address
     const addressParts = [];
     if (this.organization.legal_address_street) addressParts.push(this.organization.legal_address_street);
     if (this.organization.legal_address_zip && this.organization.legal_address_city) {
       addressParts.push(`${this.organization.legal_address_zip} ${this.organization.legal_address_city}`);
     }
     
-    let footerLine1 = `${this.organization.name}`;
+    let footerLine2 = `${this.organization.name}`;
     if (addressParts.length > 0) {
-      footerLine1 += ` - ${addressParts.join(', ')}`;
+      footerLine2 += ` - ${addressParts.join(', ')}`;
     }
-    this.doc.text(footerLine1, this.margin, footerY);
+    this.doc.text(footerLine2, this.margin, footerY + 7);
 
-    // Contact line
-    const contactParts = [];
-    if (this.organization.piva) contactParts.push(`P.IVA: ${this.organization.piva}`);
-    if (this.organization.contact_phone) contactParts.push(`Tel: ${this.organization.contact_phone}`);
-    if (this.organization.website) contactParts.push(this.organization.website);
-    
-    if (contactParts.length > 0) {
-      this.doc.text(contactParts.join(' | '), this.margin, footerY + 5);
-    }
-
-    // Classification and page number
+    // Line 3: Classification and page number
     this.doc.setFont('helvetica', 'bold');
     this.doc.text(
-      `Classificazione: ${CLASSIFICATION_LABELS[this.metadata.classification]}`,
+      CLASSIFICATION_LABELS[this.metadata.classification],
       this.margin,
-      footerY + 10
+      footerY + 12
     );
     
     this.doc.text(
       `Pagina ${pageNumber} di ${totalPages}`,
       this.pageWidth - this.margin,
-      footerY + 10,
+      footerY + 12,
       { align: 'right' }
     );
-
-    // Footer separator line
-    this.doc.setDrawColor(200, 200, 200);
-    this.doc.setLineWidth(0.5);
-    this.doc.line(this.margin, footerY - 5, this.pageWidth - this.margin, footerY - 5);
   }
 
   getContentStartY(): number {
