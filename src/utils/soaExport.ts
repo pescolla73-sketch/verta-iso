@@ -124,7 +124,7 @@ export async function generateSoAPDF(data: SoAData) {
   let y = pdf.getContentStartY();
   pdf.setFontSize(16);
   pdf.setFont('helvetica', 'bold');
-  pdf.addText('Riepilogo Statistiche', y);
+  y = pdf.addText('Riepilogo Statistiche', y);
   y += 15;
 
   const statsData = [
@@ -151,7 +151,7 @@ export async function generateSoAPDF(data: SoAData) {
   y = pdf.getContentStartY();
   pdf.setFontSize(16);
   pdf.setFont('helvetica', 'bold');
-  pdf.addText('Controlli ISO 27001:2022', y);
+  y = pdf.addText('Controlli ISO 27001:2022', y);
   y += 15;
 
   const sortedControls = data.controls.sort((a, b) => 

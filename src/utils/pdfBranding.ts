@@ -52,14 +52,37 @@ export class ProfessionalPDF {
   private metadata: DocumentMetadata;
   private pageHeight: number;
   private pageWidth: number;
-  // ISO STANDARD A4 LAYOUT (210x297mm)
+  
+  // ISO STANDARD A4 LAYOUT (210x297mm) - FIXED PAGE ZONES
+  private readonly PAGE_ZONES = {
+    pageHeight: 297,           // A4 height in mm
+    
+    // FORBIDDEN ZONES (content cannot be here)
+    headerZone: {
+      start: 0,
+      end: 43                  // 25mm margin + 18mm header
+    },
+    
+    footerZone: {
+      start: 272,              // 297 - 25mm margin
+      end: 297
+    },
+    
+    // SAFE ZONE (content must stay here)
+    contentZone: {
+      start: 45,               // After header + 2mm spacing
+      end: 270,                // Before footer - 2mm spacing
+      height: 225              // Available height for content
+    }
+  };
+  
   private margin: number = 25; // 25mm margins all around
   private headerHeight: number = 18; // 18mm header
   private footerHeight: number = 12; // 12mm footer
   private headerSpacing: number = 2; // 2mm spacing after header
   private footerSpacing: number = 2; // 2mm spacing before footer
-  private contentStartY: number; // Will be: 25 + 18 + 2 = 45mm
-  private contentEndY: number; // Will be: 297 - 25 - 2 = 270mm
+  private contentStartY: number; // Will be: 45mm
+  private contentEndY: number; // Will be: 270mm
 
   constructor(organization: Organization, metadata: DocumentMetadata) {
     this.doc = new jsPDF('p', 'mm', 'a4'); // Portrait, millimeters, A4 (210x297mm)
@@ -220,6 +243,38 @@ export class ProfessionalPDF {
     return this.margin;
   }
 
+  // Check if Y position is in safe content zone
+  private isInSafeZone(y: number): boolean {
+    return y >= this.PAGE_ZONES.contentZone.start && y <= this.PAGE_ZONES.contentZone.end;
+  }
+
+  // Check if content will fit in remaining space
+  private willFitInPage(currentY: number, contentHeight: number): boolean {
+    return (currentY + contentHeight) <= this.PAGE_ZONES.contentZone.end;
+  }
+
+  // Add page break if needed and return safe Y position
+  private ensureSafeY(y: number, contentHeight: number = 10): number {
+    // If Y is in header zone, move to content start
+    if (y < this.PAGE_ZONES.contentZone.start) {
+      return this.contentStartY;
+    }
+    
+    // If content won't fit, create new page
+    if (!this.willFitInPage(y, contentHeight)) {
+      this.addPage();
+      return this.contentStartY;
+    }
+    
+    // If Y is in footer zone, create new page
+    if (y > this.PAGE_ZONES.contentZone.end) {
+      this.addPage();
+      return this.contentStartY;
+    }
+    
+    return y;
+  }
+
   addPage() {
     this.doc.addPage();
   }
@@ -229,21 +284,40 @@ export class ProfessionalPDF {
   }
 
   addText(text: string, y: number, options?: any) {
-    this.doc.text(text, this.margin, y, options);
+    // Ensure Y is in safe zone before adding text
+    const safeY = this.ensureSafeY(y, 10);
+    this.doc.text(text, this.margin, safeY, options);
+    return safeY;
   }
 
   addTable(data: any, options?: any) {
+    // Ensure starting Y is in safe zone
+    const requestedStartY = options?.startY || this.getCurrentY();
+    const safeStartY = this.ensureSafeY(requestedStartY, 20);
+    
     autoTable(this.doc, {
       ...options,
+      startY: safeStartY,
       margin: { 
-        left: this.margin, // 25mm
-        right: this.margin, // 25mm
-        top: this.contentStartY, // 45mm
-        bottom: this.pageHeight - this.contentEndY // Reserve space: 297 - 270 = 27mm
+        left: this.margin,
+        right: this.margin,
+        top: this.PAGE_ZONES.contentZone.start, // 45mm - content cannot go above this
+        bottom: this.pageHeight - this.PAGE_ZONES.contentZone.end // 27mm - reserve footer space
       },
-      startY: options?.startY || this.contentStartY,
       showHead: 'everyPage',
       pageBreak: 'auto',
+      didDrawPage: (data: any) => {
+        // Verify content stayed in safe zone
+        if (data.cursor) {
+          const cursorY = data.cursor.y;
+          if (cursorY < this.PAGE_ZONES.contentZone.start) {
+            console.error('⚠️ Content overlaps HEADER - Y:', cursorY);
+          }
+          if (cursorY > this.PAGE_ZONES.contentZone.end) {
+            console.error('⚠️ Content overlaps FOOTER - Y:', cursorY);
+          }
+        }
+      }
     });
   }
 
