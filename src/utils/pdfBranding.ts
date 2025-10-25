@@ -53,8 +53,8 @@ export class ProfessionalPDF {
   private pageHeight: number;
   private pageWidth: number;
   private margin: number = 20;
-  private headerHeight: number = 30;
-  private footerHeight: number = 40;
+  private headerHeight: number = 50; // Fixed 60px total space
+  private footerHeight: number = 50; // Fixed 60px total space
   private contentStartY: number;
 
   constructor(organization: Organization, metadata: DocumentMetadata) {
@@ -186,7 +186,12 @@ export class ProfessionalPDF {
   }
 
   getContentMaxY(): number {
-    return this.pageHeight - this.footerHeight - 20;
+    // Content must stop before footer area
+    return this.pageHeight - this.footerHeight - this.margin;
+  }
+  
+  getPageHeight(): number {
+    return this.pageHeight;
   }
 
   addPage() {
@@ -202,16 +207,27 @@ export class ProfessionalPDF {
   }
 
   addTable(data: any, options?: any) {
+    const doc = this.doc as any;
+    
     autoTable(this.doc, {
       ...options,
       margin: { 
         left: this.margin, 
         right: this.margin,
-        bottom: this.footerHeight + 10,
+        bottom: this.footerHeight + this.margin, // Reserve space for footer
         top: this.contentStartY
       },
-      didDrawPage: (data) => {
-        // Headers and footers are added separately
+      showHead: 'everyPage', // Show header on every page
+      didDrawPage: (data: any) => {
+        // Ensure content doesn't overlap footer
+        const pageNumber = doc.internal.getNumberOfPages();
+        const pageHeight = doc.internal.pageSize.height;
+        
+        // Check if content is too close to footer
+        if (data.cursor && data.cursor.y > (pageHeight - this.footerHeight - this.margin)) {
+          // Content is in footer area - should have triggered page break
+          console.warn('Content overlapping footer area detected');
+        }
       },
     });
   }
