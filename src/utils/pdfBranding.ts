@@ -52,25 +52,30 @@ export class ProfessionalPDF {
   private metadata: DocumentMetadata;
   private pageHeight: number;
   private pageWidth: number;
-  private margin: number = 20;
-  private headerHeight: number = 50; // Fixed 60px total space
-  private footerHeight: number = 50; // Fixed 60px total space
-  private contentStartY: number;
+  // ISO STANDARD A4 LAYOUT (210x297mm)
+  private margin: number = 25; // 25mm margins all around
+  private headerHeight: number = 18; // 18mm header
+  private footerHeight: number = 12; // 12mm footer
+  private headerSpacing: number = 2; // 2mm spacing after header
+  private footerSpacing: number = 2; // 2mm spacing before footer
+  private contentStartY: number; // Will be: 25 + 18 + 2 = 45mm
+  private contentEndY: number; // Will be: 297 - 25 - 2 = 270mm
 
   constructor(organization: Organization, metadata: DocumentMetadata) {
-    this.doc = new jsPDF();
+    this.doc = new jsPDF('p', 'mm', 'a4'); // Portrait, millimeters, A4 (210x297mm)
     this.organization = organization;
     this.metadata = metadata;
-    this.pageHeight = this.doc.internal.pageSize.height;
-    this.pageWidth = this.doc.internal.pageSize.width;
-    this.contentStartY = this.margin + this.headerHeight + 10;
+    this.pageHeight = this.doc.internal.pageSize.height; // 297mm
+    this.pageWidth = this.doc.internal.pageSize.width; // 210mm
+    this.contentStartY = this.margin + this.headerHeight + this.headerSpacing; // 25 + 18 + 2 = 45mm
+    this.contentEndY = this.pageHeight - this.margin - this.footerSpacing; // 297 - 25 - 2 = 270mm
   }
 
 
   private addHeader(isFirstPage: boolean = false) {
-    const startY = this.margin;
+    let y = this.margin + 5; // Start 5mm from top margin
     
-    // Compact single-line header: Company | P.IVA | Website
+    // Line 1: Company | P.IVA | Website
     this.doc.setFontSize(9);
     this.doc.setFont('helvetica', 'normal');
     
@@ -78,12 +83,25 @@ export class ProfessionalPDF {
     if (this.organization.piva) headerParts.push(`P.IVA: ${this.organization.piva}`);
     if (this.organization.website) headerParts.push(this.organization.website);
     
-    this.doc.text(headerParts.join(' | '), this.margin, startY);
+    this.doc.text(headerParts.join(' | '), this.margin, y);
+    y += 5;
 
-    // Separator line
+    // Line 2: Separator line
     this.doc.setDrawColor(200, 200, 200);
-    this.doc.setLineWidth(0.5);
-    this.doc.line(this.margin, startY + 5, this.pageWidth - this.margin, startY + 5);
+    this.doc.setLineWidth(0.3);
+    this.doc.line(this.margin, y, this.pageWidth - this.margin, y);
+    y += 4;
+
+    // Line 3: Document Type
+    this.doc.setFontSize(11);
+    this.doc.setFont('helvetica', 'bold');
+    this.doc.text(this.metadata.documentType.toUpperCase(), this.margin, y);
+    y += 5;
+
+    // Line 4: ISO Standard
+    this.doc.setFontSize(9);
+    this.doc.setFont('helvetica', 'normal');
+    this.doc.text('ISO/IEC 27001:2022', this.margin, y);
 
     if (isFirstPage) {
       this.addCoverPageMetadata();
@@ -144,17 +162,19 @@ export class ProfessionalPDF {
   }
 
   private addFooter(pageNumber: number, totalPages: number) {
-    const footerY = this.pageHeight - this.margin - 15;
+    // Footer starts at 272mm from top (297 - 25 = 272)
+    const footerStartY = this.pageHeight - this.margin - this.footerHeight;
+    let y = footerStartY + 3;
     
     // Footer separator line
     this.doc.setDrawColor(200, 200, 200);
-    this.doc.setLineWidth(0.5);
-    this.doc.line(this.margin, footerY - 5, this.pageWidth - this.margin, footerY - 5);
+    this.doc.setLineWidth(0.3);
+    this.doc.line(this.margin, footerStartY, this.pageWidth - this.margin, footerStartY);
     
-    this.doc.setFontSize(8);
+    this.doc.setFontSize(7);
     this.doc.setFont('helvetica', 'normal');
 
-    // Line 1: Document metadata and company address
+    // Line 1: Doc Type v1.0 - DD/MM/YYYY | Company - Full Address
     const addressParts = [];
     if (this.organization.legal_address_street) addressParts.push(this.organization.legal_address_street);
     if (this.organization.legal_address_zip && this.organization.legal_address_city) {
@@ -162,21 +182,23 @@ export class ProfessionalPDF {
     }
     
     const addressStr = addressParts.length > 0 ? ` - ${addressParts.join(', ')}` : '';
-    const footerLine1 = `${this.metadata.documentType} ${this.metadata.version} - ${this.metadata.revisionDate} | ${this.organization.name}${addressStr}`;
-    this.doc.text(footerLine1, this.margin, footerY + 2);
+    const formattedDate = formatItalianDate(this.metadata.revisionDate);
+    const footerLine1 = `${this.metadata.documentType} v${this.metadata.version} - ${formattedDate} | ${this.organization.name}${addressStr}`;
+    this.doc.text(footerLine1, this.margin, y);
+    y += 4;
 
-    // Line 2: Classification and page number
+    // Line 2: Classification (left) | Page X of Y (right)
     this.doc.setFont('helvetica', 'bold');
     this.doc.text(
       CLASSIFICATION_LABELS[this.metadata.classification],
       this.margin,
-      footerY + 8
+      y
     );
     
     this.doc.text(
       `Pagina ${pageNumber} di ${totalPages}`,
       this.pageWidth - this.margin,
-      footerY + 8,
+      y,
       { align: 'right' }
     );
   }
@@ -186,12 +208,16 @@ export class ProfessionalPDF {
   }
 
   getContentMaxY(): number {
-    // Content must stop before footer area
-    return this.pageHeight - this.footerHeight - this.margin;
+    // Content must stop at 270mm (297 - 25 - 2)
+    return this.contentEndY;
   }
   
   getPageHeight(): number {
     return this.pageHeight;
+  }
+  
+  getMargin(): number {
+    return this.margin;
   }
 
   addPage() {
@@ -207,28 +233,17 @@ export class ProfessionalPDF {
   }
 
   addTable(data: any, options?: any) {
-    const doc = this.doc as any;
-    
     autoTable(this.doc, {
       ...options,
       margin: { 
-        left: this.margin, 
-        right: this.margin,
-        bottom: this.footerHeight + this.margin, // Reserve space for footer
-        top: this.contentStartY
+        left: this.margin, // 25mm
+        right: this.margin, // 25mm
+        top: this.contentStartY, // 45mm
+        bottom: this.pageHeight - this.contentEndY // Reserve space: 297 - 270 = 27mm
       },
-      showHead: 'everyPage', // Show header on every page
-      didDrawPage: (data: any) => {
-        // Ensure content doesn't overlap footer
-        const pageNumber = doc.internal.getNumberOfPages();
-        const pageHeight = doc.internal.pageSize.height;
-        
-        // Check if content is too close to footer
-        if (data.cursor && data.cursor.y > (pageHeight - this.footerHeight - this.margin)) {
-          // Content is in footer area - should have triggered page break
-          console.warn('Content overlapping footer area detected');
-        }
-      },
+      startY: options?.startY || this.contentStartY,
+      showHead: 'everyPage',
+      pageBreak: 'auto',
     });
   }
 

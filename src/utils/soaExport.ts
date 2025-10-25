@@ -138,19 +138,12 @@ export async function generateSoAPDF(data: SoAData) {
     ['Percentuale di Conformità', `${stats.compliancePercentage}%`],
   ];
 
-  autoTable(pdf.getDoc(), {
+  pdf.addTable(statsData, {
     startY: y,
     head: [statsData[0]],
     body: statsData.slice(1),
     theme: 'grid',
     headStyles: { fillColor: [66, 66, 66], textColor: 255, fontStyle: 'bold' },
-    margin: { 
-      left: 20, 
-      right: 20, 
-      bottom: 70, // Fixed margin to prevent footer overlap
-      top: 70 
-    },
-    showHead: 'everyPage',
   });
 
   // Controls Table
@@ -174,7 +167,7 @@ export async function generateSoAPDF(data: SoAData) {
     control.responsible || '-',
   ]);
 
-  autoTable(pdf.getDoc(), {
+  pdf.addTable(controlsData, {
     startY: y,
     head: [['ID', 'Titolo', 'Dominio', 'Applicabile', 'Stato', 'Responsabile']],
     body: controlsData,
@@ -189,14 +182,6 @@ export async function generateSoAPDF(data: SoAData) {
       4: { cellWidth: 35 },
       5: { cellWidth: 30 },
     },
-    margin: { 
-      left: 20, 
-      right: 20, 
-      bottom: 70, // Fixed margin to prevent footer overlap
-      top: 70 
-    },
-    showHead: 'everyPage', // Repeat table header on each page
-    pageBreak: 'auto', // Auto page breaks when content exceeds margin
   });
 
   // Finalize and save
