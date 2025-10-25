@@ -23,14 +23,14 @@ export interface DocumentMetadata {
   documentType: string; // SoA, Policy, Risk Assessment, etc.
   documentId: string;
   version: string;
-  issueDate: string;
-  revisionDate: string;
-  nextReviewDate: string;
+  issueDate: string; // ISO format YYYY-MM-DD
+  revisionDate: string; // ISO format YYYY-MM-DD
+  nextReviewDate: string; // ISO format YYYY-MM-DD
   status: 'draft' | 'approved' | 'in_review';
   classification: 'confidential' | 'internal' | 'public';
   preparedBy?: string;
   approvedBy?: string;
-  approvalDate?: string;
+  approvalDate?: string; // ISO format YYYY-MM-DD
 }
 
 const STATUS_LABELS = {
@@ -135,9 +135,9 @@ export class ProfessionalPDF {
     // Document metadata
     addField('Documento', this.metadata.documentId);
     addField('Versione', this.metadata.version);
-    addField('Data Emissione', this.metadata.issueDate);
-    addField('Data Ultima Revisione', this.metadata.revisionDate);
-    addField('Prossima Revisione', this.metadata.nextReviewDate);
+    addField('Data Emissione', formatItalianDate(this.metadata.issueDate));
+    addField('Data Ultima Revisione', formatItalianDate(this.metadata.revisionDate));
+    addField('Prossima Revisione', formatItalianDate(this.metadata.nextReviewDate));
     addField('Stato', STATUS_LABELS[this.metadata.status]);
     addField('Classificazione', CLASSIFICATION_LABELS[this.metadata.classification]);
     
@@ -147,7 +147,7 @@ export class ProfessionalPDF {
     addField('Redatto da', this.metadata.preparedBy);
     addField('Approvato da', this.metadata.approvedBy);
     if (this.metadata.approvalDate) {
-      addField('Data Approvazione', this.metadata.approvalDate);
+      addField('Data Approvazione', formatItalianDate(this.metadata.approvalDate));
     }
   }
 
@@ -166,7 +166,9 @@ export class ProfessionalPDF {
     
     const addressStr = addressParts.length > 0 ? ` - ${addressParts.join(', ')}` : '';
     const formattedDate = formatItalianDate(this.metadata.revisionDate);
-    const footerLine1 = `${this.metadata.documentType} v${this.metadata.version} - ${formattedDate} | ${this.organization.name}${addressStr}`;
+    // Fix: Remove 'v' prefix if version already contains it
+    const versionStr = this.metadata.version.startsWith('v') ? this.metadata.version : `v${this.metadata.version}`;
+    const footerLine1 = `${this.metadata.documentType} ${versionStr} - ${formattedDate} | ${this.organization.name}${addressStr}`;
     this.doc.text(footerLine1, this.margin, y);
     y += 5;
 

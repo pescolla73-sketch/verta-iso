@@ -98,20 +98,20 @@ export async function generateSoAPDF(data: SoAData) {
   const today = new Date().toISOString().split('T')[0];
   const nextReview = calculateNextReviewDate(today);
   
-  // Prepare document metadata
+  // Prepare document metadata (store dates in ISO format, format only when displaying)
   const documentId = generateDocumentId('SoA', data.organization.name, data.version);
   const metadata: DocumentMetadata = {
     documentType: 'STATEMENT OF APPLICABILITY',
     documentId,
     version: data.version,
-    issueDate: formatItalianDate(today),
-    revisionDate: formatItalianDate(today),
-    nextReviewDate: formatItalianDate(nextReview),
+    issueDate: today, // Store ISO format
+    revisionDate: today, // Store ISO format
+    nextReviewDate: nextReview, // Store ISO format
     status: data.metadata?.status || 'draft',
     classification: data.metadata?.classification || 'confidential',
     preparedBy: data.metadata?.preparedBy || data.organization.ciso || 'Non specificato',
     approvedBy: data.metadata?.approvedBy,
-    approvalDate: data.metadata?.approvalDate ? formatItalianDate(data.metadata.approvalDate) : undefined,
+    approvalDate: data.metadata?.approvalDate, // Store ISO format
   };
 
   // Create professional PDF
