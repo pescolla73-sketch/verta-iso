@@ -53,50 +53,23 @@ export class ProfessionalPDF {
   private pageHeight: number;
   private pageWidth: number;
   
-  // ISO STANDARD A4 LAYOUT (210x297mm) - FIXED PAGE ZONES
-  private readonly PAGE_ZONES = {
-    pageHeight: 297,           // A4 height in mm
-    
-    // FORBIDDEN ZONES (content cannot be here)
-    headerZone: {
-      start: 0,
-      end: 43                  // 25mm margin + 18mm header
-    },
-    
-    footerZone: {
-      start: 272,              // 297 - 25mm margin
-      end: 297
-    },
-    
-    // SAFE ZONE (content must stay here)
-    contentZone: {
-      start: 45,               // After header + 2mm spacing
-      end: 270,                // Before footer - 2mm spacing
-      height: 225              // Available height for content
-    }
-  };
-  
-  private margin: number = 25; // 25mm margins all around
-  private headerHeight: number = 18; // 18mm header
-  private footerHeight: number = 12; // 12mm footer
-  private headerSpacing: number = 2; // 2mm spacing after header
-  private footerSpacing: number = 2; // 2mm spacing before footer
-  private contentStartY: number; // Will be: 45mm
-  private contentEndY: number; // Will be: 270mm
+  // SIMPLE LAYOUT - Content from 50mm to 270mm
+  private margin: number = 25;
+  private contentStartY: number = 50; // Content starts at 50mm
+  private contentEndY: number = 270; // Content ends at 270mm
+  private footerY: number = 280; // Footer at 280mm
 
   constructor(organization: Organization, metadata: DocumentMetadata) {
-    this.doc = new jsPDF('p', 'mm', 'a4'); // Portrait, millimeters, A4 (210x297mm)
+    this.doc = new jsPDF('p', 'mm', 'a4');
     this.organization = organization;
     this.metadata = metadata;
-    this.pageHeight = this.doc.internal.pageSize.height; // 297mm
-    this.pageWidth = this.doc.internal.pageSize.width; // 210mm
-    this.contentStartY = this.margin + this.headerHeight + this.headerSpacing; // 25 + 18 + 2 = 45mm
-    this.contentEndY = this.pageHeight - this.margin - this.footerSpacing; // 297 - 25 - 2 = 270mm
+    this.pageHeight = this.doc.internal.pageSize.height;
+    this.pageWidth = this.doc.internal.pageSize.width;
   }
 
 
   private addHeader(isFirstPage: boolean = false) {
-    let y = this.margin + 5; // Start 5mm from top margin
+    let y = 15; // Start from 15mm
     
     // Line 1: Company | P.IVA | Website
     this.doc.setFontSize(9);
@@ -107,21 +80,15 @@ export class ProfessionalPDF {
     if (this.organization.website) headerParts.push(this.organization.website);
     
     this.doc.text(headerParts.join(' | '), this.margin, y);
-    y += 5;
+    y += 6;
 
-    // Line 2: Separator line
-    this.doc.setDrawColor(200, 200, 200);
-    this.doc.setLineWidth(0.3);
-    this.doc.line(this.margin, y, this.pageWidth - this.margin, y);
-    y += 4;
-
-    // Line 3: Document Type
+    // Line 2: Document Type
     this.doc.setFontSize(11);
     this.doc.setFont('helvetica', 'bold');
     this.doc.text(this.metadata.documentType.toUpperCase(), this.margin, y);
-    y += 5;
+    y += 6;
 
-    // Line 4: ISO Standard
+    // Line 3: ISO Standard
     this.doc.setFontSize(9);
     this.doc.setFont('helvetica', 'normal');
     this.doc.text('ISO/IEC 27001:2022', this.margin, y);
@@ -185,19 +152,12 @@ export class ProfessionalPDF {
   }
 
   private addFooter(pageNumber: number, totalPages: number) {
-    // Footer starts at 272mm from top (297 - 25 = 272)
-    const footerStartY = this.pageHeight - this.margin - this.footerHeight;
-    let y = footerStartY + 3;
+    let y = this.footerY; // Start at 280mm
     
-    // Footer separator line
-    this.doc.setDrawColor(200, 200, 200);
-    this.doc.setLineWidth(0.3);
-    this.doc.line(this.margin, footerStartY, this.pageWidth - this.margin, footerStartY);
-    
-    this.doc.setFontSize(7);
+    this.doc.setFontSize(8);
     this.doc.setFont('helvetica', 'normal');
 
-    // Line 1: Doc Type v1.0 - DD/MM/YYYY | Company - Full Address
+    // Line 1: SoA v1.1 - DD/MM/YYYY | Company - Address
     const addressParts = [];
     if (this.organization.legal_address_street) addressParts.push(this.organization.legal_address_street);
     if (this.organization.legal_address_zip && this.organization.legal_address_city) {
@@ -208,7 +168,7 @@ export class ProfessionalPDF {
     const formattedDate = formatItalianDate(this.metadata.revisionDate);
     const footerLine1 = `${this.metadata.documentType} v${this.metadata.version} - ${formattedDate} | ${this.organization.name}${addressStr}`;
     this.doc.text(footerLine1, this.margin, y);
-    y += 4;
+    y += 5;
 
     // Line 2: Classification (left) | Page X of Y (right)
     this.doc.setFont('helvetica', 'bold');
@@ -230,49 +190,8 @@ export class ProfessionalPDF {
     return this.contentStartY;
   }
 
-  getContentMaxY(): number {
-    // Content must stop at 270mm (297 - 25 - 2)
-    return this.contentEndY;
-  }
-  
-  getPageHeight(): number {
-    return this.pageHeight;
-  }
-  
   getMargin(): number {
     return this.margin;
-  }
-
-  // Check if Y position is in safe content zone
-  private isInSafeZone(y: number): boolean {
-    return y >= this.PAGE_ZONES.contentZone.start && y <= this.PAGE_ZONES.contentZone.end;
-  }
-
-  // Check if content will fit in remaining space
-  private willFitInPage(currentY: number, contentHeight: number): boolean {
-    return (currentY + contentHeight) <= this.PAGE_ZONES.contentZone.end;
-  }
-
-  // Add page break if needed and return safe Y position
-  private ensureSafeY(y: number, contentHeight: number = 10): number {
-    // If Y is in header zone, move to content start
-    if (y < this.PAGE_ZONES.contentZone.start) {
-      return this.contentStartY;
-    }
-    
-    // If content won't fit, create new page
-    if (!this.willFitInPage(y, contentHeight)) {
-      this.addPage();
-      return this.contentStartY;
-    }
-    
-    // If Y is in footer zone, create new page
-    if (y > this.PAGE_ZONES.contentZone.end) {
-      this.addPage();
-      return this.contentStartY;
-    }
-    
-    return y;
   }
 
   addPage() {
@@ -284,40 +203,21 @@ export class ProfessionalPDF {
   }
 
   addText(text: string, y: number, options?: any) {
-    // Ensure Y is in safe zone before adding text
-    const safeY = this.ensureSafeY(y, 10);
-    this.doc.text(text, this.margin, safeY, options);
-    return safeY;
+    this.doc.text(text, this.margin, y, options);
   }
 
   addTable(data: any, options?: any) {
-    // Ensure starting Y is in safe zone
-    const requestedStartY = options?.startY || this.getCurrentY();
-    const safeStartY = this.ensureSafeY(requestedStartY, 20);
-    
     autoTable(this.doc, {
       ...options,
-      startY: safeStartY,
+      startY: options?.startY || this.contentStartY,
       margin: { 
         left: this.margin,
         right: this.margin,
-        top: this.PAGE_ZONES.contentZone.start, // 45mm - content cannot go above this
-        bottom: this.pageHeight - this.PAGE_ZONES.contentZone.end // 27mm - reserve footer space
+        top: this.contentStartY, // 50mm
+        bottom: this.pageHeight - this.contentEndY // 27mm (297 - 270)
       },
       showHead: 'everyPage',
-      pageBreak: 'auto',
-      didDrawPage: (data: any) => {
-        // Verify content stayed in safe zone
-        if (data.cursor) {
-          const cursorY = data.cursor.y;
-          if (cursorY < this.PAGE_ZONES.contentZone.start) {
-            console.error('⚠️ Content overlaps HEADER - Y:', cursorY);
-          }
-          if (cursorY > this.PAGE_ZONES.contentZone.end) {
-            console.error('⚠️ Content overlaps FOOTER - Y:', cursorY);
-          }
-        }
-      }
+      pageBreak: 'auto'
     });
   }
 
