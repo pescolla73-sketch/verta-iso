@@ -99,18 +99,9 @@ export class ProfessionalPDF {
   }
 
   private addCoverPageMetadata() {
-    let y = this.margin + 15;
-    const centerX = this.pageWidth / 2;
+    let y = this.margin + 30; // Start lower since title is already in header
 
-    // Document Title
-    this.doc.setFontSize(18);
-    this.doc.setFont('helvetica', 'bold');
-    this.doc.text(this.metadata.documentType.toUpperCase(), centerX, y, { align: 'center' });
-    y += 8;
-
-    this.doc.setFontSize(14);
-    this.doc.text('ISO/IEC 27001:2022', centerX, y, { align: 'center' });
-    y += 15;
+    // No need to repeat document title - it's already in the header
 
     // Organization details
     this.doc.setFontSize(10);
@@ -256,9 +247,20 @@ export function calculateNextReviewDate(revisionDate: string): string {
   return date.toISOString().split('T')[0];
 }
 
-// Helper function to format date to Italian locale
+// Helper function to format date to Italian locale (DD/MM/YYYY)
 export function formatItalianDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('it-IT');
+  if (!dateString) return 'Data non disponibile';
+  
+  const date = new Date(dateString);
+  
+  // Check if date is valid
+  if (isNaN(date.getTime())) return 'Data non valida';
+  
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  
+  return `${day}/${month}/${year}`;
 }
 
 // Generate document ID
