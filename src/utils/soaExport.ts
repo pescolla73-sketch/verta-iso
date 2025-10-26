@@ -114,14 +114,17 @@ export async function generateSoAPDF(data: SoAData) {
     approvalDate: data.metadata?.approvalDate, // Store ISO format
   };
 
-  // Create professional PDF
+  // Create professional PDF (first page created automatically)
   const pdf = new ProfessionalPDF(data.organization as BrandedOrg, metadata);
 
-  // Add cover page (automatically done by header on first page)
-  pdf.addPage();
-
-  // Statistics Page
-  let y = pdf.getContentStartY();
+  // Add statistics section on page 1, below cover metadata
+  let y = 145; // Start after cover metadata (approximately at 145mm from top)
+  
+  // Add section title
+  pdf.setFontSize(14);
+  pdf.setFont('helvetica', 'bold');
+  pdf.addText('Riepilogo Statistiche', y);
+  y += 10;
 
   const statsData = [
     ['Metrica', 'Valore'],
@@ -140,9 +143,14 @@ export async function generateSoAPDF(data: SoAData) {
     body: statsData.slice(1),
     theme: 'grid',
     headStyles: { fillColor: [66, 66, 66], textColor: 255, fontStyle: 'bold' },
+    bodyStyles: { fontSize: 9 },
+    columnStyles: {
+      0: { cellWidth: 120 },
+      1: { cellWidth: 50 },
+    },
   });
 
-  // Controls Table
+  // Controls Table - start on new page
   pdf.addPage();
   y = pdf.getContentStartY();
 
