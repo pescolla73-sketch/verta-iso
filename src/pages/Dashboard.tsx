@@ -1,54 +1,83 @@
-import { Shield, Box, AlertTriangle, CheckCircle } from "lucide-react";
+import { Shield, CheckCircle, AlertCircle, TrendingUp, Download, Plus, Settings, Bell } from "lucide-react";
 import { StatCard } from "@/components/dashboard/StatCard";
-import { ComplianceChart } from "@/components/dashboard/ComplianceChart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+import { format, addMonths } from "date-fns";
+import { it } from "date-fns/locale";
 
 export default function Dashboard() {
-  // Mock data - sarà sostituito con dati reali dal database
+  const navigate = useNavigate();
+
+  // Fetch real controls data
+  const { data: controls, isLoading } = useQuery({
+    queryKey: ["controls"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("controls")
+        .select("*");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Calculate statistics
   const stats = {
-    totalControls: 93,
-    compliantControls: 45,
-    partialControls: 28,
-    nonCompliantControls: 20,
-    totalAssets: 156,
-    activeAudits: 3,
-    pendingActions: 12,
+    totalControls: controls?.length || 93,
+    implemented: controls?.filter((c) => c.status === "implemented").length || 0,
+    partial: controls?.filter((c) => c.status === "partial").length || 0,
+    notImplemented: controls?.filter((c) => c.status === "not_implemented").length || 0,
   };
 
-  const recentActivities = [
-    {
-      id: 1,
-      action: "Controllo A.5.1 aggiornato",
-      user: "Marco Rossi",
-      time: "2 ore fa",
-      status: "success" as const,
-    },
-    {
-      id: 2,
-      action: "Nuovo asset aggiunto",
-      user: "Laura Bianchi",
-      time: "5 ore fa",
-      status: "info" as const,
-    },
-    {
-      id: 3,
-      action: "Audit programmato",
-      user: "Giuseppe Verdi",
-      time: "1 giorno fa",
-      status: "warning" as const,
-    },
+  const implementedPercentage = Math.round((stats.implemented / stats.totalControls) * 100);
+  const partialPercentage = Math.round((stats.partial / stats.totalControls) * 100);
+  const gapPercentage = Math.round((stats.notImplemented / stats.totalControls) * 100);
+
+  // Domain breakdown
+  const domains = [
+    { name: "Organizzativi", prefix: "5", color: "bg-primary" },
+    { name: "Persone", prefix: "6", color: "bg-success" },
+    { name: "Fisici", prefix: "7", color: "bg-warning" },
+    { name: "Tecnologici", prefix: "8", color: "bg-destructive" },
   ];
+
+  const domainStats = domains.map((domain) => {
+    const domainControls = controls?.filter((c) => c.control_id.startsWith(domain.prefix)) || [];
+    const implemented = domainControls.filter((c) => c.status === "implemented").length;
+    const total = domainControls.length;
+    const percentage = total > 0 ? Math.round((implemented / total) * 100) : 0;
+    return { ...domain, implemented, total, percentage };
+  });
+
+  // Overall compliance
+  const overallCompliance = Math.round(
+    ((stats.implemented + stats.partial * 0.5) / stats.totalControls) * 100
+  );
+
+  // Next review date (6 months from now)
+  const nextReviewDate = format(addMonths(new Date(), 6), "dd/MM/yyyy", { locale: it });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <p className="text-muted-foreground">Caricamento dati...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-foreground">Dashboard</h1>
+        <h1 className="text-3xl font-bold text-foreground">Dashboard Conformità ISO 27001</h1>
         <p className="text-muted-foreground mt-2">
-          Panoramica dello stato di conformità ISO 27001:2022
+          Panoramica dello stato di implementazione dei controlli
         </p>
       </div>
 
+      {/* 4 Key Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Controlli Totali"
@@ -57,147 +86,104 @@ export default function Dashboard() {
           variant="default"
         />
         <StatCard
-          title="Conformi"
-          value={stats.compliantControls}
+          title="Implementati"
+          value={`${stats.implemented} (${implementedPercentage}%)`}
           icon={CheckCircle}
           variant="success"
-          trend={{ value: "+5 questo mese", positive: true }}
         />
         <StatCard
-          title="Asset Totali"
-          value={stats.totalAssets}
-          icon={Box}
-          variant="default"
-        />
-        <StatCard
-          title="Azioni Pendenti"
-          value={stats.pendingActions}
-          icon={AlertTriangle}
+          title="Parzialmente Implementati"
+          value={`${stats.partial} (${partialPercentage}%)`}
+          icon={TrendingUp}
           variant="warning"
         />
+        <StatCard
+          title="Gap da Colmare"
+          value={`${stats.notImplemented} (${gapPercentage}%)`}
+          icon={AlertCircle}
+          variant="danger"
+        />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <ComplianceChart
-            totalControls={stats.totalControls}
-            compliantControls={stats.compliantControls}
-            partialControls={stats.partialControls}
-            nonCompliantControls={stats.nonCompliantControls}
-          />
-        </div>
-
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle>Attività Recenti</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {recentActivities.map((activity) => (
-                <div
-                  key={activity.id}
-                  className="flex items-start gap-3 pb-4 border-b border-border last:border-0 last:pb-0"
-                >
-                  <Badge
-                    variant={
-                      activity.status === "success"
-                        ? "default"
-                        : activity.status === "warning"
-                        ? "secondary"
-                        : "outline"
-                    }
-                    className="mt-1"
-                  >
-                    {activity.status}
-                  </Badge>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground">
-                      {activity.action}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {activity.user} • {activity.time}
-                    </p>
-                  </div>
-                </div>
-              ))}
+      {/* Conformity by Domain Chart */}
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            Conformità per Dominio
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {domainStats.map((domain) => (
+            <div key={domain.name} className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium">{domain.name}</span>
+                <span className="text-muted-foreground">
+                  {domain.implemented}/{domain.total} ({domain.percentage}%)
+                </span>
+              </div>
+              <Progress value={domain.percentage} className="h-2" />
             </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle>Distribuzione Controlli per Categoria</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {[
-                { name: "Controlli Organizzativi", value: 37, total: 93 },
-                { name: "Controlli Persone", value: 8, total: 93 },
-                { name: "Controlli Fisici", value: 14, total: 93 },
-                { name: "Controlli Tecnologici", value: 34, total: 93 },
-              ].map((category) => (
-                <div key={category.name}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium">{category.name}</span>
-                    <span className="text-sm text-muted-foreground">
-                      {category.value}/{category.total}
-                    </span>
-                  </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary transition-smooth"
-                      style={{
-                        width: `${(category.value / category.total) * 100}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
+          ))}
+          
+          <div className="pt-4 mt-4 border-t">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-lg">CONFORMITÀ COMPLESSIVA</span>
+              <span className="font-bold text-2xl gradient-primary bg-clip-text text-transparent">
+                {overallCompliance}%
+              </span>
             </div>
-          </CardContent>
-        </Card>
+            <Progress value={overallCompliance} className="h-3 mt-2" />
+          </div>
+        </CardContent>
+      </Card>
 
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle>Prossimi Audit</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {[
-                {
-                  name: "Audit Interno Q1",
-                  date: "15 Gen 2025",
-                  auditor: "Maria Ferrari",
-                },
-                {
-                  name: "Revisione Politiche",
-                  date: "22 Gen 2025",
-                  auditor: "Paolo Conti",
-                },
-                {
-                  name: "Verifica Asset IT",
-                  date: "5 Feb 2025",
-                  auditor: "Francesca Russo",
-                },
-              ].map((audit) => (
-                <div
-                  key={audit.name}
-                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                >
-                  <div>
-                    <p className="font-medium text-sm">{audit.name}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Auditor: {audit.auditor}
-                    </p>
-                  </div>
-                  <Badge variant="outline">{audit.date}</Badge>
-                </div>
-              ))}
+      {/* Upcoming Reviews */}
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bell className="h-5 w-5" />
+            Prossime Revisioni
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+              <div className="flex-1">
+                <p className="font-medium">Revisione SoA</p>
+                <p className="text-sm text-muted-foreground">Scadenza: {nextReviewDate} (tra 6 mesi)</p>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+              <div className="flex-1">
+                <p className="font-medium">Valutazione del Rischio</p>
+                <p className="text-sm text-muted-foreground">Non ancora creata</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+              <div className="flex-1">
+                <p className="font-medium">Preparazione Audit</p>
+                <p className="text-sm text-muted-foreground">Da programmare</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Action Buttons */}
+      <div className="flex flex-wrap gap-3">
+        <Button onClick={() => navigate("/soa")} size="lg" className="gap-2">
+          <Download className="h-4 w-4" />
+          Scarica SoA PDF
+        </Button>
+        <Button onClick={() => navigate("/controls")} variant="outline" size="lg" className="gap-2">
+          <Plus className="h-4 w-4" />
+          Gestisci Controlli
+        </Button>
+        <Button onClick={() => navigate("/settings")} variant="outline" size="lg" className="gap-2">
+          <Settings className="h-4 w-4" />
+          Impostazioni
+        </Button>
       </div>
     </div>
   );
