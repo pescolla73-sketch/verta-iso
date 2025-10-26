@@ -9,6 +9,7 @@ import {
   Users,
   Settings,
   Building2,
+  Wand2,
 } from "lucide-react";
 import {
   Sidebar,
@@ -25,6 +26,7 @@ import {
 
 const menuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Wizard Conformità", url: "/wizard", icon: Wand2 },
   { title: "Asset", url: "/assets", icon: Box },
   { title: "Controlli", url: "/controls", icon: Shield },
   { title: "SoA", url: "/soa", icon: FileText },

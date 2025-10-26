@@ -16,6 +16,7 @@ import Roles from "./pages/Roles";
 import SetupAzienda from "./pages/SetupAzienda";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import Wizard from "./pages/Wizard";
 
 const queryClient = new QueryClient();
 
@@ -111,6 +112,14 @@ const App = () => (
             element={
               <AppLayout>
                 <Settings />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/wizard"
+            element={
+              <AppLayout>
+                <Wizard />
               </AppLayout>
             }
           />
