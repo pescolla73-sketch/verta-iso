@@ -18,6 +18,7 @@ interface Control {
   responsible: string | null;
   last_verification_date: string | null;
   implementation_notes: string | null;
+  justification: string | null;
 }
 
 interface Organization {
@@ -165,22 +166,24 @@ export async function generateSoAPDF(data: SoAData) {
     control.status === 'not_applicable' ? 'No' : 'Sì',
     getStatusLabel(control.status),
     control.responsible || '-',
+    control.status === 'not_applicable' && control.justification ? control.justification : '-',
   ]);
 
   pdf.addTable(controlsData, {
     startY: y,
-    head: [['ID', 'Titolo', 'Dominio', 'Applicabile', 'Stato', 'Responsabile']],
+    head: [['ID', 'Titolo', 'Dominio', 'Applicabile', 'Stato', 'Responsabile', 'Giustificazione N/A']],
     body: controlsData,
     theme: 'grid',
-    headStyles: { fillColor: [66, 66, 66], textColor: 255, fontStyle: 'bold', fontSize: 9 },
-    bodyStyles: { fontSize: 8 },
+    headStyles: { fillColor: [66, 66, 66], textColor: 255, fontStyle: 'bold', fontSize: 8 },
+    bodyStyles: { fontSize: 7 },
     columnStyles: {
-      0: { cellWidth: 20 },
-      1: { cellWidth: 60 },
-      2: { cellWidth: 25 },
-      3: { cellWidth: 20 },
-      4: { cellWidth: 35 },
-      5: { cellWidth: 30 },
+      0: { cellWidth: 18 },
+      1: { cellWidth: 45 },
+      2: { cellWidth: 22 },
+      3: { cellWidth: 18 },
+      4: { cellWidth: 28 },
+      5: { cellWidth: 25 },
+      6: { cellWidth: 34 },
     },
   });
 
@@ -305,6 +308,7 @@ export function generateSoAHTML(data: SoAData) {
           <th>Applicabile</th>
           <th>Stato</th>
           <th>Responsabile</th>
+          <th>Giustificazione N/A</th>
         </tr>
       </thead>
       <tbody>
@@ -324,6 +328,7 @@ export function generateSoAHTML(data: SoAData) {
                 <td>${control.status === 'not_applicable' ? 'No' : 'Sì'}</td>
                 <td class="${statusClass}">${getStatusLabel(control.status)}</td>
                 <td>${control.responsible || '-'}</td>
+                <td>${control.status === 'not_applicable' && control.justification ? control.justification : '-'}</td>
               </tr>
             `;
           }).join('')}
@@ -447,7 +452,7 @@ export async function generateSoAWord(data: SoAData) {
                   new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Applicabile', bold: true })] })] }),
                   new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Stato', bold: true })] })] }),
                   new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Responsabile', bold: true })] })] }),
-                  new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Ultima Verifica', bold: true })] })] }),
+                  new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Giustificazione N/A', bold: true })] })] }),
                 ],
               }),
               ...data.controls
@@ -461,7 +466,7 @@ export async function generateSoAWord(data: SoAData) {
                       new TableCell({ children: [new Paragraph(control.status === 'not_applicable' ? 'No' : 'Sì')] }),
                       new TableCell({ children: [new Paragraph(getStatusLabel(control.status))] }),
                       new TableCell({ children: [new Paragraph(control.responsible || '-')] }),
-                      new TableCell({ children: [new Paragraph(control.last_verification_date || '-')] }),
+                      new TableCell({ children: [new Paragraph(control.status === 'not_applicable' && control.justification ? control.justification : '-')] }),
                     ],
                   })
                 ),

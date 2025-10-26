@@ -20,6 +20,7 @@ type ControlFormData = {
   status: string;
   implementation_notes: string;
   responsible: string;
+  justification: string;
 };
 
 export default function ControlDetail() {
@@ -72,17 +73,25 @@ export default function ControlDetail() {
       status: control?.status || "not_implemented",
       implementation_notes: control?.implementation_notes || "",
       responsible: control?.responsible || "",
+      justification: control?.justification || "",
     },
     values: control ? {
       status: control.status,
       implementation_notes: control.implementation_notes || "",
       responsible: control.responsible || "",
+      justification: control.justification || "",
     } : undefined,
   });
 
   const updateMutation = useMutation({
     mutationFn: async (data: ControlFormData) => {
       console.log("Updating control with data:", data);
+      
+      // Validate justification for not_applicable status
+      if (data.status === "not_applicable" && (!data.justification || data.justification.trim().length < 20)) {
+        throw new Error("Giustificazione obbligatoria per controlli Non Applicabili (minimo 20 caratteri)");
+      }
+      
       const { data: result, error } = await supabase
         .from("controls")
         .update(data)
@@ -392,6 +401,36 @@ export default function ControlDetail() {
                   </FormItem>
                 )}
               />
+
+              {form.watch("status") === "not_applicable" && (
+                <FormField
+                  control={form.control}
+                  name="justification"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-warning" />
+                        Giustificazione Obbligatoria
+                      </FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          {...field} 
+                          placeholder="Spiega perché questo controllo non è applicabile all'organizzazione (minimo 20 caratteri)&#10;&#10;Esempi:&#10;• L'azienda non ha fornitori IT esterni&#10;• Non gestiamo data center fisici&#10;• Tutte le infrastrutture sono in cloud"
+                          className="min-h-[150px]"
+                        />
+                      </FormControl>
+                      <p className="text-sm text-muted-foreground">
+                        {field.value?.length || 0} / 20 caratteri (minimo richiesto)
+                      </p>
+                      {field.value && field.value.trim().length < 20 && (
+                        <p className="text-sm text-destructive">
+                          ⚠️ La giustificazione deve essere di almeno 20 caratteri
+                        </p>
+                      )}
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <Button type="submit" disabled={updateMutation.isPending}>
                 {updateMutation.isPending ? "Salvataggio..." : "Salva"}

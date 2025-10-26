@@ -179,6 +179,11 @@ export default function Controls() {
                           <span>Ultima verifica: {new Date(control.last_verification_date).toLocaleDateString("it-IT")}</span>
                         )}
                       </div>
+                      {control.status === 'not_applicable' && control.justification && (
+                        <div className="mt-2 text-sm text-muted-foreground italic">
+                          <span className="font-semibold">Giustificazione N/A:</span> {control.justification}
+                        </div>
+                      )}
                     </div>
                     <div className="ml-4">{getStatusBadge(control.status)}</div>
                   </div>

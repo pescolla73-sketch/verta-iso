@@ -97,6 +97,7 @@ export type Database = {
           guida_significato: string | null
           id: string
           implementation_notes: string | null
+          justification: string | null
           last_verification_date: string | null
           objective: string | null
           responsible: string | null
@@ -114,6 +115,7 @@ export type Database = {
           guida_significato?: string | null
           id?: string
           implementation_notes?: string | null
+          justification?: string | null
           last_verification_date?: string | null
           objective?: string | null
           responsible?: string | null
@@ -131,6 +133,7 @@ export type Database = {
           guida_significato?: string | null
           id?: string
           implementation_notes?: string | null
+          justification?: string | null
           last_verification_date?: string | null
           objective?: string | null
           responsible?: string | null
