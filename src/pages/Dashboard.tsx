@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { format, addMonths } from "date-fns";
 import { it } from "date-fns/locale";
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -30,7 +31,16 @@ export default function Dashboard() {
     implemented: controls?.filter((c) => c.status === "implemented").length || 0,
     partial: controls?.filter((c) => c.status === "partial").length || 0,
     notImplemented: controls?.filter((c) => c.status === "not_implemented").length || 0,
+    notApplicable: controls?.filter((c) => c.status === "not_applicable").length || 0,
   };
+
+  // Pie chart data
+  const pieChartData = [
+    { name: "Implementati", value: stats.implemented, color: "#22c55e" },
+    { name: "Parzialmente Implementati", value: stats.partial, color: "#f59e0b" },
+    { name: "Non Implementati", value: stats.notImplemented, color: "#ef4444" },
+    { name: "Non Applicabili", value: stats.notApplicable, color: "#6b7280" },
+  ].filter((item) => item.value > 0);
 
   const implementedPercentage = Math.round((stats.implemented / stats.totalControls) * 100);
   const partialPercentage = Math.round((stats.partial / stats.totalControls) * 100);
@@ -104,6 +114,35 @@ export default function Dashboard() {
           variant="danger"
         />
       </div>
+
+      {/* Implementation Status Pie Chart */}
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle>Stato di Implementazione</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie
+                data={pieChartData}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                outerRadius={80}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                {pieChartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
 
       {/* Conformity by Domain Chart */}
       <Card className="shadow-card">
