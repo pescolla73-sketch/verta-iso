@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { controlGuidanceData } from "@/data/controlGuidance";
 import { Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { format } from "date-fns";
 
 const wizardSteps = [
   { id: "intro", title: "Introduzione", description: "Panoramica" },
@@ -156,6 +157,31 @@ export default function Wizard() {
 
   // Introduction Step
   if (currentStepIndex === 0) {
+    const hasProgress = calculateProgress() > 0;
+    const completedCount = controls?.filter((c) => c.status && c.status !== "not_implemented").length || 0;
+    const firstIncompleteControl = controls?.find((c) => !c.status || c.status === "not_implemented");
+
+    const handleResume = () => {
+      if (firstIncompleteControl) {
+        // Find which domain this control belongs to
+        const domainMap: Record<string, number> = {
+          "Organizzativi": 1,
+          "Persone": 2,
+          "Fisici": 3,
+          "Tecnologici": 4,
+        };
+        const stepIndex = domainMap[firstIncompleteControl.domain] || 1;
+        setCurrentStepIndex(stepIndex);
+        
+        // Find the index within that domain
+        const domainControls = controls?.filter((c) => c.domain === firstIncompleteControl.domain) || [];
+        const controlIndex = domainControls.findIndex((c) => c.id === firstIncompleteControl.id);
+        setCurrentControlIndex(controlIndex >= 0 ? controlIndex : 0);
+      } else {
+        setCurrentStepIndex(1);
+      }
+    };
+
     return (
       <div className="container mx-auto py-8 max-w-4xl">
         <WizardStepper
@@ -168,12 +194,71 @@ export default function Wizard() {
             <CardTitle className="text-3xl">🎯 ISO 27001 Compliance Wizard</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold">Benvenuto nel wizard di conformità!</h3>
-              <p className="text-muted-foreground">
-                Questo strumento ti guiderà passo dopo passo attraverso tutti i 93 controlli ISO 27001:2022,
-                aiutandoti a capire cosa significano e come implementarli nella tua organizzazione.
-              </p>
+            {hasProgress ? (
+              <div className="space-y-6">
+                <div className="bg-primary/10 p-6 rounded-lg border-2 border-primary/30">
+                  <h3 className="text-xl font-semibold mb-4">Benvenuto! Hai già iniziato:</h3>
+                  
+                  <div className="space-y-3 mb-6">
+                    <div className="flex items-center justify-between">
+                      <span className="text-lg">✅ Completati:</span>
+                      <span className="text-2xl font-bold text-primary">
+                        {completedCount}/{controls?.length || 93} ({calculateProgress()}%)
+                      </span>
+                    </div>
+                    
+                    {firstIncompleteControl && (
+                      <>
+                        <div className="flex items-start gap-2">
+                          <span className="text-sm font-medium">📍 Ultima posizione:</span>
+                          <span className="text-sm text-muted-foreground">
+                            {firstIncompleteControl.control_id} - {firstIncompleteControl.title}
+                          </span>
+                        </div>
+                        
+                        {controls?.find((c) => c.status && c.status !== "not_implemented")?.updated_at && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">⏰ Ultimo salvataggio:</span>
+                            <span className="text-sm text-muted-foreground">
+                              {format(
+                                new Date(controls.find((c) => c.status && c.status !== "not_implemented")!.updated_at),
+                                "dd/MM/yyyy 'alle' HH:mm"
+                              )}
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-3">
+                    <Button 
+                      onClick={handleResume}
+                      size="lg" 
+                      className="w-full text-lg py-6"
+                    >
+                      ▶️ RIPRENDI DA DOVE HAI LASCIATO
+                    </Button>
+                    <Button 
+                      onClick={() => {
+                        setCurrentStepIndex(1);
+                        setCurrentControlIndex(0);
+                      }}
+                      variant="outline" 
+                      size="sm"
+                    >
+                      🔄 Ricomincia da capo
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold">Benvenuto nel wizard di conformità!</h3>
+                <p className="text-muted-foreground">
+                  Questo strumento ti guiderà passo dopo passo attraverso tutti i 93 controlli ISO 27001:2022,
+                  aiutandoti a capire cosa significano e come implementarli nella tua organizzazione.
+                </p>
 
               <div className="bg-muted p-4 rounded-lg space-y-2">
                 <h4 className="font-semibold">📊 Panoramica controlli:</h4>
@@ -209,15 +294,16 @@ export default function Wizard() {
                 </div>
                 <Progress value={calculateProgress()} />
               </div>
-            </div>
 
-            <div className="flex gap-2 pt-4">
-              <Button onClick={() => navigate("/")}>← Dashboard</Button>
-              <div className="flex-1" />
-              <Button onClick={() => setCurrentStepIndex(1)} size="lg">
-                Inizia il wizard ➡️
-              </Button>
+              <div className="flex gap-2 pt-4">
+                <Button onClick={() => navigate("/")}>← Dashboard</Button>
+                <div className="flex-1" />
+                <Button onClick={() => setCurrentStepIndex(1)} size="lg">
+                  🚀 INIZIA IL WIZARD ➡️
+                </Button>
+              </div>
             </div>
+            )}
           </CardContent>
         </Card>
       </div>

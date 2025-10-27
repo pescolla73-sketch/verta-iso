@@ -78,6 +78,23 @@ export default function Dashboard() {
     );
   }
 
+  // Calculate wizard progress
+  const wizardProgress = {
+    total: stats.totalControls,
+    completed: controls?.filter((c) => c.status && c.status !== "not_implemented").length || 0,
+    percentage: Math.round(
+      ((controls?.filter((c) => c.status && c.status !== "not_implemented").length || 0) / 
+       (stats.totalControls)) * 100
+    ),
+    nextControl: controls?.find((c) => !c.status || c.status === "not_implemented"),
+    lastUpdated: controls
+      ?.filter((c) => c.status && c.status !== "not_implemented")
+      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0]
+      ?.updated_at,
+  };
+
+  const showWizardResume = wizardProgress.percentage > 0 && wizardProgress.percentage < 100;
+
   return (
     <div className="space-y-6">
       <div>
@@ -86,6 +103,58 @@ export default function Dashboard() {
           Panoramica dello stato di implementazione dei controlli
         </p>
       </div>
+
+      {/* Resume Wizard Card */}
+      {showWizardResume && (
+        <Card className="shadow-card border-primary/50 bg-gradient-to-r from-primary/5 to-primary/10">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-2xl">
+              🧙 Wizard in Corso
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-lg font-semibold">
+                  Hai completato {wizardProgress.completed} su {wizardProgress.total} controlli
+                </span>
+                <span className="text-2xl font-bold text-primary">{wizardProgress.percentage}%</span>
+              </div>
+              <Progress value={wizardProgress.percentage} className="h-3" />
+            </div>
+            
+            {wizardProgress.lastUpdated && (
+              <p className="text-sm text-muted-foreground">
+                Ultimo aggiornamento: {format(new Date(wizardProgress.lastUpdated), "dd/MM/yyyy 'alle' HH:mm", { locale: it })}
+              </p>
+            )}
+            
+            {wizardProgress.nextControl && (
+              <p className="text-sm">
+                <strong>Prossimo controllo:</strong> {wizardProgress.nextControl.control_id} - {wizardProgress.nextControl.title}
+              </p>
+            )}
+
+            <div className="flex gap-3 pt-2">
+              <Button 
+                onClick={() => navigate("/wizard")} 
+                size="lg" 
+                className="gap-2 flex-1"
+              >
+                ▶️ RIPRENDI WIZARD
+              </Button>
+              <Button 
+                onClick={() => navigate("/controls")} 
+                variant="outline" 
+                size="lg" 
+                className="gap-2"
+              >
+                📊 Vedi riepilogo
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* 4 Key Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

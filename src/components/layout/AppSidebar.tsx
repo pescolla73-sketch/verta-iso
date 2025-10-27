@@ -1,4 +1,6 @@
 import { NavLink, useLocation } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
   LayoutDashboard,
   Box,
@@ -23,25 +25,47 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-
-const menuItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Wizard Conformità", url: "/wizard", icon: Wand2 },
-  { title: "Asset", url: "/assets", icon: Box },
-  { title: "Controlli", url: "/controls", icon: Shield },
-  { title: "SoA", url: "/soa", icon: FileText },
-  { title: "Audit", url: "/audits", icon: ClipboardCheck },
-  { title: "Politiche", url: "/policies", icon: ScrollText },
-  { title: "Ruoli", url: "/roles", icon: Users },
-  { title: "Setup Azienda", url: "/setup-azienda", icon: Building2 },
-  { title: "Impostazioni", url: "/settings", icon: Settings },
-];
+import { Badge } from "@/components/ui/badge";
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
   const currentPath = location.pathname;
   const isCollapsed = state === "collapsed";
+
+  // Fetch controls to calculate wizard progress
+  const { data: controls } = useQuery({
+    queryKey: ["controls"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("controls")
+        .select("*");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const wizardProgress = controls
+    ? Math.round(
+        ((controls.filter((c) => c.status && c.status !== "not_implemented").length) / 
+         controls.length) * 100
+      )
+    : 0;
+
+  const hasWizardProgress = wizardProgress > 0 && wizardProgress < 100;
+
+  const menuItems = [
+    { title: "Dashboard", url: "/", icon: LayoutDashboard },
+    { title: "Wizard Conformità", url: "/wizard", icon: Wand2, badge: hasWizardProgress ? `${wizardProgress}%` : undefined },
+    { title: "Asset", url: "/assets", icon: Box },
+    { title: "Controlli", url: "/controls", icon: Shield },
+    { title: "SoA", url: "/soa", icon: FileText },
+    { title: "Audit", url: "/audits", icon: ClipboardCheck },
+    { title: "Politiche", url: "/policies", icon: ScrollText },
+    { title: "Ruoli", url: "/roles", icon: Users },
+    { title: "Setup Azienda", url: "/setup-azienda", icon: Building2 },
+    { title: "Impostazioni", url: "/settings", icon: Settings },
+  ];
 
   const isActive = (path: string) => currentPath === path;
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
@@ -72,7 +96,16 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink to={item.url} end className={getNavCls}>
                       <item.icon className="h-4 w-4" />
-                      {!isCollapsed && <span>{item.title}</span>}
+                      {!isCollapsed && (
+                        <div className="flex items-center justify-between flex-1">
+                          <span>{item.title}</span>
+                          {item.badge && (
+                            <Badge variant="destructive" className="ml-2 text-xs">
+                              {item.badge}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
