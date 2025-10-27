@@ -11,6 +11,7 @@ import { controlGuidanceData } from "@/data/controlGuidance";
 import { Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
+import { ControlsViewToggle } from "@/components/ControlsViewToggle";
 
 const wizardSteps = [
   { id: "intro", title: "Introduzione", description: "Panoramica" },
@@ -184,6 +185,8 @@ export default function Wizard() {
 
     return (
       <div className="container mx-auto py-8 max-w-4xl">
+        <ControlsViewToggle />
+        
         <WizardStepper
           steps={wizardSteps}
           currentStep={currentStepIndex}
@@ -319,6 +322,8 @@ export default function Wizard() {
 
     return (
       <div className="container mx-auto py-8 max-w-4xl">
+        <ControlsViewToggle />
+        
         <WizardStepper
           steps={wizardSteps}
           currentStep={currentStepIndex}
@@ -405,6 +410,8 @@ export default function Wizard() {
 
   return (
     <div className="container mx-auto py-8 max-w-4xl">
+      <ControlsViewToggle />
+      
       <WizardStepper
         steps={wizardSteps}
         currentStep={currentStepIndex}

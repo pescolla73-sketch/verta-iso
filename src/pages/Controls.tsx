@@ -1,196 +1,164 @@
-import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Filter } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { Wand2, Table2 } from "lucide-react";
 
 export default function Controls() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
   const navigate = useNavigate();
 
-  const { data: controls, isLoading, error: queryError } = useQuery({
+  const { data: controls } = useQuery({
     queryKey: ["controls"],
     queryFn: async () => {
-      console.log("Fetching controls from Supabase...");
       const { data, error } = await supabase
         .from("controls")
         .select("*")
         .order("control_id");
-      
-      if (error) {
-        console.error("Supabase error:", error);
-        toast.error(`Errore nel caricamento dei controlli: ${error.message}`);
-        throw error;
-      }
-      
-      console.log("Controls fetched:", data?.length || 0, "records");
+      if (error) throw error;
       return data || [];
     },
   });
 
-  // Log query error if present
-  if (queryError) {
-    console.error("Query error:", queryError);
-  }
-
-  const controlCategories = useMemo(() => {
-    if (!controls) return [
-      { id: "all", name: "Tutti", count: 0 },
-      { id: "Organizzativi", name: "Organizzativi", count: 0 },
-      { id: "Persone", name: "Persone", count: 0 },
-      { id: "Fisici", name: "Fisici", count: 0 },
-      { id: "Tecnologici", name: "Tecnologici", count: 0 },
-    ];
-
-    const categoryCounts = controls.reduce((acc, control) => {
-      acc[control.domain] = (acc[control.domain] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    return [
-      { id: "all", name: "Tutti", count: controls.length },
-      { id: "Organizzativi", name: "Organizzativi", count: categoryCounts["Organizzativi"] || 0 },
-      { id: "Persone", name: "Persone", count: categoryCounts["Persone"] || 0 },
-      { id: "Fisici", name: "Fisici", count: categoryCounts["Fisici"] || 0 },
-      { id: "Tecnologici", name: "Tecnologici", count: categoryCounts["Tecnologici"] || 0 },
-    ];
-  }, [controls]);
-
-  const filteredControls = useMemo(() => {
-    if (!controls) return [];
-
-    return controls.filter((control) => {
-      const matchesSearch = 
-        control.control_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        control.title.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchesCategory = 
-        selectedCategory === "all" || control.domain === selectedCategory;
-
-      return matchesSearch && matchesCategory;
-    });
-  }, [controls, searchQuery, selectedCategory]);
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "implemented":
-        return <Badge className="bg-success text-success-foreground">Implementato</Badge>;
-      case "partial":
-        return <Badge className="bg-warning text-warning-foreground">Parzialmente Implementato</Badge>;
-      case "not_implemented":
-        return <Badge variant="destructive">Non Implementato</Badge>;
-      case "not_applicable":
-        return <Badge variant="outline">Non Applicabile</Badge>;
-      default:
-        return <Badge variant="outline">Da Valutare</Badge>;
-    }
+  const calculateProgress = () => {
+    if (!controls) return 0;
+    const completed = controls.filter(
+      (c) => c.status && c.status !== "not_implemented"
+    ).length;
+    return Math.round((completed / controls.length) * 100);
   };
+
+  const progress = calculateProgress();
+  const hasProgress = progress > 0 && progress < 100;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-foreground">Controlli ISO 27001:2022</h1>
-          <p className="text-muted-foreground mt-2">
-            Gestisci i 93 controlli dell'Annex A
-          </p>
-        </div>
-        <Button variant="outline" className="gap-2">
-          <Filter className="h-4 w-4" />
-          Filtra
-        </Button>
+      <div>
+        <h1 className="text-foreground">Gestione Controlli ISO 27001</h1>
+        <p className="text-muted-foreground mt-2">
+          Seleziona la modalità di compilazione che preferisci
+        </p>
       </div>
 
-      <Card className="shadow-card">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Categorie Controlli</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
-              {controlCategories.map((category) => (
-                <TabsTrigger key={category.id} value={category.id}>
-                  {category.name} ({category.count})
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        </CardContent>
-      </Card>
+      {/* Progress indicator */}
+      {controls && (
+        <Card className="shadow-card">
+          <CardContent className="pt-6">
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Avanzamento complessivo</span>
+                <span className="font-semibold">{progress}%</span>
+              </div>
+              <Progress value={progress} />
+              <p className="text-xs text-muted-foreground">
+                {controls.filter((c) => c.status && c.status !== "not_implemented").length}/{controls.length} controlli completati
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-      <Card className="shadow-card">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Lista Controlli</CardTitle>
-            <div className="relative w-64">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Cerca controlli..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
+      {/* Choice cards */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Wizard Card */}
+        <Card className="shadow-card hover:shadow-lg transition-smooth border-2 hover:border-primary/50">
+          <CardContent className="pt-6 space-y-4">
+            <div className="flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mx-auto">
+              <Wand2 className="w-8 h-8 text-primary" />
+            </div>
+            
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl font-semibold">🧙 Wizard Guidato</h2>
+              <div className="inline-block px-3 py-1 bg-success/20 text-success-foreground rounded-full text-sm font-medium">
+                ⭐ Consigliato
+              </div>
+            </div>
+
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              <li>✅ Compilazione guidata passo-passo</li>
+              <li>✅ Spiegazioni in linguaggio semplice</li>
+              <li>✅ Esempi pratici per ogni controllo</li>
+              <li>✅ Assistente AI per domande</li>
+              <li>✅ Ideale per prima compilazione</li>
+            </ul>
+
+            <Button 
+              onClick={() => navigate("/controls/wizard")}
+              size="lg" 
+              className="w-full"
+            >
+              {hasProgress ? "▶️ Riprendi Wizard" : "🚀 Inizia Wizard"}
+            </Button>
+
+            {hasProgress && (
+              <p className="text-xs text-center text-muted-foreground">
+                Hai già compilato {progress}% dei controlli
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Table Card */}
+        <Card className="shadow-card hover:shadow-lg transition-smooth border-2 hover:border-primary/50">
+          <CardContent className="pt-6 space-y-4">
+            <div className="flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mx-auto">
+              <Table2 className="w-8 h-8 text-primary" />
+            </div>
+            
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl font-semibold">📊 Vista Tabella</h2>
+              <div className="inline-block px-3 py-1 bg-muted text-muted-foreground rounded-full text-sm font-medium">
+                Per esperti
+              </div>
+            </div>
+
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              <li>📋 Visualizzazione completa di tutti i controlli</li>
+              <li>📋 Modifica rapida e diretta</li>
+              <li>📋 Ricerca e filtri avanzati</li>
+              <li>📋 Ideale per revisione o aggiornamenti</li>
+              <li>📋 Vista d'insieme immediata</li>
+            </ul>
+
+            <Button 
+              onClick={() => navigate("/controls/table")}
+              size="lg" 
+              variant="outline"
+              className="w-full"
+            >
+              📊 Apri Tabella
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Help card */}
+      <Card className="shadow-card bg-muted/50">
+        <CardContent className="pt-6">
+          <div className="space-y-2">
+            <h3 className="font-semibold">💡 Quale scegliere?</h3>
+            <div className="grid md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="font-medium text-primary">Usa il Wizard se:</p>
+                <ul className="mt-1 space-y-1 text-muted-foreground">
+                  <li>• È la tua prima compilazione</li>
+                  <li>• Vuoi una guida passo-passo</li>
+                  <li>• Non sei esperto di ISO 27001</li>
+                  <li>• Preferisci esempi pratici</li>
+                </ul>
+              </div>
+              <div>
+                <p className="font-medium text-primary">Usa la Tabella se:</p>
+                <ul className="mt-1 space-y-1 text-muted-foreground">
+                  <li>• Devi fare modifiche rapide</li>
+                  <li>• Conosci già i controlli</li>
+                  <li>• Vuoi una vista d'insieme</li>
+                  <li>• Stai facendo manutenzione/revisione</li>
+                </ul>
+              </div>
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-3">
-              {[...Array(4)].map((_, i) => (
-                <Skeleton key={i} className="h-32 w-full" />
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filteredControls.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">
-                  Nessun controllo trovato
-                </p>
-              ) : (
-                filteredControls.map((control) => (
-                  <div
-                    key={control.id}
-                    onClick={() => navigate(`/controls/${control.id}`)}
-                    className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-smooth cursor-pointer"
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <Badge variant="outline" className="font-mono">
-                          {control.control_id}
-                        </Badge>
-                        <h3 className="font-semibold text-foreground">
-                          {control.title}
-                        </h3>
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>Categoria: {control.domain}</span>
-                        <span>Responsabile: {control.responsible || "Non assegnato"}</span>
-                        {control.last_verification_date && (
-                          <span>Ultima verifica: {new Date(control.last_verification_date).toLocaleDateString("it-IT")}</span>
-                        )}
-                      </div>
-                      {control.status === 'not_applicable' && control.justification && (
-                        <div className="mt-2 text-sm text-muted-foreground italic">
-                          <span className="font-semibold">Giustificazione N/A:</span> {control.justification}
-                        </div>
-                      )}
-                    </div>
-                    <div className="ml-4">{getStatusBadge(control.status)}</div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>

@@ -1,4 +1,4 @@
-import { Shield, CheckCircle, AlertCircle, TrendingUp, Download, Plus, Settings, Bell, FileDown } from "lucide-react";
+import { Shield, CheckCircle, AlertCircle, TrendingUp, Download, Settings, Bell, FileDown, Wand2 } from "lucide-react";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -137,7 +137,7 @@ export default function Dashboard() {
 
             <div className="flex gap-3 pt-2">
               <Button 
-                onClick={() => navigate("/wizard")} 
+                onClick={() => navigate("/controls/wizard")} 
                 size="lg" 
                 className="gap-2 flex-1"
               >
@@ -280,16 +280,12 @@ export default function Dashboard() {
 
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-3">
-        <Button onClick={() => navigate("/wizard")} size="lg" className="gap-2">
-          🎯 Avvia Wizard Conformità
+        <Button onClick={() => navigate("/controls")} size="lg" className="gap-2">
+          🎯 Gestisci Controlli
         </Button>
         <Button onClick={() => navigate("/soa")} variant="outline" size="lg" className="gap-2">
           <Download className="h-4 w-4" />
           Scarica SoA PDF
-        </Button>
-        <Button onClick={() => navigate("/controls")} variant="outline" size="lg" className="gap-2">
-          <Plus className="h-4 w-4" />
-          Gestisci Controlli
         </Button>
         <Button onClick={() => navigate("/settings")} variant="outline" size="lg" className="gap-2">
           <Settings className="h-4 w-4" />

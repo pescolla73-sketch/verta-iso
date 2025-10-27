@@ -7,6 +7,7 @@ import { AppLayout } from "./components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import Assets from "./pages/Assets";
 import Controls from "./pages/Controls";
+import ControlsTable from "./pages/ControlsTable";
 import ControlDetail from "./pages/ControlDetail";
 import SoA from "./pages/SoA";
 import Audits from "./pages/Audits";
@@ -48,6 +49,22 @@ const App = () => (
             element={
               <AppLayout>
                 <Controls />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/controls/wizard"
+            element={
+              <AppLayout>
+                <Wizard />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/controls/table"
+            element={
+              <AppLayout>
+                <ControlsTable />
               </AppLayout>
             }
           />
@@ -112,14 +129,6 @@ const App = () => (
             element={
               <AppLayout>
                 <Settings />
-              </AppLayout>
-            }
-          />
-          <Route
-            path="/wizard"
-            element={
-              <AppLayout>
-                <Wizard />
               </AppLayout>
             }
           />

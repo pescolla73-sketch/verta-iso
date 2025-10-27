@@ -11,7 +11,6 @@ import {
   Users,
   Settings,
   Building2,
-  Wand2,
 } from "lucide-react";
 import {
   Sidebar,
@@ -56,9 +55,17 @@ export function AppSidebar() {
 
   const menuItems = [
     { title: "Dashboard", url: "/", icon: LayoutDashboard },
-    { title: "Wizard Conformità", url: "/wizard", icon: Wand2, badge: hasWizardProgress ? `${wizardProgress}%` : undefined },
+    { 
+      title: "Controlli", 
+      url: "/controls", 
+      icon: Shield, 
+      badge: hasWizardProgress ? `${wizardProgress}%` : undefined,
+      subItems: [
+        { title: "🧙 Wizard Guidato", url: "/controls/wizard" },
+        { title: "📊 Vista Tabella", url: "/controls/table" }
+      ]
+    },
     { title: "Asset", url: "/assets", icon: Box },
-    { title: "Controlli", url: "/controls", icon: Shield },
     { title: "SoA", url: "/soa", icon: FileText },
     { title: "Audit", url: "/audits", icon: ClipboardCheck },
     { title: "Politiche", url: "/policies", icon: ScrollText },
@@ -108,6 +115,17 @@ export function AppSidebar() {
                       )}
                     </NavLink>
                   </SidebarMenuButton>
+                  {!isCollapsed && item.subItems && (
+                    <div className="ml-6 mt-1 space-y-1">
+                      {item.subItems.map((subItem) => (
+                        <SidebarMenuButton key={subItem.url} asChild size="sm">
+                          <NavLink to={subItem.url} className={getNavCls}>
+                            <span className="text-sm">{subItem.title}</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      ))}
+                    </div>
+                  )}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
