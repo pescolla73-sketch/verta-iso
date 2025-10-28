@@ -450,6 +450,7 @@ export type Database = {
       }
       risks: {
         Row: {
+          affected_asset_ids: string[] | null
           asset_id: string | null
           created_at: string | null
           description: string | null
@@ -470,6 +471,8 @@ export type Database = {
           residual_risk_level: string | null
           residual_risk_score: number | null
           risk_id: string
+          risk_type: string | null
+          scope: string | null
           status: string | null
           threat_id: string | null
           treatment_cost: number | null
@@ -481,6 +484,7 @@ export type Database = {
           vulnerability_id: string | null
         }
         Insert: {
+          affected_asset_ids?: string[] | null
           asset_id?: string | null
           created_at?: string | null
           description?: string | null
@@ -501,6 +505,8 @@ export type Database = {
           residual_risk_level?: string | null
           residual_risk_score?: number | null
           risk_id: string
+          risk_type?: string | null
+          scope?: string | null
           status?: string | null
           threat_id?: string | null
           treatment_cost?: number | null
@@ -512,6 +518,7 @@ export type Database = {
           vulnerability_id?: string | null
         }
         Update: {
+          affected_asset_ids?: string[] | null
           asset_id?: string | null
           created_at?: string | null
           description?: string | null
@@ -532,6 +539,8 @@ export type Database = {
           residual_risk_level?: string | null
           residual_risk_score?: number | null
           risk_id?: string
+          risk_type?: string | null
+          scope?: string | null
           status?: string | null
           threat_id?: string | null
           treatment_cost?: number | null

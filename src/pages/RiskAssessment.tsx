@@ -25,15 +25,20 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { RiskWizard } from "@/components/risk/RiskWizard";
 import { RiskMatrix } from "@/components/risk/RiskMatrix";
+import { ScenarioSelector } from "@/components/risk/ScenarioSelector";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getRiskBadgeVariant, RiskCategory } from "@/utils/riskCalculation";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function RiskAssessment() {
   const [searchQuery, setSearchQuery] = useState("");
   const [levelFilter, setLevelFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [wizardMode, setWizardMode] = useState<'asset' | 'scenario'>('asset');
   const [selectedAssetId, setSelectedAssetId] = useState<string | undefined>();
+  const [selectedScenarioId, setSelectedScenarioId] = useState<string | undefined>();
 
   const { data: risks, isLoading } = useQuery({
     queryKey: ["risks"],
@@ -54,7 +59,8 @@ export default function RiskAssessment() {
       risk.risk_id.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesLevel = levelFilter === "all" || risk.inherent_risk_level === levelFilter;
     const matchesStatus = statusFilter === "all" || risk.status === statusFilter;
-    return matchesSearch && matchesLevel && matchesStatus;
+    const matchesType = typeFilter === "all" || risk.risk_type === typeFilter;
+    return matchesSearch && matchesLevel && matchesStatus && matchesType;
   });
 
   const riskStats = {
@@ -94,7 +100,16 @@ export default function RiskAssessment() {
   });
 
   const handleAssetSelect = (assetId: string) => {
+    setWizardMode('asset');
     setSelectedAssetId(assetId);
+    setSelectedScenarioId(undefined);
+    setIsWizardOpen(true);
+  };
+
+  const handleScenarioSelect = (scenarioId: string) => {
+    setWizardMode('scenario');
+    setSelectedScenarioId(scenarioId);
+    setSelectedAssetId(undefined);
     setIsWizardOpen(true);
   };
 
@@ -112,53 +127,72 @@ export default function RiskAssessment() {
         </div>
       </div>
 
-      {/* Asset Selection Section */}
+      {/* Entry Point Selection */}
       {assets.length > 0 && (
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle>Seleziona un Asset da Valutare</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Clicca su un asset per iniziare la valutazione guidata (5-10 minuti)
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {assets.map(asset => {
-                const assetRisks = filteredRisks?.filter(r => r.asset_id === asset.id) || [];
-                const hasRisk = assetRisks.length > 0;
-                
-                return (
-                  <Card
-                    key={asset.id}
-                    className={cn(
-                      "cursor-pointer transition-all hover:shadow-md",
-                      hasRisk && "border-green-500"
-                    )}
-                    onClick={() => handleAssetSelect(asset.id)}
-                  >
-                    <CardContent className="pt-6">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h3 className="font-medium">{asset.name}</h3>
-                          <p className="text-sm text-muted-foreground">{asset.asset_type}</p>
-                        </div>
-                        {hasRisk ? (
-                          <Badge variant="outline" className="bg-green-100">
-                            ✓ Valutato
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">
-                            Da valutare
-                          </Badge>
+        <Tabs defaultValue="asset" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="asset" className="flex items-center gap-2">
+              <span className="text-lg">📦</span>
+              Per Asset
+            </TabsTrigger>
+            <TabsTrigger value="scenario" className="flex items-center gap-2">
+              <span className="text-lg">🌍</span>
+              Per Scenario
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="asset" className="mt-6">
+            <Card className="shadow-card">
+              <CardHeader>
+                <CardTitle>Seleziona un Asset da Valutare</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Valuta rischi specifici per ogni asset (es: furto laptop, guasto server)
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {assets.map(asset => {
+                    const assetRisks = filteredRisks?.filter(r => r.asset_id === asset.id) || [];
+                    const hasRisk = assetRisks.length > 0;
+                    
+                    return (
+                      <Card
+                        key={asset.id}
+                        className={cn(
+                          "cursor-pointer transition-all hover:shadow-md",
+                          hasRisk && "border-green-500"
                         )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+                        onClick={() => handleAssetSelect(asset.id)}
+                      >
+                        <CardContent className="pt-6">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h3 className="font-medium">{asset.name}</h3>
+                              <p className="text-sm text-muted-foreground">{asset.asset_type}</p>
+                            </div>
+                            {hasRisk ? (
+                              <Badge variant="outline" className="bg-green-100">
+                                ✓ Valutato
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary">
+                                Da valutare
+                              </Badge>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="scenario" className="mt-6">
+            <ScenarioSelector onScenarioSelect={handleScenarioSelect} />
+          </TabsContent>
+        </Tabs>
       )}
 
       {assets.length === 0 && (
@@ -284,6 +318,16 @@ export default function RiskAssessment() {
                   <SelectItem value="Accettato">Accettato</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="w-full md:w-40">
+                  <SelectValue placeholder="Tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tutti i tipi</SelectItem>
+                  <SelectItem value="asset-specific">Asset-specific</SelectItem>
+                  <SelectItem value="scenario">Scenario</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardHeader>
@@ -301,7 +345,8 @@ export default function RiskAssessment() {
                   <TableRow>
                     <TableHead>ID</TableHead>
                     <TableHead>Nome Rischio</TableHead>
-                    <TableHead>Asset</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Asset/Ambito</TableHead>
                     <TableHead>Score</TableHead>
                     <TableHead>Livello</TableHead>
                     <TableHead>Trattamento</TableHead>
@@ -314,12 +359,28 @@ export default function RiskAssessment() {
                       <TableCell className="font-mono text-sm">{risk.risk_id}</TableCell>
                       <TableCell className="font-medium">{risk.name}</TableCell>
                       <TableCell>
-                        <div>
-                          <p className="text-sm">{risk.assets?.name || "-"}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {risk.assets?.asset_type}
-                          </p>
-                        </div>
+                        <Badge variant={risk.risk_type === 'scenario' ? 'default' : 'secondary'}>
+                          {risk.risk_type === 'scenario' ? '🌍 Scenario' : '📦 Asset'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {risk.risk_type === 'scenario' ? (
+                          <div>
+                            <p className="text-sm font-medium">{risk.scope || "Generale"}</p>
+                            {risk.affected_asset_ids && risk.affected_asset_ids.length > 0 && (
+                              <p className="text-xs text-muted-foreground">
+                                {risk.affected_asset_ids.length} asset impattati
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <div>
+                            <p className="text-sm">{risk.assets?.name || "-"}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {risk.assets?.asset_type}
+                            </p>
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="text-center font-bold text-lg">
@@ -368,9 +429,14 @@ export default function RiskAssessment() {
           open={isWizardOpen}
           onOpenChange={(open) => {
             setIsWizardOpen(open);
-            if (!open) setSelectedAssetId(undefined);
+            if (!open) {
+              setSelectedAssetId(undefined);
+              setSelectedScenarioId(undefined);
+            }
           }}
+          mode={wizardMode}
           assetId={selectedAssetId}
+          scenarioId={selectedScenarioId}
         />
       )}
     </div>

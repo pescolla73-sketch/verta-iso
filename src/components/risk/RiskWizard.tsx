@@ -1,38 +1,35 @@
-import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { InfoIcon, CheckCircle, AlertTriangle, ArrowLeft, ArrowRight, Save } from "lucide-react";
-import {
-  getQuestionsForAsset,
-  calculateRiskFromAnswers,
-  type RiskAnswers,
-  type QuestionStep
-} from "@/data/riskQuestions";
-import { cn } from "@/lib/utils";
+import { ArrowLeft, ArrowRight, CheckCircle2, AlertTriangle } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { assetTypeQuestions, calculateRiskFromAnswers } from "@/data/riskQuestions";
+import { scenarioCategories, getScenarioById, calculateScenarioRisk, type Scenario } from "@/data/scenarioLibrary";
+import { WizardStepper } from "../wizard/WizardStepper";
 
 interface RiskWizardProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   assetId?: string;
+  scenarioId?: string;
+  mode?: 'asset' | 'scenario';
 }
 
-export function RiskWizard({ open, onOpenChange, assetId }: RiskWizardProps) {
+export function RiskWizard({ open, onOpenChange, assetId, scenarioId, mode = 'asset' }: RiskWizardProps) {
   const [currentStep, setCurrentStep] = useState(0);
-  const [answers, setAnswers] = useState<RiskAnswers>({});
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
+  const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
   const queryClient = useQueryClient();
 
-  // Fetch selected asset
+  // Fetch asset data (for asset mode)
   const { data: asset } = useQuery({
     queryKey: ["asset", assetId],
     queryFn: async () => {
@@ -46,323 +43,339 @@ export function RiskWizard({ open, onOpenChange, assetId }: RiskWizardProps) {
       if (error) throw error;
       return data;
     },
-    enabled: !!assetId
+    enabled: !!assetId && mode === 'asset'
   });
 
-  const questions: QuestionStep[] = asset 
-    ? getQuestionsForAsset(asset.asset_type)
-    : [];
+  // Fetch all assets (for scenario mode)
+  const { data: allAssets = [] } = useQuery({
+    queryKey: ["assets"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("assets")
+        .select("*")
+        .order("name");
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: mode === 'scenario'
+  });
 
-  const totalSteps = questions.length;
-  const progress = ((currentStep + 1) / totalSteps) * 100;
-
-  const handleAnswer = (questionId: string, value: string | string[]) => {
-    setAnswers(prev => ({
-      ...prev,
-      [questionId]: value
-    }));
-  };
-
-  const handleMultipleAnswer = (questionId: string, value: string, checked: boolean) => {
-    setAnswers(prev => {
-      const current = (prev[questionId] as string[]) || [];
-      if (checked) {
-        return { ...prev, [questionId]: [...current, value] };
-      } else {
-        return { ...prev, [questionId]: current.filter(v => v !== value) };
-      }
-    });
-  };
-
-  const canProceed = () => {
-    const currentQuestions = questions[currentStep]?.questions || [];
-    return currentQuestions.every(q => {
-      const answer = answers[q.id];
-      if (q.type === 'multiple') {
-        return Array.isArray(answer) && answer.length > 0;
-      }
-      return !!answer;
-    });
-  };
-
-  const handleNext = () => {
-    if (!canProceed()) {
-      toast.error("Rispondi a tutte le domande prima di continuare");
-      return;
+  useEffect(() => {
+    if (scenarioId && mode === 'scenario') {
+      const scenario = getScenarioById(scenarioId);
+      setSelectedScenario(scenario || null);
     }
-    setCurrentStep(prev => Math.min(prev + 1, totalSteps - 1));
-  };
+  }, [scenarioId, mode]);
 
-  const handleBack = () => {
-    setCurrentStep(prev => Math.max(prev - 1, 0));
-  };
+  const questions = mode === 'asset' && asset?.asset_type 
+    ? assetTypeQuestions[asset.asset_type as keyof typeof assetTypeQuestions] || []
+    : selectedScenario?.questions || [];
+  
+  const totalSteps = mode === 'scenario' 
+    ? questions.length + 2
+    : questions.length + 1;
 
   const handleSubmit = async () => {
-    if (!asset || !canProceed()) {
-      toast.error("Completa tutte le domande");
+    if (mode === 'asset' && !asset) {
+      toast.error("Nessun asset selezionato");
+      return;
+    }
+
+    if (mode === 'scenario' && !selectedScenario) {
+      toast.error("Nessuno scenario selezionato");
       return;
     }
 
     setIsSubmitting(true);
+    
     try {
-      // Calculate risk from answers
-      const calculation = calculateRiskFromAnswers(answers, asset.asset_type);
-
-      // Generate risk name and description
-      const riskName = `Rischio ${asset.name}`;
-      const description = calculation.insights.join('. ');
-
-      // Insert risk into database
-      const { error } = await supabase.from("risks").insert({
-        risk_id: `RISK-${Date.now()}`,
-        name: riskName,
-        description,
-        asset_id: asset.id,
-        inherent_probability: getLevelName(calculation.inherent.probability),
-        inherent_impact: getLevelName(calculation.inherent.impact),
-        inherent_risk_score: calculation.inherent.score,
-        inherent_risk_level: calculation.inherent.level,
-        treatment_strategy: calculation.neededControls.length > 0 ? 'mitigate' : 'accept',
-        treatment_description: calculation.neededControls.length > 0
-          ? `Implementare controlli: ${calculation.neededControls.join(', ')}`
-          : 'Rischio accettabile allo stato attuale',
-        related_controls: calculation.neededControls,
-        residual_probability: getLevelName(calculation.residual.probability),
-        residual_impact: getLevelName(calculation.residual.impact),
-        residual_risk_score: calculation.residual.score,
-        residual_risk_level: calculation.residual.level,
-        status: 'Identificato'
-      });
-
-      if (error) throw error;
-
-      toast.success("✅ Valutazione completata!");
-      queryClient.invalidateQueries({ queryKey: ["risks"] });
+      if (mode === 'asset') {
+        const riskData = calculateRiskFromAnswers(answers);
+        
+        const { error } = await supabase.from("risks").insert({
+          risk_type: 'asset-specific',
+          asset_id: assetId,
+          scope: 'Asset singolo',
+          risk_id: `RISK-${Date.now()}`,
+          name: `Rischio ${asset?.name}`,
+          description: `Valutazione rischio per asset: ${asset?.name}`,
+          inherent_probability: String(riskData.inherent.probability),
+          inherent_impact: String(riskData.inherent.impact),
+          inherent_risk_score: riskData.inherent.score,
+          inherent_risk_level: riskData.inherent.level,
+          treatment_strategy: riskData.treatment,
+          related_controls: riskData.controls,
+          residual_probability: String(riskData.residual.probability),
+          residual_impact: String(riskData.residual.impact),
+          residual_risk_score: riskData.residual.score,
+          residual_risk_level: riskData.residual.level,
+          status: "Identificato"
+        });
+        
+        if (error) throw error;
+      } else {
+        const scenarioRisk = calculateScenarioRisk(selectedScenario!, answers);
+        
+        const { error } = await supabase.from("risks").insert({
+          risk_type: 'scenario',
+          asset_id: null,
+          affected_asset_ids: selectedAssetIds.length > 0 ? selectedAssetIds : null,
+          scope: selectedScenario!.scope,
+          risk_id: `RISK-${Date.now()}`,
+          name: selectedScenario!.name,
+          description: selectedScenario!.description,
+          inherent_probability: String(scenarioRisk.inherent.probability),
+          inherent_impact: String(scenarioRisk.inherent.impact),
+          inherent_risk_score: scenarioRisk.inherent.score,
+          inherent_risk_level: scenarioRisk.inherent.level,
+          treatment_strategy: "Mitigazione",
+          related_controls: scenarioRisk.controls,
+          residual_probability: String(scenarioRisk.residual.probability),
+          residual_impact: String(scenarioRisk.residual.impact),
+          residual_risk_score: scenarioRisk.residual.score,
+          residual_risk_level: scenarioRisk.residual.level,
+          status: "Identificato"
+        });
+        
+        if (error) throw error;
+      }
+      
+      await queryClient.invalidateQueries({ queryKey: ["risks"] });
+      
+      toast.success("Rischio valutato con successo!");
       onOpenChange(false);
       setCurrentStep(0);
       setAnswers({});
-    } catch (error: any) {
+      setSelectedAssetIds([]);
+    } catch (error) {
       console.error("Error saving risk:", error);
-      toast.error(`Errore: ${error.message}`);
+      toast.error("Errore nel salvare la valutazione");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const getRiskColor = (level: string) => {
-    switch (level) {
-      case 'Critico': return 'bg-red-100 border-red-500 dark:bg-red-950';
-      case 'Alto': return 'bg-orange-100 border-orange-500 dark:bg-orange-950';
-      case 'Medio': return 'bg-yellow-100 border-yellow-500 dark:bg-yellow-950';
-      case 'Basso': return 'bg-green-100 border-green-500 dark:bg-green-950';
-      default: return 'bg-gray-100 border-gray-500 dark:bg-gray-950';
-    }
-  };
+  const isAssetSelectionStep = mode === 'scenario' && currentStep === 0;
+  const adjustedStep = mode === 'scenario' ? currentStep - 1 : currentStep;
+  const currentQuestion = questions[adjustedStep];
+  const isLastQuestion = mode === 'scenario' 
+    ? currentStep === questions.length 
+    : currentStep === questions.length - 1;
+  const isSummaryStep = mode === 'scenario'
+    ? currentStep === questions.length + 1
+    : currentStep === questions.length;
 
-  const getLevelName = (score: number): string => {
-    if (score === 5) return 'Molto Alta';
-    if (score === 4) return 'Alta';
-    if (score === 3) return 'Media';
-    if (score === 2) return 'Bassa';
-    return 'Molto Bassa';
-  };
-
-  // Calculate preview if on last step
-  const showPreview = currentStep === totalSteps - 1 && asset;
-  const calculation = showPreview 
-    ? calculateRiskFromAnswers(answers, asset.asset_type)
-    : null;
-
-  if (!asset) {
+  const renderSummary = () => {
+    const risk = mode === 'asset'
+      ? calculateRiskFromAnswers(answers)
+      : calculateScenarioRisk(selectedScenario!, answers);
+    
     return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Seleziona un Asset</DialogTitle>
-          </DialogHeader>
-          <p>Seleziona un asset dalla tabella per iniziare la valutazione.</p>
-        </DialogContent>
-      </Dialog>
-    );
-  }
+      <div className="space-y-6">
+        <div className="text-center space-y-2">
+          <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto" />
+          <h3 className="text-2xl font-bold">Valutazione Completata!</h3>
+          {mode === 'scenario' && (
+            <p className="text-lg text-muted-foreground">Scenario: {selectedScenario?.name}</p>
+          )}
+        </div>
 
-  const currentStepData = questions[currentStep];
+        {mode === 'scenario' && selectedAssetIds.length > 0 && (
+          <Card>
+            <CardContent className="pt-6">
+              <h4 className="font-semibold mb-3">Asset Impattati:</h4>
+              <div className="flex flex-wrap gap-2">
+                {allAssets
+                  .filter(a => selectedAssetIds.includes(a.id))
+                  .map(asset => (
+                    <Badge key={asset.id} variant="secondary">
+                      {asset.name}
+                    </Badge>
+                  ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <Card>
+          <CardContent className="pt-6 space-y-4">
+            <div>
+              <h4 className="font-semibold mb-2">Rischio Inerente</h4>
+              <div className="flex items-center gap-4">
+                <Badge 
+                  variant={
+                    risk.inherent.level === "Critico" ? "destructive" :
+                    risk.inherent.level === "Alto" ? "default" :
+                    risk.inherent.level === "Medio" ? "secondary" :
+                    "outline"
+                  }
+                  className="text-lg px-4 py-2"
+                >
+                  {risk.inherent.level}
+                </Badge>
+                <div className="text-sm text-muted-foreground">
+                  <p>Score: {risk.inherent.score}</p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-semibold mb-2">Controlli Raccomandati</h4>
+              <div className="flex flex-wrap gap-2">
+                {risk.controls.map((control) => (
+                  <Badge key={control} variant="outline">
+                    {control}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-semibold mb-2">Rischio Residuo</h4>
+              <div className="flex items-center gap-4">
+                <Badge 
+                  variant={
+                    risk.residual.level === "Critico" ? "destructive" :
+                    risk.residual.level === "Alto" ? "default" :
+                    risk.residual.level === "Medio" ? "secondary" :
+                    "outline"
+                  }
+                  className="text-lg px-4 py-2"
+                >
+                  {risk.residual.level}
+                </Badge>
+                <div className="text-sm text-muted-foreground">
+                  <p>Score: {risk.residual.score}</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <span className="text-2xl">🎯</span>
-            Valutazione Rischi: {asset.name}
+          <DialogTitle className="text-2xl">
+            {isSummaryStep 
+              ? "Riepilogo Valutazione" 
+              : mode === 'asset' 
+                ? `Valutazione Rischio: ${asset?.name}` 
+                : `Scenario: ${selectedScenario?.name || 'Seleziona scenario'}`}
           </DialogTitle>
         </DialogHeader>
 
-        {/* Progress Bar */}
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm text-muted-foreground">
-            <span>Step {currentStep + 1} di {totalSteps}</span>
-            <span>{Math.round(progress)}%</span>
-          </div>
-          <Progress value={progress} />
-        </div>
-
-        {/* Current Step */}
-        {currentStepData && (
-          <div className="space-y-6 py-4">
-            <div>
-              <h3 className="text-lg font-semibold">{currentStepData.title}</h3>
-              <p className="text-sm text-muted-foreground">{currentStepData.description}</p>
-            </div>
-
-            {currentStepData.questions.map((question) => (
-              <div key={question.id} className="space-y-3">
-                <Label className="text-base font-medium">{question.text}</Label>
-                {question.helpText && (
-                  <p className="text-sm text-muted-foreground flex items-start gap-2">
-                    <InfoIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                    {question.helpText}
-                  </p>
-                )}
-
-                {question.type === 'single' ? (
-                  <RadioGroup
-                    value={answers[question.id] as string}
-                    onValueChange={(value) => handleAnswer(question.id, value)}
-                  >
-                    {question.options.map((option) => (
-                      <div key={option.value} className="flex items-start space-x-3 space-y-0">
-                        <RadioGroupItem value={option.value} id={`${question.id}-${option.value}`} />
-                        <Label
-                          htmlFor={`${question.id}-${option.value}`}
-                          className="font-normal cursor-pointer flex-1"
-                        >
-                          <div>
-                            <div>{option.label}</div>
-                            {option.description && (
-                              <div className="text-xs text-muted-foreground mt-1">
-                                {option.description}
-                              </div>
-                            )}
-                          </div>
-                        </Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                ) : (
-                  <div className="space-y-2">
-                    {question.options.map((option) => (
-                      <div key={option.value} className="flex items-start space-x-3">
-                        <Checkbox
-                          id={`${question.id}-${option.value}`}
-                          checked={(answers[question.id] as string[] || []).includes(option.value)}
-                          onCheckedChange={(checked) =>
-                            handleMultipleAnswer(question.id, option.value, checked as boolean)
-                          }
-                        />
-                        <Label
-                          htmlFor={`${question.id}-${option.value}`}
-                          className="font-normal cursor-pointer"
-                        >
-                          {option.label}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Results Preview */}
-        {showPreview && calculation && (
-          <div className="space-y-4 border-t pt-4">
-            <h3 className="text-lg font-semibold">📊 Risultato Valutazione</h3>
-
-            <div className="grid grid-cols-2 gap-4">
-              <Card className={cn("border-2", getRiskColor(calculation.inherent.level))}>
-                <CardHeader>
-                  <CardTitle className="text-sm">Rischio Attuale</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-center mb-2">
-                    {calculation.inherent.score}
-                  </div>
-                  <Badge className="w-full justify-center" variant="destructive">
-                    {calculation.inherent.level}
-                  </Badge>
-                </CardContent>
-              </Card>
-
-              <Card className={cn("border-2", getRiskColor(calculation.residual.level))}>
-                <CardHeader>
-                  <CardTitle className="text-sm">Dopo Controlli</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-center mb-2">
-                    {calculation.residual.score}
-                  </div>
-                  <Badge className="w-full justify-center" variant="outline">
-                    {calculation.residual.level}
-                  </Badge>
-                </CardContent>
-              </Card>
-            </div>
-
-            {calculation.insights.length > 0 && (
-              <Alert>
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  <ul className="list-disc list-inside space-y-1">
-                    {calculation.insights.map((insight, i) => (
-                      <li key={i}>{insight}</li>
-                    ))}
-                  </ul>
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {calculation.neededControls.length > 0 && (
-              <Alert>
-                <CheckCircle className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>Controlli da implementare:</strong>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {calculation.neededControls.map(control => (
-                      <Badge key={control} variant="outline">
-                        {control}
-                      </Badge>
-                    ))}
-                  </div>
-                </AlertDescription>
-              </Alert>
-            )}
-          </div>
-        )}
-
-        <DialogFooter className="flex justify-between">
-          <Button
-            variant="outline"
-            onClick={handleBack}
-            disabled={currentStep === 0}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Indietro
-          </Button>
-
-          {currentStep < totalSteps - 1 ? (
-            <Button onClick={handleNext} disabled={!canProceed()}>
-              Avanti
-              <ArrowRight className="h-4 w-4 ml-2" />
-            </Button>
-          ) : (
-            <Button onClick={handleSubmit} disabled={!canProceed() || isSubmitting}>
-              <Save className="h-4 w-4 mr-2" />
-              {isSubmitting ? "Salvataggio..." : "Salva Valutazione"}
-            </Button>
+        <div className="space-y-6">
+          {!isSummaryStep && (
+            <WizardStepper 
+              currentStep={currentStep} 
+              totalSteps={totalSteps}
+              stepLabels={
+                mode === 'scenario'
+                  ? ["Asset Impattati", ...questions.map((_, i) => `Domanda ${i + 1}`), "Riepilogo"]
+                  : [...questions.map((_, i) => `Domanda ${i + 1}`), "Riepilogo"]
+              }
+            />
           )}
-        </DialogFooter>
+
+          {isSummaryStep ? (
+            renderSummary()
+          ) : isAssetSelectionStep ? (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold">Quali asset sono impattati?</h3>
+                <p className="text-sm text-muted-foreground">
+                  Seleziona uno o più asset coinvolti in questo scenario
+                </p>
+              </div>
+              
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {allAssets.map((asset) => (
+                  <div 
+                    key={asset.id}
+                    className={`flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-colors ${
+                      selectedAssetIds.includes(asset.id) ? 'bg-accent border-primary' : 'hover:bg-accent'
+                    }`}
+                    onClick={() => {
+                      setSelectedAssetIds(prev => 
+                        prev.includes(asset.id)
+                          ? prev.filter(id => id !== asset.id)
+                          : [...prev, asset.id]
+                      );
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedAssetIds.includes(asset.id)}
+                      onChange={() => {}}
+                      className="h-4 w-4"
+                    />
+                    <div className="flex-1">
+                      <p className="font-medium">{asset.name}</p>
+                      <p className="text-sm text-muted-foreground">{asset.asset_type}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-amber-500" />
+                  {currentQuestion?.text}
+                </h3>
+              </div>
+
+              <RadioGroup
+                value={answers[currentQuestion?.id]}
+                onValueChange={(value) => setAnswers({ ...answers, [currentQuestion.id]: value })}
+                className="space-y-3"
+              >
+                {currentQuestion?.options.map((option) => (
+                  <div key={option.value} className="flex items-start space-x-3 p-4 rounded-lg border hover:bg-accent">
+                    <RadioGroupItem value={option.value} id={option.value} />
+                    <Label 
+                      htmlFor={option.value}
+                      className="flex-1 cursor-pointer text-base leading-relaxed"
+                    >
+                      {option.label}
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </div>
+          )}
+
+          <div className="flex justify-between pt-6 border-t">
+            <Button
+              variant="outline"
+              onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
+              disabled={currentStep === 0 || isSubmitting}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Indietro
+            </Button>
+
+            {isSummaryStep ? (
+              <Button onClick={handleSubmit} disabled={isSubmitting}>
+                {isSubmitting ? "Salvataggio..." : "Salva Valutazione"}
+              </Button>
+            ) : (
+              <Button
+                onClick={() => setCurrentStep(currentStep + 1)}
+                disabled={isAssetSelectionStep ? selectedAssetIds.length === 0 : !answers[currentQuestion?.id]}
+              >
+                {isLastQuestion ? "Vai al Riepilogo" : "Avanti"}
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            )}
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
