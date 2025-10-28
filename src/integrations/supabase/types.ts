@@ -448,6 +448,131 @@ export type Database = {
           },
         ]
       }
+      risks: {
+        Row: {
+          asset_id: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          identified_date: string | null
+          inherent_impact: string
+          inherent_probability: string
+          inherent_risk_level: string | null
+          inherent_risk_score: number | null
+          last_review_date: string | null
+          name: string
+          next_review_date: string | null
+          notes: string | null
+          organization_id: string | null
+          related_controls: string[] | null
+          residual_impact: string | null
+          residual_probability: string | null
+          residual_risk_level: string | null
+          residual_risk_score: number | null
+          risk_id: string
+          status: string | null
+          threat_id: string | null
+          treatment_cost: number | null
+          treatment_deadline: string | null
+          treatment_description: string | null
+          treatment_responsible: string | null
+          treatment_strategy: string | null
+          updated_at: string | null
+          vulnerability_id: string | null
+        }
+        Insert: {
+          asset_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          identified_date?: string | null
+          inherent_impact: string
+          inherent_probability: string
+          inherent_risk_level?: string | null
+          inherent_risk_score?: number | null
+          last_review_date?: string | null
+          name: string
+          next_review_date?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          related_controls?: string[] | null
+          residual_impact?: string | null
+          residual_probability?: string | null
+          residual_risk_level?: string | null
+          residual_risk_score?: number | null
+          risk_id: string
+          status?: string | null
+          threat_id?: string | null
+          treatment_cost?: number | null
+          treatment_deadline?: string | null
+          treatment_description?: string | null
+          treatment_responsible?: string | null
+          treatment_strategy?: string | null
+          updated_at?: string | null
+          vulnerability_id?: string | null
+        }
+        Update: {
+          asset_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          identified_date?: string | null
+          inherent_impact?: string
+          inherent_probability?: string
+          inherent_risk_level?: string | null
+          inherent_risk_score?: number | null
+          last_review_date?: string | null
+          name?: string
+          next_review_date?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          related_controls?: string[] | null
+          residual_impact?: string | null
+          residual_probability?: string | null
+          residual_risk_level?: string | null
+          residual_risk_score?: number | null
+          risk_id?: string
+          status?: string | null
+          threat_id?: string | null
+          treatment_cost?: number | null
+          treatment_deadline?: string | null
+          treatment_description?: string | null
+          treatment_responsible?: string | null
+          treatment_strategy?: string | null
+          updated_at?: string | null
+          vulnerability_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "risks_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "risks_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "risks_threat_id_fkey"
+            columns: ["threat_id"]
+            isOneToOne: false
+            referencedRelation: "threats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "risks_vulnerability_id_fkey"
+            columns: ["vulnerability_id"]
+            isOneToOne: false
+            referencedRelation: "vulnerabilities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       soa_documents: {
         Row: {
           approval_date: string | null
@@ -531,6 +656,47 @@ export type Database = {
           },
         ]
       }
+      threats: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          organization_id: string | null
+          threat_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          organization_id?: string | null
+          threat_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          organization_id?: string | null
+          threat_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "threats_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -551,6 +717,47 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      vulnerabilities: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          organization_id: string | null
+          updated_at: string | null
+          vulnerability_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          organization_id?: string | null
+          updated_at?: string | null
+          vulnerability_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          organization_id?: string | null
+          updated_at?: string | null
+          vulnerability_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vulnerabilities_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
