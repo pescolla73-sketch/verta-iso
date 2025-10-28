@@ -20,7 +20,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Search, AlertTriangle } from "lucide-react";
+import { Plus, Search, AlertTriangle, Info as InfoIcon } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
 import { RiskWizard } from "@/components/risk/RiskWizard";
 import { RiskMatrix } from "@/components/risk/RiskMatrix";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -31,6 +33,7 @@ export default function RiskAssessment() {
   const [levelFilter, setLevelFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [selectedAssetId, setSelectedAssetId] = useState<string | undefined>();
 
   const { data: risks, isLoading } = useQuery({
     queryKey: ["risks"],
@@ -76,23 +79,101 @@ export default function RiskAssessment() {
     }
   };
 
+  // Fetch assets for selection
+  const { data: assets = [] } = useQuery({
+    queryKey: ["assets"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("assets")
+        .select("*")
+        .order("name");
+      
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
+  const handleAssetSelect = (assetId: string) => {
+    setSelectedAssetId(assetId);
+    setIsWizardOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-            <AlertTriangle className="h-8 w-8 text-orange-500" />
-            Risk Assessment
+            <span className="text-2xl">🎯</span>
+            Valutazione Rischi Semplificata
           </h1>
           <p className="text-muted-foreground mt-2">
-            Identificazione e valutazione dei rischi per la sicurezza delle informazioni
+            Rispondi a domande semplici e ottieni una valutazione professionale
           </p>
         </div>
-        <Button className="gap-2" onClick={() => setIsWizardOpen(true)}>
-          <Plus className="h-4 w-4" />
-          Nuovo Rischio
-        </Button>
       </div>
+
+      {/* Asset Selection Section */}
+      {assets.length > 0 && (
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle>Seleziona un Asset da Valutare</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Clicca su un asset per iniziare la valutazione guidata (5-10 minuti)
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {assets.map(asset => {
+                const assetRisks = filteredRisks?.filter(r => r.asset_id === asset.id) || [];
+                const hasRisk = assetRisks.length > 0;
+                
+                return (
+                  <Card
+                    key={asset.id}
+                    className={cn(
+                      "cursor-pointer transition-all hover:shadow-md",
+                      hasRisk && "border-green-500"
+                    )}
+                    onClick={() => handleAssetSelect(asset.id)}
+                  >
+                    <CardContent className="pt-6">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-medium">{asset.name}</h3>
+                          <p className="text-sm text-muted-foreground">{asset.asset_type}</p>
+                        </div>
+                        {hasRisk ? (
+                          <Badge variant="outline" className="bg-green-100">
+                            ✓ Valutato
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary">
+                            Da valutare
+                          </Badge>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {assets.length === 0 && (
+        <Alert>
+          <InfoIcon className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Nessun asset trovato.</strong>
+            <br />
+            Prima di valutare i rischi, devi creare almeno un asset.
+            <Button variant="link" className="p-0 h-auto ml-1" onClick={() => window.location.href = '/assets'}>
+              Vai agli Asset →
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Risk Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -282,7 +363,16 @@ export default function RiskAssessment() {
         </CardContent>
       </Card>
 
-      <RiskWizard open={isWizardOpen} onOpenChange={setIsWizardOpen} />
+      {isWizardOpen && (
+        <RiskWizard
+          open={isWizardOpen}
+          onOpenChange={(open) => {
+            setIsWizardOpen(open);
+            if (!open) setSelectedAssetId(undefined);
+          }}
+          assetId={selectedAssetId}
+        />
+      )}
     </div>
   );
 }

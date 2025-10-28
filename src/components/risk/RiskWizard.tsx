@@ -1,788 +1,368 @@
-import { useState, useEffect } from "react";
-import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { format } from "date-fns";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { CalendarIcon, Info, AlertTriangle, CheckCircle2 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormDescription,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { InfoIcon, CheckCircle, AlertTriangle, ArrowLeft, ArrowRight, Save } from "lucide-react";
 import {
-  calculateRiskScore,
-  getRiskCategory,
-  getRiskColor,
-  getRiskBadgeVariant,
-  THREAT_CATEGORIES,
-  TREATMENT_STRATEGIES,
-  PROBABILITY_LEVELS,
-  IMPACT_LEVELS,
-  RiskLevel,
-} from "@/utils/riskCalculation";
-
-const riskSchema = z.object({
-  // Step 1
-  risk_id: z.string().min(1, "Risk ID obbligatorio"),
-  name: z.string().min(1, "Nome obbligatorio"),
-  description: z.string().optional(),
-  asset_id: z.string().min(1, "Asset obbligatorio"),
-  threat_category: z.string().min(1, "Minaccia obbligatoria"),
-  
-  // Step 2
-  inherent_probability: z.string().min(1, "Probabilità obbligatoria"),
-  inherent_impact: z.string().min(1, "Impatto obbligatorio"),
-  
-  // Step 3
-  treatment_strategy: z.string().min(1, "Strategia obbligatoria"),
-  treatment_description: z.string().optional(),
-  treatment_cost: z.string().optional(),
-  treatment_deadline: z.date().optional(),
-  treatment_responsible: z.string().optional(),
-  related_controls: z.array(z.string()).optional(),
-  
-  // Step 4 (conditional)
-  residual_probability: z.string().optional(),
-  residual_impact: z.string().optional(),
-});
-
-type RiskFormValues = z.infer<typeof riskSchema>;
+  getQuestionsForAsset,
+  calculateRiskFromAnswers,
+  type RiskAnswers,
+  type QuestionStep
+} from "@/data/riskQuestions";
+import { cn } from "@/lib/utils";
 
 interface RiskWizardProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  assetId?: string;
 }
 
-export function RiskWizard({ open, onOpenChange }: RiskWizardProps) {
-  const [step, setStep] = useState(1);
+export function RiskWizard({ open, onOpenChange, assetId }: RiskWizardProps) {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [answers, setAnswers] = useState<RiskAnswers>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const queryClient = useQueryClient();
 
-  const form = useForm<RiskFormValues>({
-    resolver: zodResolver(riskSchema),
-    defaultValues: {
-      risk_id: "",
-      name: "",
-      description: "",
-      asset_id: "",
-      threat_category: "",
-      inherent_probability: "",
-      inherent_impact: "",
-      treatment_strategy: "",
-      treatment_description: "",
-      treatment_cost: "",
-      treatment_responsible: "",
-      related_controls: [],
-      residual_probability: "",
-      residual_impact: "",
-    },
-  });
-
-  // Fetch assets
-  const { data: assets } = useQuery({
-    queryKey: ["assets"],
+  // Fetch selected asset
+  const { data: asset } = useQuery({
+    queryKey: ["asset", assetId],
     queryFn: async () => {
+      if (!assetId) return null;
       const { data, error } = await supabase
         .from("assets")
         .select("*")
-        .order("name");
+        .eq("id", assetId)
+        .single();
+      
       if (error) throw error;
       return data;
     },
+    enabled: !!assetId
   });
 
-  // Fetch controls
-  const { data: controls } = useQuery({
-    queryKey: ["controls"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("controls")
-        .select("*")
-        .order("control_id");
-      if (error) throw error;
-      return data;
-    },
-  });
+  const questions: QuestionStep[] = asset 
+    ? getQuestionsForAsset(asset.asset_type)
+    : [];
 
-  const watchedValues = form.watch();
-  
-  // Calculate inherent risk
-  const inherentScore = watchedValues.inherent_probability && watchedValues.inherent_impact
-    ? calculateRiskScore(
-        watchedValues.inherent_probability as RiskLevel,
-        watchedValues.inherent_impact as RiskLevel
-      )
-    : 0;
-  
-  const inherentCategory = inherentScore > 0 ? getRiskCategory(inherentScore) : null;
-  
-  // Calculate residual risk
-  const residualScore = watchedValues.residual_probability && watchedValues.residual_impact
-    ? calculateRiskScore(
-        watchedValues.residual_probability as RiskLevel,
-        watchedValues.residual_impact as RiskLevel
-      )
-    : 0;
-  
-  const residualCategory = residualScore > 0 ? getRiskCategory(residualScore) : null;
+  const totalSteps = questions.length;
+  const progress = ((currentStep + 1) / totalSteps) * 100;
 
-  const maxSteps = watchedValues.treatment_strategy === "mitigate" ? 4 : 3;
+  const handleAnswer = (questionId: string, value: string | string[]) => {
+    setAnswers(prev => ({
+      ...prev,
+      [questionId]: value
+    }));
+  };
 
-  const onSubmit = async (values: RiskFormValues) => {
+  const handleMultipleAnswer = (questionId: string, value: string, checked: boolean) => {
+    setAnswers(prev => {
+      const current = (prev[questionId] as string[]) || [];
+      if (checked) {
+        return { ...prev, [questionId]: [...current, value] };
+      } else {
+        return { ...prev, [questionId]: current.filter(v => v !== value) };
+      }
+    });
+  };
+
+  const canProceed = () => {
+    const currentQuestions = questions[currentStep]?.questions || [];
+    return currentQuestions.every(q => {
+      const answer = answers[q.id];
+      if (q.type === 'multiple') {
+        return Array.isArray(answer) && answer.length > 0;
+      }
+      return !!answer;
+    });
+  };
+
+  const handleNext = () => {
+    if (!canProceed()) {
+      toast.error("Rispondi a tutte le domande prima di continuare");
+      return;
+    }
+    setCurrentStep(prev => Math.min(prev + 1, totalSteps - 1));
+  };
+
+  const handleBack = () => {
+    setCurrentStep(prev => Math.max(prev - 1, 0));
+  };
+
+  const handleSubmit = async () => {
+    if (!asset || !canProceed()) {
+      toast.error("Completa tutte le domande");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      // Get organization ID
-      let organizationId = null;
-      try {
-        const { data: orgs } = await supabase
-          .from("organization")
-          .select("id")
-          .limit(1)
-          .single();
-        if (orgs) organizationId = orgs.id;
-      } catch (err) {
-        console.log("No organization found");
-      }
+      // Calculate risk from answers
+      const calculation = calculateRiskFromAnswers(answers, asset.asset_type);
 
-      const riskData = {
-        organization_id: organizationId,
-        risk_id: values.risk_id,
-        name: values.name,
-        description: values.description || null,
-        asset_id: values.asset_id,
-        inherent_probability: values.inherent_probability,
-        inherent_impact: values.inherent_impact,
-        inherent_risk_score: inherentScore,
-        inherent_risk_level: inherentCategory,
-        treatment_strategy: values.treatment_strategy,
-        treatment_description: values.treatment_description || null,
-        treatment_cost: values.treatment_cost ? parseFloat(values.treatment_cost) : null,
-        treatment_deadline: values.treatment_deadline
-          ? format(values.treatment_deadline, "yyyy-MM-dd")
-          : null,
-        treatment_responsible: values.treatment_responsible || null,
-        related_controls: values.related_controls || [],
-        residual_probability: values.residual_probability || null,
-        residual_impact: values.residual_impact || null,
-        residual_risk_score: residualScore || null,
-        residual_risk_level: residualCategory || null,
-        status: "Identificato",
-      };
+      // Generate risk name and description
+      const riskName = `Rischio ${asset.name}`;
+      const description = calculation.insights.join('. ');
 
-      const { error } = await supabase.from("risks").insert([riskData]);
+      // Insert risk into database
+      const { error } = await supabase.from("risks").insert({
+        risk_id: `RISK-${Date.now()}`,
+        name: riskName,
+        description,
+        asset_id: asset.id,
+        inherent_probability: getLevelName(calculation.inherent.probability),
+        inherent_impact: getLevelName(calculation.inherent.impact),
+        inherent_risk_score: calculation.inherent.score,
+        inherent_risk_level: calculation.inherent.level,
+        treatment_strategy: calculation.neededControls.length > 0 ? 'mitigate' : 'accept',
+        treatment_description: calculation.neededControls.length > 0
+          ? `Implementare controlli: ${calculation.neededControls.join(', ')}`
+          : 'Rischio accettabile allo stato attuale',
+        related_controls: calculation.neededControls,
+        residual_probability: getLevelName(calculation.residual.probability),
+        residual_impact: getLevelName(calculation.residual.impact),
+        residual_risk_score: calculation.residual.score,
+        residual_risk_level: calculation.residual.level,
+        status: 'Identificato'
+      });
 
-      if (error) {
-        console.error("Risk creation error:", error);
-        throw error;
-      }
+      if (error) throw error;
 
-      toast.success("Rischio creato con successo");
+      toast.success("✅ Valutazione completata!");
       queryClient.invalidateQueries({ queryKey: ["risks"] });
       onOpenChange(false);
-      form.reset();
-      setStep(1);
+      setCurrentStep(0);
+      setAnswers({});
     } catch (error: any) {
-      toast.error(error.message || "Errore nella creazione del rischio");
+      console.error("Error saving risk:", error);
+      toast.error(`Errore: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleNext = async () => {
-    const fields = getFieldsForStep(step);
-    const isValid = await form.trigger(fields as any);
-    if (isValid) {
-      setStep(step + 1);
+  const getRiskColor = (level: string) => {
+    switch (level) {
+      case 'Critico': return 'bg-red-100 border-red-500 dark:bg-red-950';
+      case 'Alto': return 'bg-orange-100 border-orange-500 dark:bg-orange-950';
+      case 'Medio': return 'bg-yellow-100 border-yellow-500 dark:bg-yellow-950';
+      case 'Basso': return 'bg-green-100 border-green-500 dark:bg-green-950';
+      default: return 'bg-gray-100 border-gray-500 dark:bg-gray-950';
     }
   };
 
-  const getFieldsForStep = (currentStep: number): string[] => {
-    switch (currentStep) {
-      case 1:
-        return ["risk_id", "name", "asset_id", "threat_category"];
-      case 2:
-        return ["inherent_probability", "inherent_impact"];
-      case 3:
-        return ["treatment_strategy"];
-      case 4:
-        return ["residual_probability", "residual_impact"];
-      default:
-        return [];
-    }
+  const getLevelName = (score: number): string => {
+    if (score === 5) return 'Molto Alta';
+    if (score === 4) return 'Alta';
+    if (score === 3) return 'Media';
+    if (score === 2) return 'Bassa';
+    return 'Molto Bassa';
   };
+
+  // Calculate preview if on last step
+  const showPreview = currentStep === totalSteps - 1 && asset;
+  const calculation = showPreview 
+    ? calculateRiskFromAnswers(answers, asset.asset_type)
+    : null;
+
+  if (!asset) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Seleziona un Asset</DialogTitle>
+          </DialogHeader>
+          <p>Seleziona un asset dalla tabella per iniziare la valutazione.</p>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  const currentStepData = questions[currentStep];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-2xl">
-            🎯 Valutazione Nuovo Rischio
+          <DialogTitle className="flex items-center gap-2">
+            <span className="text-2xl">🎯</span>
+            Valutazione Rischi: {asset.name}
           </DialogTitle>
         </DialogHeader>
 
-        {/* Progress Stepper */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-2">
-            {["Identificazione", "Valutazione", "Trattamento", "Residuo"].slice(0, maxSteps).map((label, index) => {
-              const stepNum = index + 1;
-              const isActive = step === stepNum;
-              const isCompleted = step > stepNum;
-              
-              return (
-                <div key={stepNum} className="flex items-center flex-1">
-                  <div className="flex flex-col items-center flex-1">
-                    <div
-                      className={cn(
-                        "w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm mb-2",
-                        isCompleted && "bg-green-500 text-white",
-                        isActive && "bg-primary text-primary-foreground",
-                        !isActive && !isCompleted && "bg-muted text-muted-foreground"
-                      )}
-                    >
-                      {isCompleted ? "✓" : stepNum}
-                    </div>
-                    <p className="text-xs text-center">{label}</p>
-                  </div>
-                  {stepNum < maxSteps && (
-                    <div
-                      className={cn(
-                        "h-1 flex-1 mx-2",
-                        isCompleted ? "bg-green-500" : "bg-muted"
-                      )}
-                    />
-                  )}
-                </div>
-              );
-            })}
+        {/* Progress Bar */}
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm text-muted-foreground">
+            <span>Step {currentStep + 1} di {totalSteps}</span>
+            <span>{Math.round(progress)}%</span>
           </div>
-          <Progress value={(step / maxSteps) * 100} className="h-2" />
+          <Progress value={progress} />
         </div>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Step 1: Identification */}
-            {step === 1 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Step 1: Identificazione del Rischio</h3>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="risk_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Risk ID *</FormLabel>
-                        <FormControl>
-                          <Input placeholder="es. RISK-001" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+        {/* Current Step */}
+        {currentStepData && (
+          <div className="space-y-6 py-4">
+            <div>
+              <h3 className="text-lg font-semibold">{currentStepData.title}</h3>
+              <p className="text-sm text-muted-foreground">{currentStepData.description}</p>
+            </div>
 
-                  <FormField
-                    control={form.control}
-                    name="asset_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Asset a Rischio *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Seleziona asset" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {assets?.map((asset) => (
-                              <SelectItem key={asset.id} value={asset.id}>
-                                {asset.name} ({asset.asset_type})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+            {currentStepData.questions.map((question) => (
+              <div key={question.id} className="space-y-3">
+                <Label className="text-base font-medium">{question.text}</Label>
+                {question.helpText && (
+                  <p className="text-sm text-muted-foreground flex items-start gap-2">
+                    <InfoIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    {question.helpText}
+                  </p>
+                )}
 
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nome Rischio *</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="es. Perdita dati per ransomware su server produzione"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="threat_category"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Minaccia *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Seleziona minaccia" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {THREAT_CATEGORIES.map((cat) => (
-                            <SelectItem key={cat.value} value={cat.value}>
-                              {cat.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Descrizione</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Descrivi lo scenario di rischio..."
-                          className="min-h-[100px]"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            )}
-
-            {/* Step 2: Inherent Risk Assessment */}
-            {step === 2 && (
-              <div className="space-y-6">
-                <h3 className="text-lg font-semibold">
-                  Step 2: Valutazione Rischio Inerente (PRIMA del trattamento)
-                </h3>
-
-                <Alert>
-                  <Info className="h-4 w-4" />
-                  <AlertDescription>
-                    Valuta il rischio SENZA considerare i controlli attuali. Immagina lo scenario
-                    peggiore.
-                  </AlertDescription>
-                </Alert>
-
-                <FormField
-                  control={form.control}
-                  name="inherent_probability"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel>Probabilità che si verifichi *</FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          value={field.value}
-                          className="flex flex-col space-y-2"
+                {question.type === 'single' ? (
+                  <RadioGroup
+                    value={answers[question.id] as string}
+                    onValueChange={(value) => handleAnswer(question.id, value)}
+                  >
+                    {question.options.map((option) => (
+                      <div key={option.value} className="flex items-start space-x-3 space-y-0">
+                        <RadioGroupItem value={option.value} id={`${question.id}-${option.value}`} />
+                        <Label
+                          htmlFor={`${question.id}-${option.value}`}
+                          className="font-normal cursor-pointer flex-1"
                         >
-                          {PROBABILITY_LEVELS.map((level) => (
-                            <div
-                              key={level.value}
-                              className="flex items-center space-x-3 space-y-0 border rounded-lg p-3 hover:bg-muted/50 cursor-pointer"
-                            >
-                              <RadioGroupItem value={level.value} />
-                              <div className="flex-1">
-                                <p className="font-medium">{level.label}</p>
-                                <p className="text-sm text-muted-foreground">{level.description}</p>
+                          <div>
+                            <div>{option.label}</div>
+                            {option.description && (
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {option.description}
                               </div>
-                            </div>
-                          ))}
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="inherent_impact"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel>Impatto se si verifica *</FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          value={field.value}
-                          className="flex flex-col space-y-2"
-                        >
-                          {IMPACT_LEVELS.map((level) => (
-                            <div
-                              key={level.value}
-                              className="flex items-center space-x-3 space-y-0 border rounded-lg p-3 hover:bg-muted/50 cursor-pointer"
-                            >
-                              <RadioGroupItem value={level.value} />
-                              <div className="flex-1">
-                                <p className="font-medium">{level.label}</p>
-                                <p className="text-sm text-muted-foreground">{level.description}</p>
-                              </div>
-                            </div>
-                          ))}
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {inherentScore > 0 && inherentCategory && (
-                  <Card className={cn("border-2", getRiskColor(inherentCategory))}>
-                    <CardHeader>
-                      <CardTitle>📊 Livello di Rischio Inerente</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-center space-y-4">
-                        <div className="text-6xl font-bold">{inherentScore}</div>
-                        <Badge variant={getRiskBadgeVariant(inherentCategory)} className="text-lg px-4 py-2">
-                          {inherentCategory}
-                        </Badge>
-                        <p className="text-sm text-muted-foreground">
-                          Probabilità × Impatto = {inherentScore}
-                        </p>
+                            )}
+                          </div>
+                        </Label>
                       </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            )}
-
-            {/* Step 3: Treatment Strategy */}
-            {step === 3 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Step 3: Strategia di Trattamento</h3>
-
-                <FormField
-                  control={form.control}
-                  name="treatment_strategy"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel>Strategia *</FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          value={field.value}
-                          className="flex flex-col space-y-2"
-                        >
-                          {TREATMENT_STRATEGIES.map((strategy) => (
-                            <div
-                              key={strategy.value}
-                              className="flex items-center space-x-3 space-y-0 border rounded-lg p-4 hover:bg-muted/50 cursor-pointer"
-                            >
-                              <RadioGroupItem value={strategy.value} />
-                              <div className="flex-1">
-                                <p className="font-medium">{strategy.label}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  {strategy.description}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {watchedValues.treatment_strategy === "accept" && (
-                  <Alert variant="destructive">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>Attenzione</AlertTitle>
-                    <AlertDescription>
-                      L'accettazione del rischio deve essere approvata dal management. Documenta
-                      la giustificazione dell'accettazione.
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                <FormField
-                  control={form.control}
-                  name="treatment_description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Piano di Trattamento</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Descrivi le azioni specifiche da implementare..."
-                          className="min-h-[100px]"
-                          {...field}
+                    ))}
+                  </RadioGroup>
+                ) : (
+                  <div className="space-y-2">
+                    {question.options.map((option) => (
+                      <div key={option.value} className="flex items-start space-x-3">
+                        <Checkbox
+                          id={`${question.id}-${option.value}`}
+                          checked={(answers[question.id] as string[] || []).includes(option.value)}
+                          onCheckedChange={(checked) =>
+                            handleMultipleAnswer(question.id, option.value, checked as boolean)
+                          }
                         />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="treatment_cost"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Costo Stimato (€)</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="0" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="treatment_deadline"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Scadenza Implementazione</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  "w-full pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                              >
-                                {field.value ? format(field.value, "PPP") : <span>Seleziona data</span>}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              initialFocus
-                              className="pointer-events-auto"
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="treatment_responsible"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Responsabile</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Nome responsabile implementazione" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            )}
-
-            {/* Step 4: Residual Risk (only for mitigate strategy) */}
-            {step === 4 && watchedValues.treatment_strategy === "mitigate" && (
-              <div className="space-y-6">
-                <h3 className="text-lg font-semibold">
-                  Step 4: Rischio Residuo (DOPO il trattamento)
-                </h3>
-
-                <Alert>
-                  <Info className="h-4 w-4" />
-                  <AlertDescription>
-                    Ora valuta il rischio DOPO aver implementato i controlli selezionati.
-                  </AlertDescription>
-                </Alert>
-
-                <FormField
-                  control={form.control}
-                  name="residual_probability"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel>Probabilità Residua *</FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          value={field.value}
-                          className="flex flex-col space-y-2"
+                        <Label
+                          htmlFor={`${question.id}-${option.value}`}
+                          className="font-normal cursor-pointer"
                         >
-                          {PROBABILITY_LEVELS.map((level) => (
-                            <div
-                              key={level.value}
-                              className="flex items-center space-x-3 space-y-0 border rounded-lg p-3 hover:bg-muted/50 cursor-pointer"
-                            >
-                              <RadioGroupItem value={level.value} />
-                              <div className="flex-1">
-                                <p className="font-medium">{level.label}</p>
-                                <p className="text-sm text-muted-foreground">{level.description}</p>
-                              </div>
-                            </div>
-                          ))}
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="residual_impact"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel>Impatto Residuo *</FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          value={field.value}
-                          className="flex flex-col space-y-2"
-                        >
-                          {IMPACT_LEVELS.map((level) => (
-                            <div
-                              key={level.value}
-                              className="flex items-center space-x-3 space-y-0 border rounded-lg p-3 hover:bg-muted/50 cursor-pointer"
-                            >
-                              <RadioGroupItem value={level.value} />
-                              <div className="flex-1">
-                                <p className="font-medium">{level.label}</p>
-                                <p className="text-sm text-muted-foreground">{level.description}</p>
-                              </div>
-                            </div>
-                          ))}
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {residualScore > 0 && residualCategory && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <Card className="border-red-500 border-2">
-                      <CardHeader>
-                        <CardTitle className="text-center">Rischio Inerente</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-center space-y-2">
-                          <div className="text-4xl font-bold">{inherentScore}</div>
-                          <Badge
-                            variant={getRiskBadgeVariant(inherentCategory!)}
-                            className="w-full justify-center"
-                          >
-                            {inherentCategory}
-                          </Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="border-green-500 border-2">
-                      <CardHeader>
-                        <CardTitle className="text-center">Rischio Residuo</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-center space-y-2">
-                          <div className="text-4xl font-bold">{residualScore}</div>
-                          <Badge
-                            variant={getRiskBadgeVariant(residualCategory)}
-                            className="w-full justify-center"
-                          >
-                            {residualCategory}
-                          </Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
+                          {option.label}
+                        </Label>
+                      </div>
+                    ))}
                   </div>
                 )}
-
-                {residualScore > 0 && (
-                  <Alert variant={residualScore <= 6 ? "default" : "destructive"}>
-                    {residualScore <= 6 ? (
-                      <CheckCircle2 className="h-4 w-4" />
-                    ) : (
-                      <AlertTriangle className="h-4 w-4" />
-                    )}
-                    <AlertDescription>
-                      {residualScore <= 6
-                        ? "✅ Rischio residuo accettabile! Controlli efficaci."
-                        : "⚠️ Rischio residuo ancora elevato. Considera controlli aggiuntivi."}
-                    </AlertDescription>
-                  </Alert>
-                )}
               </div>
+            ))}
+          </div>
+        )}
+
+        {/* Results Preview */}
+        {showPreview && calculation && (
+          <div className="space-y-4 border-t pt-4">
+            <h3 className="text-lg font-semibold">📊 Risultato Valutazione</h3>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Card className={cn("border-2", getRiskColor(calculation.inherent.level))}>
+                <CardHeader>
+                  <CardTitle className="text-sm">Rischio Attuale</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-center mb-2">
+                    {calculation.inherent.score}
+                  </div>
+                  <Badge className="w-full justify-center" variant="destructive">
+                    {calculation.inherent.level}
+                  </Badge>
+                </CardContent>
+              </Card>
+
+              <Card className={cn("border-2", getRiskColor(calculation.residual.level))}>
+                <CardHeader>
+                  <CardTitle className="text-sm">Dopo Controlli</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-center mb-2">
+                    {calculation.residual.score}
+                  </div>
+                  <Badge className="w-full justify-center" variant="outline">
+                    {calculation.residual.level}
+                  </Badge>
+                </CardContent>
+              </Card>
+            </div>
+
+            {calculation.insights.length > 0 && (
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <ul className="list-disc list-inside space-y-1">
+                    {calculation.insights.map((insight, i) => (
+                      <li key={i}>{insight}</li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              </Alert>
             )}
 
-            <DialogFooter className="gap-2">
-              {step > 1 && (
-                <Button type="button" variant="outline" onClick={() => setStep(step - 1)}>
-                  ⬅️ Indietro
-                </Button>
-              )}
-              {step < maxSteps && (
-                <Button type="button" onClick={handleNext}>
-                  Avanti ➡️
-                </Button>
-              )}
-              {step === maxSteps && (
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? "Salvataggio..." : "💾 Salva Rischio"}
-                </Button>
-              )}
-            </DialogFooter>
-          </form>
-        </Form>
+            {calculation.neededControls.length > 0 && (
+              <Alert>
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Controlli da implementare:</strong>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {calculation.neededControls.map(control => (
+                      <Badge key={control} variant="outline">
+                        {control}
+                      </Badge>
+                    ))}
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+        )}
+
+        <DialogFooter className="flex justify-between">
+          <Button
+            variant="outline"
+            onClick={handleBack}
+            disabled={currentStep === 0}
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Indietro
+          </Button>
+
+          {currentStep < totalSteps - 1 ? (
+            <Button onClick={handleNext} disabled={!canProceed()}>
+              Avanti
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          ) : (
+            <Button onClick={handleSubmit} disabled={!canProceed() || isSubmitting}>
+              <Save className="h-4 w-4 mr-2" />
+              {isSubmitting ? "Salvataggio..." : "Salva Valutazione"}
+            </Button>
+          )}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
