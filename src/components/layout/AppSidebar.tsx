@@ -9,6 +9,7 @@ import {
   Users,
   Settings,
   Building2,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Sidebar,
@@ -56,6 +57,7 @@ export function AppSidebar() {
       ]
     },
     { title: "Asset", url: "/assets", icon: Box },
+    { title: "Risk Assessment", url: "/risk-assessment", icon: AlertTriangle },
     { title: "SoA", url: "/soa", icon: FileText },
     { title: "Audit", url: "/audits", icon: ClipboardCheck },
     { title: "Politiche", url: "/policies", icon: ScrollText },

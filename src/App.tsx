@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "./components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import Assets from "./pages/Assets";
+import RiskAssessment from "./pages/RiskAssessment";
 import Controls from "./pages/Controls";
 import ControlsTable from "./pages/ControlsTable";
 import ControlDetail from "./pages/ControlDetail";
@@ -41,6 +42,14 @@ const App = () => (
             element={
               <AppLayout>
                 <Assets />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/risk-assessment"
+            element={
+              <AppLayout>
+                <RiskAssessment />
               </AppLayout>
             }
           />
