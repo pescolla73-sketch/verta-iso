@@ -16,39 +16,92 @@ export type Database = {
     Tables: {
       assets: {
         Row: {
+          asset_id: string
           asset_type: string
+          availability_required: boolean | null
+          category: string | null
+          confidentiality: string | null
           created_at: string | null
-          criticality: string | null
+          criticality: string
+          department: string | null
           description: string | null
           id: string
+          integrity_required: boolean | null
+          license_info: string | null
           location: string | null
           name: string
+          notes: string | null
+          organization_id: string | null
           owner: string | null
+          purchase_date: string | null
+          related_controls: string[] | null
+          status: string | null
           updated_at: string | null
+          vendor: string | null
+          version: string | null
+          warranty_expiry: string | null
         }
         Insert: {
+          asset_id: string
           asset_type: string
+          availability_required?: boolean | null
+          category?: string | null
+          confidentiality?: string | null
           created_at?: string | null
-          criticality?: string | null
+          criticality?: string
+          department?: string | null
           description?: string | null
           id?: string
+          integrity_required?: boolean | null
+          license_info?: string | null
           location?: string | null
           name: string
+          notes?: string | null
+          organization_id?: string | null
           owner?: string | null
+          purchase_date?: string | null
+          related_controls?: string[] | null
+          status?: string | null
           updated_at?: string | null
+          vendor?: string | null
+          version?: string | null
+          warranty_expiry?: string | null
         }
         Update: {
+          asset_id?: string
           asset_type?: string
+          availability_required?: boolean | null
+          category?: string | null
+          confidentiality?: string | null
           created_at?: string | null
-          criticality?: string | null
+          criticality?: string
+          department?: string | null
           description?: string | null
           id?: string
+          integrity_required?: boolean | null
+          license_info?: string | null
           location?: string | null
           name?: string
+          notes?: string | null
+          organization_id?: string | null
           owner?: string | null
+          purchase_date?: string | null
+          related_controls?: string[] | null
+          status?: string | null
           updated_at?: string | null
+          vendor?: string | null
+          version?: string | null
+          warranty_expiry?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "assets_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       audits: {
         Row: {

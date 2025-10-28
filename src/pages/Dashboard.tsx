@@ -1,4 +1,4 @@
-import { Shield, CheckCircle, AlertCircle, TrendingUp, Download, Settings, Bell, FileDown, Wand2 } from "lucide-react";
+import { Shield, CheckCircle, AlertCircle, TrendingUp, Download, Settings, Bell, FileDown, Wand2, FileText } from "lucide-react";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { format, addMonths } from "date-fns";
 import { it } from "date-fns/locale";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import { useControls } from "@/hooks/useControls";
+import { CriticalAssetsWidget } from "@/components/dashboard/CriticalAssetsWidget";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -237,36 +238,73 @@ export default function Dashboard() {
       </Card>
 
       {/* Upcoming Reviews */}
-      <Card className="shadow-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bell className="h-5 w-5" />
-            Prossime Revisioni
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-              <div className="flex-1">
-                <p className="font-medium">Revisione SoA</p>
-                <p className="text-sm text-muted-foreground">Scadenza: {nextReviewDate} (tra 6 mesi)</p>
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="h-5 w-5" />
+              Prossime Revisioni
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                <div className="flex-1">
+                  <p className="font-medium">Revisione SoA</p>
+                  <p className="text-sm text-muted-foreground">Scadenza: {nextReviewDate} (tra 6 mesi)</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                <div className="flex-1">
+                  <p className="font-medium">Valutazione del Rischio</p>
+                  <p className="text-sm text-muted-foreground">Non ancora creata</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                <div className="flex-1">
+                  <p className="font-medium">Preparazione Audit</p>
+                  <p className="text-sm text-muted-foreground">Da programmare</p>
+                </div>
               </div>
             </div>
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-              <div className="flex-1">
-                <p className="font-medium">Valutazione del Rischio</p>
-                <p className="text-sm text-muted-foreground">Non ancora creata</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-              <div className="flex-1">
-                <p className="font-medium">Preparazione Audit</p>
-                <p className="text-sm text-muted-foreground">Da programmare</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle className="text-lg">🎯 Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={() => navigate("/controls/wizard")}
+            >
+              <Shield className="mr-2 h-4 w-4" />
+              Inizia Wizard Conformità
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={() => navigate("/policies")}
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              Gestisci Policy
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={() => navigate("/assets")}
+            >
+              📦
+              <span className="ml-2">Inventario Asset</span>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Critical Assets Widget */}
+      <CriticalAssetsWidget />
 
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-3">
