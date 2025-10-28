@@ -1,5 +1,4 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,38 +8,14 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Filter } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { useControls } from "@/hooks/useControls";
 
 export default function ControlsTable() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const navigate = useNavigate();
 
-  const { data: controls, isLoading, error: queryError } = useQuery({
-    queryKey: ["controls"],
-    queryFn: async () => {
-      console.log("Fetching controls from Supabase...");
-      const { data, error } = await supabase
-        .from("controls")
-        .select("*")
-        .order("control_id");
-      
-      if (error) {
-        console.error("Supabase error:", error);
-        toast.error(`Errore nel caricamento dei controlli: ${error.message}`);
-        throw error;
-      }
-      
-      console.log("Controls fetched:", data?.length || 0, "records");
-      return data || [];
-    },
-  });
-
-  // Log query error if present
-  if (queryError) {
-    console.error("Query error:", queryError);
-  }
+  const { data: controls, isLoading } = useControls();
 
   const controlCategories = useMemo(() => {
     if (!controls) return [

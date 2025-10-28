@@ -1,6 +1,4 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { WizardStepper } from "@/components/wizard/WizardStepper";
 import { ControlWizardCard } from "@/components/wizard/ControlWizardCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { controlGuidanceData } from "@/data/controlGuidance";
+import { useControls, useUpdateControl } from "@/hooks/useControls";
 import { Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -26,55 +25,10 @@ export default function Wizard() {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [currentControlIndex, setCurrentControlIndex] = useState(0);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  const { data: controls, isLoading } = useQuery({
-    queryKey: ["controls"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("controls")
-        .select("*")
-        .order("control_id");
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const updateControlMutation = useMutation({
-    mutationFn: async ({
-      id,
-      updates,
-    }: {
-      id: string;
-      updates: {
-        status: string;
-        responsible?: string;
-        implementation_notes?: string;
-        justification?: string;
-      };
-    }) => {
-      const { error } = await supabase
-        .from("controls")
-        .update(updates)
-        .eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["controls"] });
-      toast({
-        title: "Salvato",
-        description: "Controllo aggiornato con successo",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Errore",
-        description: "Errore durante il salvataggio",
-        variant: "destructive",
-      });
-    },
-  });
+  const { data: controls, isLoading } = useControls();
+  const updateControlMutation = useUpdateControl();
 
   const getCurrentDomainControls = () => {
     if (!controls) return [];

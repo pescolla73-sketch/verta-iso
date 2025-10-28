@@ -3,27 +3,17 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { format, addMonths } from "date-fns";
 import { it } from "date-fns/locale";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
+import { useControls } from "@/hooks/useControls";
 
 export default function Dashboard() {
   const navigate = useNavigate();
 
   // Fetch real controls data
-  const { data: controls, isLoading } = useQuery({
-    queryKey: ["controls"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("controls")
-        .select("*");
-      if (error) throw error;
-      return data;
-    },
-  });
+  const { data: controls, isLoading } = useControls();
 
   // Calculate statistics
   const stats = {
