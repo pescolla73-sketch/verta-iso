@@ -127,6 +127,22 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
   const onSubmit = async (values: AssetFormValues) => {
     setIsSubmitting(true);
     try {
+      // Get organization_id (first organization or null for demo)
+      let organizationId = null;
+      try {
+        const { data: orgs } = await supabase
+          .from("organization")
+          .select("id")
+          .limit(1)
+          .single();
+        
+        if (orgs) {
+          organizationId = orgs.id;
+        }
+      } catch (err) {
+        console.log("No organization found, creating asset without org reference");
+      }
+
       const assetData = {
         asset_id: values.asset_id,
         name: values.name,
@@ -147,7 +163,10 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
         warranty_expiry: values.warranty_expiry ? format(values.warranty_expiry, "yyyy-MM-dd") : null,
         status: values.status,
         notes: values.notes || null,
+        organization_id: organizationId,
       };
+
+      console.log("Creating/updating asset with data:", assetData);
 
       if (asset) {
         const { error } = await supabase
@@ -155,14 +174,20 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
           .update(assetData)
           .eq("id", asset.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error("Asset update error:", error);
+          throw error;
+        }
         toast.success("Asset aggiornato con successo");
       } else {
         const { error } = await supabase
           .from("assets")
           .insert([assetData]);
 
-        if (error) throw error;
+        if (error) {
+          console.error("Asset creation error:", error);
+          throw error;
+        }
         toast.success("Asset creato con successo");
       }
 
