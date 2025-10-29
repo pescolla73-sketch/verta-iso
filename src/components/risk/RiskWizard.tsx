@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowLeft, ArrowRight, CheckCircle2, AlertTriangle } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { assetTypeQuestions, calculateRiskFromAnswers } from "@/data/riskQuestions";
+import { calculateRiskFromAnswers, getQuestionsForAsset, RiskAnswers } from "@/data/riskQuestions";
 import { scenarioCategories, getScenarioById, calculateScenarioRisk, type Scenario } from "@/data/scenarioLibrary";
 import { WizardStepper } from "../wizard/WizardStepper";
 
@@ -69,7 +69,7 @@ export function RiskWizard({ open, onOpenChange, assetId, scenarioId, mode = 'as
   }, [scenarioId, mode]);
 
   const questions = mode === 'asset' && asset?.asset_type 
-    ? assetTypeQuestions[asset.asset_type as keyof typeof assetTypeQuestions] || []
+    ? getQuestionsForAsset(asset.asset_type).flatMap(step => step.questions)
     : selectedScenario?.questions || [];
   
   const totalSteps = mode === 'scenario' 
@@ -91,7 +91,7 @@ export function RiskWizard({ open, onOpenChange, assetId, scenarioId, mode = 'as
     
     try {
       if (mode === 'asset') {
-        const riskData = calculateRiskFromAnswers(answers);
+        const riskData = calculateRiskFromAnswers(answers, asset?.asset_type || 'default');
         
         const { error } = await supabase.from("risks").insert({
           risk_type: 'asset-specific',
@@ -104,8 +104,8 @@ export function RiskWizard({ open, onOpenChange, assetId, scenarioId, mode = 'as
           inherent_impact: String(riskData.inherent.impact),
           inherent_risk_score: riskData.inherent.score,
           inherent_risk_level: riskData.inherent.level,
-          treatment_strategy: riskData.treatment,
-          related_controls: riskData.controls,
+          treatment_strategy: 'mitigate',
+          related_controls: riskData.neededControls || [],
           residual_probability: String(riskData.residual.probability),
           residual_impact: String(riskData.residual.impact),
           residual_risk_score: riskData.residual.score,
@@ -168,7 +168,7 @@ export function RiskWizard({ open, onOpenChange, assetId, scenarioId, mode = 'as
 
   const renderSummary = () => {
     const risk = mode === 'asset'
-      ? calculateRiskFromAnswers(answers)
+      ? calculateRiskFromAnswers(answers, asset?.asset_type || 'default')
       : calculateScenarioRisk(selectedScenario!, answers);
     
     return (
@@ -223,7 +223,7 @@ export function RiskWizard({ open, onOpenChange, assetId, scenarioId, mode = 'as
             <div>
               <h4 className="font-semibold mb-2">Controlli Raccomandati</h4>
               <div className="flex flex-wrap gap-2">
-                {risk.controls.map((control) => (
+                {((risk as any).neededControls || (risk as any).controls || []).map((control: string) => (
                   <Badge key={control} variant="outline">
                     {control}
                   </Badge>
@@ -272,13 +272,20 @@ export function RiskWizard({ open, onOpenChange, assetId, scenarioId, mode = 'as
         <div className="space-y-6">
           {!isSummaryStep && (
             <WizardStepper 
-              currentStep={currentStep} 
-              totalSteps={totalSteps}
-              stepLabels={
+              steps={
                 mode === 'scenario'
-                  ? ["Asset Impattati", ...questions.map((_, i) => `Domanda ${i + 1}`), "Riepilogo"]
-                  : [...questions.map((_, i) => `Domanda ${i + 1}`), "Riepilogo"]
+                  ? [
+                      { id: 'assets', title: 'Asset Impattati', description: '' },
+                      ...questions.map((q, i) => ({ id: `q${i}`, title: `Domanda ${i + 1}`, description: '' })),
+                      { id: 'summary', title: 'Riepilogo', description: '' }
+                    ]
+                  : [
+                      ...questions.map((q, i) => ({ id: `q${i}`, title: `Domanda ${i + 1}`, description: '' })),
+                      { id: 'summary', title: 'Riepilogo', description: '' }
+                    ]
               }
+              currentStep={currentStep}
+              onStepClick={() => {}}
             />
           )}
 
