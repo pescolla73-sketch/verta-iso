@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -26,6 +26,8 @@ import { cn } from "@/lib/utils";
 import { RiskWizard } from "@/components/risk/RiskWizard";
 import { RiskMatrix } from "@/components/risk/RiskMatrix";
 import { ScenarioSelector } from "@/components/risk/ScenarioSelector";
+import { ThreatLibraryBrowser } from "@/components/risk/ThreatLibraryBrowser";
+import { ThreatEvaluationDialog } from "@/components/risk/ThreatEvaluationDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getRiskBadgeVariant, RiskCategory } from "@/utils/riskCalculation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -39,6 +41,31 @@ export default function RiskAssessment() {
   const [wizardMode, setWizardMode] = useState<'asset' | 'scenario'>('asset');
   const [selectedAssetId, setSelectedAssetId] = useState<string | undefined>();
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | undefined>();
+  const [selectedThreatId, setSelectedThreatId] = useState<string | null>(null);
+  const [showThreatEvaluation, setShowThreatEvaluation] = useState(false);
+
+  // Define filter options
+  const LEVEL_OPTIONS = [
+    { value: "all", label: "Tutti i livelli" },
+    { value: "Critico", label: "Critico" },
+    { value: "Alto", label: "Alto" },
+    { value: "Medio", label: "Medio" },
+    { value: "Basso", label: "Basso" },
+  ];
+
+  const STATUS_OPTIONS = [
+    { value: "all", label: "Tutti gli stati" },
+    { value: "Identificato", label: "Identificato" },
+    { value: "In trattamento", label: "In trattamento" },
+    { value: "Trattato", label: "Trattato" },
+    { value: "Accettato", label: "Accettato" },
+  ];
+
+  const TYPE_OPTIONS = [
+    { value: "all", label: "Tutti i tipi" },
+    { value: "asset-specific", label: "Asset-specific" },
+    { value: "scenario", label: "Scenario" },
+  ];
 
   const { data: risks, isLoading } = useQuery({
     queryKey: ["risks"],
@@ -85,7 +112,6 @@ export default function RiskAssessment() {
     }
   };
 
-  // Fetch assets for selection
   const { data: assets = [] } = useQuery({
     queryKey: ["assets"],
     queryFn: async () => {
@@ -100,345 +126,306 @@ export default function RiskAssessment() {
   });
 
   const handleAssetSelect = (assetId: string) => {
-    setWizardMode('asset');
     setSelectedAssetId(assetId);
-    setSelectedScenarioId(undefined);
+    setWizardMode('asset');
     setIsWizardOpen(true);
   };
 
   const handleScenarioSelect = (scenarioId: string) => {
-    setWizardMode('scenario');
     setSelectedScenarioId(scenarioId);
-    setSelectedAssetId(undefined);
+    setWizardMode('scenario');
     setIsWizardOpen(true);
   };
 
+  const handleThreatSelect = (threatId: string) => {
+    setSelectedThreatId(threatId);
+    setShowThreatEvaluation(true);
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto py-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-            <span className="text-2xl">🎯</span>
-            Valutazione Rischi Semplificata
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Rispondi a domande semplici e ottieni una valutazione professionale
+          <h1 className="text-3xl font-bold">Risk Assessment</h1>
+          <p className="text-muted-foreground">
+            Gestione completa dei rischi ISO 27001 + NIS2
           </p>
         </div>
+        <Badge variant="outline" className="text-sm">
+          {risks?.length || 0} rischi totali
+        </Badge>
       </div>
 
-      {/* Entry Point Selection */}
-      {assets.length > 0 && (
-        <Tabs defaultValue="asset" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="asset" className="flex items-center gap-2">
-              <span className="text-lg">📦</span>
-              Per Asset
-            </TabsTrigger>
-            <TabsTrigger value="scenario" className="flex items-center gap-2">
-              <span className="text-lg">🌍</span>
-              Per Scenario
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="asset" className="mt-6">
-            <Card className="shadow-card">
-              <CardHeader>
-                <CardTitle>Seleziona un Asset da Valutare</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Valuta rischi specifici per ogni asset (es: furto laptop, guasto server)
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {assets.map(asset => {
-                    const assetRisks = filteredRisks?.filter(r => r.asset_id === asset.id) || [];
-                    const hasRisk = assetRisks.length > 0;
-                    
-                    return (
-                      <Card
-                        key={asset.id}
-                        className={cn(
-                          "cursor-pointer transition-all hover:shadow-md",
-                          hasRisk && "border-green-500"
-                        )}
-                        onClick={() => handleAssetSelect(asset.id)}
-                      >
+      <Alert>
+        <InfoIcon className="h-4 w-4" />
+        <AlertDescription>
+          Sistema di valutazione rischi conforme a ISO 27001:2022 e Direttiva NIS2 (EU 2022/2555)
+        </AlertDescription>
+      </Alert>
+
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-xl font-semibold mb-4">Valuta Nuovi Rischi</h2>
+          <Tabs defaultValue="threat-library" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="threat-library">📚 Libreria Minacce</TabsTrigger>
+              <TabsTrigger value="asset">📦 Per Asset</TabsTrigger>
+              <TabsTrigger value="scenario">🌍 Per Scenario</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="threat-library" className="space-y-4">
+              <ThreatLibraryBrowser onSelectThreat={handleThreatSelect} />
+            </TabsContent>
+
+            <TabsContent value="asset" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Valutazione Rischi per Asset</CardTitle>
+                  <CardDescription>
+                    Seleziona un asset specifico per valutarne i rischi
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4">
+                    {assets?.map((asset) => (
+                      <Card key={asset.id} className="cursor-pointer hover:bg-accent" onClick={() => handleAssetSelect(asset.id)}>
                         <CardContent className="pt-6">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <h3 className="font-medium">{asset.name}</h3>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium">{asset.name}</p>
                               <p className="text-sm text-muted-foreground">{asset.asset_type}</p>
                             </div>
-                            {hasRisk ? (
-                              <Badge variant="outline" className="bg-green-100">
-                                ✓ Valutato
-                              </Badge>
-                            ) : (
-                              <Badge variant="secondary">
-                                Da valutare
-                              </Badge>
-                            )}
+                            <Badge>{asset.criticality}</Badge>
                           </div>
                         </CardContent>
                       </Card>
-                    );
-                  })}
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="scenario" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Valutazione Rischi per Scenario</CardTitle>
+                  <CardDescription>
+                    Seleziona uno scenario di rischio generale
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ScenarioSelector onScenarioSelect={handleScenarioSelect} />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Rischi Critici</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-destructive">{riskStats.critical}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Rischi Alti</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-500">{riskStats.high}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Rischi Medi</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-yellow-500">{riskStats.medium}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Rischi Bassi</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-500">{riskStats.low}</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <RiskMatrix risks={risks || []} />
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Registro Rischi</CardTitle>
+                <CardDescription>
+                  {filteredRisks?.length || 0} rischi registrati
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Cerca rischi..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
-          <TabsContent value="scenario" className="mt-6">
-            <ScenarioSelector onScenarioSelect={handleScenarioSelect} />
-          </TabsContent>
-        </Tabs>
-      )}
+                <Select value={levelFilter} onValueChange={setLevelFilter}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Livello" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tutti i livelli</SelectItem>
+                    <SelectItem value="Critico">Critico</SelectItem>
+                    <SelectItem value="Alto">Alto</SelectItem>
+                    <SelectItem value="Medio">Medio</SelectItem>
+                    <SelectItem value="Basso">Basso</SelectItem>
+                  </SelectContent>
+                </Select>
 
-      {assets.length === 0 && (
-        <Alert>
-          <InfoIcon className="h-4 w-4" />
-          <AlertDescription>
-            <strong>Nessun asset trovato.</strong>
-            <br />
-            Prima di valutare i rischi, devi creare almeno un asset.
-            <Button variant="link" className="p-0 h-auto ml-1" onClick={() => window.location.href = '/assets'}>
-              Vai agli Asset →
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Stato" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tutti gli stati</SelectItem>
+                    <SelectItem value="Identificato">Identificato</SelectItem>
+                    <SelectItem value="In trattamento">In trattamento</SelectItem>
+                    <SelectItem value="Trattato">Trattato</SelectItem>
+                    <SelectItem value="Accettato">Accettato</SelectItem>
+                  </SelectContent>
+                </Select>
 
-      {/* Risk Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="shadow-card border-red-500/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="text-red-500">
-                <div className="text-4xl">🔴</div>
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tutti i tipi</SelectItem>
+                    <SelectItem value="asset-specific">Asset-specific</SelectItem>
+                    <SelectItem value="scenario">Scenario</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Critici</p>
-                <p className="text-3xl font-bold text-foreground">{riskStats.critical}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
-        <Card className="shadow-card border-orange-500/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="text-orange-500">
-                <div className="text-4xl">🟠</div>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Alti</p>
-                <p className="text-3xl font-bold text-foreground">{riskStats.high}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-card border-yellow-500/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="text-yellow-500">
-                <div className="text-4xl">🟡</div>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Medi</p>
-                <p className="text-3xl font-bold text-foreground">{riskStats.medium}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-card border-green-500/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="text-green-500">
-                <div className="text-4xl">🟢</div>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Bassi</p>
-                <p className="text-3xl font-bold text-foreground">{riskStats.low}</p>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>ID</TableHead>
+                      <TableHead>Nome Rischio</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Ambito</TableHead>
+                      <TableHead className="text-center">Inerente</TableHead>
+                      <TableHead className="text-center">Residuo</TableHead>
+                      <TableHead>Stato</TableHead>
+                      <TableHead>Azioni</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={8}>
+                          <div className="space-y-2">
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-full" />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredRisks?.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                          Nessun rischio trovato
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredRisks?.map((risk) => (
+                        <TableRow key={risk.id}>
+                          <TableCell className="font-mono text-xs">{risk.risk_id}</TableCell>
+                          <TableCell>
+                            <div className="font-medium">{risk.name}</div>
+                            <div className="text-xs text-muted-foreground line-clamp-1">
+                              {risk.description}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{risk.risk_type}</Badge>
+                          </TableCell>
+                          <TableCell className="text-sm">{risk.scope || 'N/A'}</TableCell>
+                          <TableCell className="text-center">
+                            <Badge
+                              variant={getRiskBadgeVariant(
+                                risk.inherent_risk_level as RiskCategory
+                              )}
+                            >
+                              {risk.inherent_risk_level} ({risk.inherent_risk_score})
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge
+                              variant={getRiskBadgeVariant(
+                                risk.residual_risk_level as RiskCategory
+                              )}
+                            >
+                              {risk.residual_risk_level} ({risk.residual_risk_score})
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={getStatusBadge(risk.status) as any}>
+                              {risk.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                // TODO: Open risk detail
+                              }}
+                            >
+                              Dettagli
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Risk Matrix Heatmap */}
-      {risks && risks.length > 0 && (
-        <RiskMatrix
-          risks={risks}
-          onCellClick={(probability, impact, cellRisks) => {
-            console.log("Clicked cell:", { probability, impact, risks: cellRisks });
-            // TODO: Show modal with risks in this cell
-          }}
-        />
-      )}
+      <RiskWizard
+        open={isWizardOpen}
+        onOpenChange={setIsWizardOpen}
+        assetId={selectedAssetId}
+        scenarioId={selectedScenarioId}
+        mode={wizardMode}
+      />
 
-      {/* Filters and Table */}
-      <Card className="shadow-card">
-        <CardHeader>
-          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-            <CardTitle>Registro Rischi</CardTitle>
-            <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
-              <div className="relative w-full md:w-64">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Cerca rischi..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={levelFilter} onValueChange={setLevelFilter}>
-                <SelectTrigger className="w-full md:w-40">
-                  <SelectValue placeholder="Livello" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tutti i livelli</SelectItem>
-                  <SelectItem value="Critico">Critico</SelectItem>
-                  <SelectItem value="Alto">Alto</SelectItem>
-                  <SelectItem value="Medio">Medio</SelectItem>
-                  <SelectItem value="Basso">Basso</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full md:w-40">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tutti gli status</SelectItem>
-                  <SelectItem value="Identificato">Identificato</SelectItem>
-                  <SelectItem value="In trattamento">In trattamento</SelectItem>
-                  <SelectItem value="Trattato">Trattato</SelectItem>
-                  <SelectItem value="Accettato">Accettato</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-full md:w-40">
-                  <SelectValue placeholder="Tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tutti i tipi</SelectItem>
-                  <SelectItem value="asset-specific">Asset-specific</SelectItem>
-                  <SelectItem value="scenario">Scenario</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-16 w-full" />
-              ))}
-            </div>
-          ) : filteredRisks && filteredRisks.length > 0 ? (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>Nome Rischio</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Asset/Ambito</TableHead>
-                    <TableHead>Score</TableHead>
-                    <TableHead>Livello</TableHead>
-                    <TableHead>Trattamento</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredRisks.map((risk) => (
-                    <TableRow key={risk.id} className="cursor-pointer hover:bg-muted/50">
-                      <TableCell className="font-mono text-sm">{risk.risk_id}</TableCell>
-                      <TableCell className="font-medium">{risk.name}</TableCell>
-                      <TableCell>
-                        <Badge variant={risk.risk_type === 'scenario' ? 'default' : 'secondary'}>
-                          {risk.risk_type === 'scenario' ? '🌍 Scenario' : '📦 Asset'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {risk.risk_type === 'scenario' ? (
-                          <div>
-                            <p className="text-sm font-medium">{risk.scope || "Generale"}</p>
-                            {risk.affected_asset_ids && risk.affected_asset_ids.length > 0 && (
-                              <p className="text-xs text-muted-foreground">
-                                {risk.affected_asset_ids.length} asset impattati
-                              </p>
-                            )}
-                          </div>
-                        ) : (
-                          <div>
-                            <p className="text-sm">{risk.assets?.name || "-"}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {risk.assets?.asset_type}
-                            </p>
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-center font-bold text-lg">
-                          {risk.inherent_risk_score}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={getRiskBadgeVariant(risk.inherent_risk_level as RiskCategory)}>
-                          {risk.inherent_risk_level}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm">{risk.treatment_strategy || "-"}</span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={getStatusBadge(risk.status)}>
-                          {risk.status}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">
-                {searchQuery || levelFilter !== "all" || statusFilter !== "all"
-                  ? "Nessun rischio trovato con i filtri selezionati"
-                  : "Nessun rischio registrato. Inizia la valutazione dei rischi."}
-              </p>
-              {!searchQuery && levelFilter === "all" && statusFilter === "all" && (
-                <Button className="mt-4" onClick={() => setIsWizardOpen(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Valuta Primo Rischio
-                </Button>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {isWizardOpen && (
-        <RiskWizard
-          open={isWizardOpen}
-          onOpenChange={(open) => {
-            setIsWizardOpen(open);
-            if (!open) {
-              setSelectedAssetId(undefined);
-              setSelectedScenarioId(undefined);
-            }
-          }}
-          mode={wizardMode}
-          assetId={selectedAssetId}
-          scenarioId={selectedScenarioId}
-        />
-      )}
+      <ThreatEvaluationDialog
+        open={showThreatEvaluation}
+        onOpenChange={setShowThreatEvaluation}
+        threatId={selectedThreatId}
+      />
     </div>
   );
 }
