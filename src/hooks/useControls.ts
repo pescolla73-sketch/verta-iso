@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { logAuditEvent } from "@/utils/auditLog";
 
 export function useControls() {
   return useQuery({
@@ -28,8 +29,16 @@ export function useUpdateControl() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: any }) => {
+    mutationFn: async ({ id, updates, oldData }: { id: string; updates: any; oldData?: any }) => {
       console.log("Updating control:", id, updates);
+      
+      // Get control data for audit log
+      const { data: control } = await supabase
+        .from("controls")
+        .select("control_id, title")
+        .eq("id", id)
+        .single();
+      
       const { error } = await supabase
         .from("controls")
         .update(updates)
@@ -39,6 +48,17 @@ export function useUpdateControl() {
         console.error("Update error:", error);
         throw error;
       }
+
+      // Log audit event
+      await logAuditEvent({
+        action: 'update',
+        entityType: 'control',
+        entityId: id,
+        entityName: control ? `${control.control_id} - ${control.title}` : 'Unknown Control',
+        oldValues: oldData,
+        newValues: updates,
+        notes: 'Control updated'
+      });
     },
     onSuccess: () => {
       // Invalidate and refetch controls

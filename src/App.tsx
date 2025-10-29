@@ -12,6 +12,7 @@ import ControlsTable from "./pages/ControlsTable";
 import ControlDetail from "./pages/ControlDetail";
 import SoA from "./pages/SoA";
 import Audits from "./pages/Audits";
+import Audit from "./pages/Audit";
 import Policies from "./pages/Policies";
 import PolicyDetail from "./pages/PolicyDetail";
 import Roles from "./pages/Roles";
@@ -98,6 +99,14 @@ const App = () => (
             element={
               <AppLayout>
                 <Audits />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/audit"
+            element={
+              <AppLayout>
+                <Audit />
               </AppLayout>
             }
           />
