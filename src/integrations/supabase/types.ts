@@ -245,6 +245,7 @@ export type Database = {
       }
       organization: {
         Row: {
+          applicable_regulations: string[] | null
           backup_operator: string | null
           ceo: string | null
           ciso: string | null
@@ -268,6 +269,7 @@ export type Database = {
           legal_address_street: string | null
           legal_address_zip: string | null
           logo_url: string | null
+          nace_sector: string | null
           name: string
           operational_address_city: string | null
           operational_address_country: string | null
@@ -283,6 +285,7 @@ export type Database = {
           website: string | null
         }
         Insert: {
+          applicable_regulations?: string[] | null
           backup_operator?: string | null
           ceo?: string | null
           ciso?: string | null
@@ -306,6 +309,7 @@ export type Database = {
           legal_address_street?: string | null
           legal_address_zip?: string | null
           logo_url?: string | null
+          nace_sector?: string | null
           name: string
           operational_address_city?: string | null
           operational_address_country?: string | null
@@ -321,6 +325,7 @@ export type Database = {
           website?: string | null
         }
         Update: {
+          applicable_regulations?: string[] | null
           backup_operator?: string | null
           ceo?: string | null
           ciso?: string | null
@@ -344,6 +349,7 @@ export type Database = {
           legal_address_street?: string | null
           legal_address_zip?: string | null
           logo_url?: string | null
+          nace_sector?: string | null
           name?: string
           operational_address_city?: string | null
           operational_address_country?: string | null
@@ -664,6 +670,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      threat_library: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string
+          id: string
+          is_custom: boolean | null
+          iso27001_controls: string[] | null
+          name: string
+          name_en: string | null
+          nis2_incident_type: string | null
+          organization_id: string | null
+          relevant_sectors: string[] | null
+          threat_id: string
+          typical_impact: number | null
+          typical_probability: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          description: string
+          id?: string
+          is_custom?: boolean | null
+          iso27001_controls?: string[] | null
+          name: string
+          name_en?: string | null
+          nis2_incident_type?: string | null
+          organization_id?: string | null
+          relevant_sectors?: string[] | null
+          threat_id: string
+          typical_impact?: number | null
+          typical_probability?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string
+          id?: string
+          is_custom?: boolean | null
+          iso27001_controls?: string[] | null
+          name?: string
+          name_en?: string | null
+          nis2_incident_type?: string | null
+          organization_id?: string | null
+          relevant_sectors?: string[] | null
+          threat_id?: string
+          typical_impact?: number | null
+          typical_probability?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       threats: {
         Row: {
