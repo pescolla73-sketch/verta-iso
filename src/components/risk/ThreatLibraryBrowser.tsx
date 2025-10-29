@@ -41,11 +41,19 @@ export function ThreatLibraryBrowser({ onSelectThreat, selectedSector }: ThreatL
   const { data: threats = [], isLoading } = useQuery({
     queryKey: ["threat-library", categoryFilter, nis2Filter, selectedSector],
     queryFn: async () => {
+      console.log('🔍 Loading threats with filters:', {
+        categoryFilter,
+        nis2Filter,
+        selectedSector
+      });
+
       let query = supabase
         .from("threat_library")
         .select("*")
-        .eq("is_custom", false)
-        .order("threat_id");
+        .order("created_at", { ascending: false });
+
+      // Include both global threats (is_custom=false) AND custom threats (is_custom=true)
+      // No filter on is_custom to show all threats
 
       if (categoryFilter !== "all") {
         query = query.eq("category", categoryFilter);
@@ -56,7 +64,14 @@ export function ThreatLibraryBrowser({ onSelectThreat, selectedSector }: ThreatL
       }
 
       const { data, error } = await query;
-      if (error) throw error;
+      
+      console.log('📊 Loaded threats:', data?.length || 0);
+      console.log('❌ Load error:', error);
+      
+      if (error) {
+        console.error('💥 Query error:', error);
+        throw error;
+      }
 
       // Filter by sector if provided
       if (selectedSector && data) {

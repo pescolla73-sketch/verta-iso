@@ -97,7 +97,7 @@ export function ThreatEvaluationDialog({ open, onOpenChange, threatId }: ThreatE
       const inherentLevel = getRiskLevel(inherentScore);
       const residualLevel = getRiskLevel(residualScore);
 
-      const { error } = await supabase.from("risks").insert({
+      const riskData = {
         risk_id: `RISK-${Date.now()}`,
         risk_type: 'scenario',
         name: threat.name,
@@ -118,17 +118,47 @@ export function ThreatEvaluationDialog({ open, onOpenChange, threatId }: ThreatE
         related_controls: selectedControls,
         scope: 'Organizzazione',
         status: 'Identificato'
-      });
+      };
 
-      if (error) throw error;
+      console.log('🔍 Saving risk assessment:', riskData);
 
+      const { data, error } = await supabase
+        .from("risks")
+        .insert(riskData)
+        .select()
+        .single();
+
+      console.log('✅ Risk save result:', data);
+      console.log('❌ Risk save error:', error);
+
+      if (error) {
+        console.error('💥 Full error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        throw error;
+      }
+
+      console.log('🔄 Invalidating risks queries...');
       await queryClient.invalidateQueries({ queryKey: ["risks"] });
-      toast.success("Rischio valutato con successo!");
+      
+      toast.success("✅ Rischio salvato con successo!", {
+        description: `${data.name} - ${data.inherent_risk_level}`
+      });
+      
       onOpenChange(false);
       resetForm();
-    } catch (error) {
-      console.error("Error saving risk:", error);
-      toast.error("Errore nel salvare la valutazione");
+    } catch (error: any) {
+      console.error("💥 Error saving risk:", error);
+      toast.error("❌ Errore nel salvataggio", {
+        description: error.message || 'Dettagli in console',
+        action: {
+          label: 'Log',
+          onClick: () => console.error('Full error:', error)
+        }
+      });
     } finally {
       setIsSubmitting(false);
     }

@@ -78,34 +78,76 @@ export function CustomThreatDialog({ open, onOpenChange, onThreatCreated }: Cust
     mutationFn: async () => {
       const threatId = `CT-${Date.now()}`;
       
+      console.log('🔍 Creating custom threat:', {
+        threatId,
+        name,
+        description: description.substring(0, 50) + '...',
+        category,
+        nis2Type,
+        selectedControls,
+      });
+      
+      const insertData = {
+        threat_id: threatId,
+        name,
+        description,
+        category,
+        nis2_incident_type: nis2Type === "not_applicable" ? null : nis2Type,
+        iso27001_controls: selectedControls.length > 0 ? selectedControls : null,
+        is_custom: true,
+      };
+      
+      console.log('📝 Insert data:', insertData);
+
       const { data, error } = await supabase
         .from("threat_library")
-        .insert({
-          threat_id: threatId,
-          name,
-          description,
-          category,
-          nis2_incident_type: nis2Type === "not_applicable" ? null : nis2Type,
-          iso27001_controls: selectedControls.length > 0 ? selectedControls : null,
-          is_custom: true,
-        })
+        .insert(insertData)
         .select()
         .single();
 
-      if (error) throw error;
+      console.log('✅ Insert result:', data);
+      console.log('❌ Insert error:', error);
+
+      if (error) {
+        console.error('💥 Full error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        throw error;
+      }
+      
       return data;
     },
     onSuccess: (data) => {
+      console.log('✅ Threat created successfully, ID:', data.id);
+      console.log('🔄 Invalidating threat_library queries...');
+      
+      queryClient.invalidateQueries({ queryKey: ["threat-library"] });
       queryClient.invalidateQueries({ queryKey: ["threat_library"] });
-      toast.success("Minaccia personalizzata creata con successo");
+      
+      toast.success("✅ Minaccia personalizzata creata!", {
+        description: "Puoi ora valutarla su asset specifici"
+      });
+      
       resetForm();
       onOpenChange(false);
+      
       if (onThreatCreated) {
+        console.log('🎯 Triggering onThreatCreated callback');
         onThreatCreated(data.id);
       }
     },
-    onError: (error) => {
-      toast.error("Errore nella creazione della minaccia: " + error.message);
+    onError: (error: any) => {
+      console.error('💥 Mutation failed:', error);
+      toast.error("❌ Errore nella creazione", {
+        description: error.message || 'Dettagli in console',
+        action: {
+          label: 'Log',
+          onClick: () => console.error('Full error:', error)
+        }
+      });
     },
   });
 
