@@ -28,6 +28,7 @@ import { RiskMatrix } from "@/components/risk/RiskMatrix";
 import { ScenarioSelector } from "@/components/risk/ScenarioSelector";
 import { ThreatLibraryBrowser } from "@/components/risk/ThreatLibraryBrowser";
 import { ThreatEvaluationDialog } from "@/components/risk/ThreatEvaluationDialog";
+import { CustomThreatDialog } from "@/components/risk/CustomThreatDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getRiskBadgeVariant, RiskCategory } from "@/utils/riskCalculation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -43,6 +44,7 @@ export default function RiskAssessment() {
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | undefined>();
   const [selectedThreatId, setSelectedThreatId] = useState<string | null>(null);
   const [showThreatEvaluation, setShowThreatEvaluation] = useState(false);
+  const [showCustomThreatDialog, setShowCustomThreatDialog] = useState(false);
 
   // Define filter options
   const LEVEL_OPTIONS = [
@@ -142,6 +144,11 @@ export default function RiskAssessment() {
     setShowThreatEvaluation(true);
   };
 
+  const handleCustomThreatCreated = (threatId: string) => {
+    setSelectedThreatId(threatId);
+    setShowThreatEvaluation(true);
+  };
+
   return (
     <div className="container mx-auto py-8 space-y-6">
       <div className="flex items-center justify-between">
@@ -165,7 +172,12 @@ export default function RiskAssessment() {
 
       <div className="space-y-6">
         <div>
-          <h2 className="text-xl font-semibold mb-4">Valuta Nuovi Rischi</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Valuta Nuovi Rischi</h2>
+            <Button onClick={() => setShowCustomThreatDialog(true)} variant="outline">
+              ✍️ Crea Minaccia Personalizzata
+            </Button>
+          </div>
           <Tabs defaultValue="threat-library" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="threat-library">📚 Libreria Minacce</TabsTrigger>
@@ -425,6 +437,12 @@ export default function RiskAssessment() {
         open={showThreatEvaluation}
         onOpenChange={setShowThreatEvaluation}
         threatId={selectedThreatId}
+      />
+
+      <CustomThreatDialog
+        open={showCustomThreatDialog}
+        onOpenChange={setShowCustomThreatDialog}
+        onThreatCreated={handleCustomThreatCreated}
       />
     </div>
   );
