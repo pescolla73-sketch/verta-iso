@@ -168,27 +168,41 @@ export function ThreatLibraryBrowser({ onSelectThreat, selectedSector }: ThreatL
   const handleDeleteThreat = async (threat: Threat, e: React.MouseEvent) => {
     e.stopPropagation();
     
-    // Check if threat is used in any risks
-    const { data: risks, error } = await supabase
-      .from('risks')
-      .select('id, name')
-      .eq('threat_id', threat.threat_id);
+    console.log('🗑️ Attempting to delete threat:', threat.threat_id);
     
-    if (error) {
-      console.error('Error checking threat usage:', error);
-      toast.error('Errore nel controllo utilizzo minaccia');
-      return;
-    }
-    
-    if (risks && risks.length > 0) {
-      toast.error('Impossibile eliminare', {
-        description: `Questa minaccia è usata in ${risks.length} rischi. Elimina prima i rischi.`
+    try {
+      // Check if threat is used in any risks (threat_id might not exist in all cases)
+      const { data: risks, error } = await supabase
+        .from('risks')
+        .select('id, risk_id, name')
+        .eq('threat_id', threat.threat_id);
+      
+      if (error) {
+        // If column doesn't exist (42703) or other errors, allow deletion
+        console.warn('⚠️ Could not check usage, proceeding with delete:', error);
+        if (error.code !== '42703') {
+          console.error('Usage check error:', error);
+        }
+      }
+      
+      // Only block if we found risks actually using it
+      if (risks && risks.length > 0) {
+        toast.error('Impossibile eliminare', {
+          description: `Questa minaccia è usata in ${risks.length} rischi. Elimina prima i rischi.`
+        });
+        return;
+      }
+      
+      // Proceed with delete
+      setThreatToDelete(threat);
+      setShowDeleteConfirm(true);
+      
+    } catch (error) {
+      console.error('💥 Error in delete flow:', error);
+      toast.error('Errore', {
+        description: error instanceof Error ? error.message : 'Errore sconosciuto'
       });
-      return;
     }
-    
-    setThreatToDelete(threat);
-    setShowDeleteConfirm(true);
   };
 
   const deleteMutation = useMutation({
