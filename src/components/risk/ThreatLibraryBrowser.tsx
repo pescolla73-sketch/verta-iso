@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Shield, AlertTriangle, Search, Plus } from "lucide-react";
+import { Shield, AlertTriangle, Search } from "lucide-react";
+import { toast } from "sonner";
 
 interface ThreatLibraryBrowserProps {
   onSelectThreat: (threatId: string) => void;
@@ -38,7 +39,7 @@ export function ThreatLibraryBrowser({ onSelectThreat, selectedSector }: ThreatL
   const [nis2Filter, setNis2Filter] = useState("all");
   const [selectedThreats, setSelectedThreats] = useState<string[]>([]);
 
-  const { data: threats = [], isLoading } = useQuery({
+  const { data: threats = [], isLoading, error: queryError } = useQuery({
     queryKey: ["threat-library", categoryFilter, nis2Filter, selectedSector],
     queryFn: async () => {
       console.log('🔍 Loading threats with filters:', {
@@ -47,43 +48,61 @@ export function ThreatLibraryBrowser({ onSelectThreat, selectedSector }: ThreatL
         selectedSector
       });
 
-      let query = supabase
-        .from("threat_library")
-        .select("*")
-        .order("created_at", { ascending: false });
+      try {
+        // Simplified query - get all threats (RLS will handle access control)
+        let query = supabase
+          .from("threat_library")
+          .select("*")
+          .order("created_at", { ascending: false });
 
-      // Include both global threats (is_custom=false) AND custom threats (is_custom=true)
-      // No filter on is_custom to show all threats
+        // Apply filters
+        if (categoryFilter !== "all") {
+          query = query.eq("category", categoryFilter);
+        }
 
-      if (categoryFilter !== "all") {
-        query = query.eq("category", categoryFilter);
+        if (nis2Filter !== "all") {
+          query = query.eq("nis2_incident_type", nis2Filter);
+        }
+
+        const { data, error } = await query;
+        
+        console.log('📊 Loaded threats:', data?.length || 0);
+        
+        if (error) {
+          console.error('❌ Query error:', error);
+          console.error('💥 Error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          });
+          throw error;
+        }
+
+        // Filter by sector if provided (client-side filtering)
+        if (selectedSector && data) {
+          const filtered = data.filter(t => 
+            !t.relevant_sectors || 
+            t.relevant_sectors.length === 0 || 
+            t.relevant_sectors.includes(selectedSector)
+          );
+          console.log('✅ Filtered by sector:', filtered.length);
+          return filtered;
+        }
+
+        console.log('✅ Returning all threats:', data?.length || 0);
+        return data || [];
+        
+      } catch (err) {
+        console.error('💥 Unexpected error loading threats:', err);
+        toast.error('Errore nel caricamento minacce', {
+          description: err instanceof Error ? err.message : 'Errore sconosciuto'
+        });
+        throw err;
       }
-
-      if (nis2Filter !== "all") {
-        query = query.eq("nis2_incident_type", nis2Filter);
-      }
-
-      const { data, error } = await query;
-      
-      console.log('📊 Loaded threats:', data?.length || 0);
-      console.log('❌ Load error:', error);
-      
-      if (error) {
-        console.error('💥 Query error:', error);
-        throw error;
-      }
-
-      // Filter by sector if provided
-      if (selectedSector && data) {
-        return data.filter(t => 
-          !t.relevant_sectors || 
-          t.relevant_sectors.length === 0 || 
-          t.relevant_sectors.includes(selectedSector)
-        );
-      }
-
-      return data || [];
-    }
+    },
+    retry: 1,
+    retryDelay: 1000
   });
 
   const filteredThreats = threats.filter(threat =>
@@ -184,6 +203,15 @@ export function ThreatLibraryBrowser({ onSelectThreat, selectedSector }: ThreatL
       </Card>
 
       <div className="grid gap-4">
+        {queryError && (
+          <Card className="border-destructive">
+            <CardContent className="pt-6">
+              <p className="text-center text-destructive">
+                ❌ Errore nel caricamento: {queryError instanceof Error ? queryError.message : 'Errore sconosciuto'}
+              </p>
+            </CardContent>
+          </Card>
+        )}
         {isLoading ? (
           <Card>
             <CardContent className="pt-6">

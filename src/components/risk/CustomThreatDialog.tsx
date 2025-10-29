@@ -124,25 +124,46 @@ export function CustomThreatDialog({ open, onOpenChange, onThreatCreated }: Cust
       console.log('✅ Threat created successfully, ID:', data.id);
       console.log('🔄 Invalidating threat_library queries...');
       
+      // Invalidate all threat-related queries
       queryClient.invalidateQueries({ queryKey: ["threat-library"] });
       queryClient.invalidateQueries({ queryKey: ["threat_library"] });
       
-      toast.success("✅ Minaccia personalizzata creata!", {
-        description: "Puoi ora valutarla su asset specifici"
-      });
-      
-      resetForm();
-      onOpenChange(false);
-      
-      if (onThreatCreated) {
+      // Small delay to ensure query invalidation completes
+      setTimeout(() => {
+        resetForm();
+        
+        toast.success("✅ Minaccia personalizzata creata!", {
+          description: "La nuova minaccia è ora disponibile nella libreria"
+        });
+        
         console.log('🎯 Triggering onThreatCreated callback');
-        onThreatCreated(data.id);
-      }
+        if (onThreatCreated) {
+          onThreatCreated(data.threat_id || data.id);
+        }
+        
+        onOpenChange(false);
+      }, 200);
     },
     onError: (error: any) => {
       console.error('💥 Mutation failed:', error);
+      console.error("Error details:", {
+        message: error?.message,
+        details: error?.details,
+        hint: error?.hint,
+        code: error?.code,
+        status: error?.status
+      });
+      
+      let errorMessage = "Dettagli in console";
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.status === 406) {
+        errorMessage = "Errore 406: Verifica le policy RLS nel database";
+      }
+      
       toast.error("❌ Errore nella creazione", {
-        description: error.message || 'Dettagli in console',
+        description: errorMessage,
+        duration: 5000,
         action: {
           label: 'Log',
           onClick: () => console.error('Full error:', error)
