@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +29,7 @@ interface CustomThreatDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onThreatCreated?: (threatId: string) => void;
+  initialData?: any;
 }
 
 const THREAT_CATEGORIES = [
@@ -54,7 +55,8 @@ const ISO_CONTROLS_SUGGESTIONS = [
   "8.1", "8.2", "8.3", "8.5", "8.6", "8.7", "8.8", "8.9", "8.10", "8.11", "8.12", "8.14", "8.16", "8.19", "8.23", "8.28",
 ];
 
-export function CustomThreatDialog({ open, onOpenChange, onThreatCreated }: CustomThreatDialogProps) {
+export function CustomThreatDialog({ open, onOpenChange, onThreatCreated, initialData }: CustomThreatDialogProps) {
+  const isEditMode = !!initialData;
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
@@ -65,94 +67,89 @@ export function CustomThreatDialog({ open, onOpenChange, onThreatCreated }: Cust
 
   const queryClient = useQueryClient();
 
-  const { data: assets = [] } = useQuery({
-    queryKey: ["assets"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("assets").select("*").order("name");
-      if (error) throw error;
-      return data || [];
-    },
-  });
+  // Pre-fill form when editing
+  useEffect(() => {
+    if (initialData && open) {
+      setName(initialData.name || "");
+      setDescription(initialData.description || "");
+      setCategory(initialData.category || "");
+      setNis2Type(initialData.nis2_incident_type || "");
+      setSelectedControls(initialData.iso27001_controls || []);
+      setNotes(initialData.notes || "");
+    } else if (!open) {
+      resetForm();
+    }
+  }, [initialData, open]);
 
-  const createThreatMutation = useMutation({
+  const saveMutation = useMutation({
     mutationFn: async () => {
-      const threatId = `CT-${Date.now()}`;
+      console.log(isEditMode ? '🔍 Updating custom threat:' : '🔍 Creating custom threat:', { name, category });
       
-      console.log('🔍 Creating custom threat:', {
-        threatId,
-        name,
-        description: description.substring(0, 50) + '...',
-        category,
-        nis2Type,
-        selectedControls,
-      });
-      
-      const insertData = {
-        threat_id: threatId,
+      const threatData = {
         name,
         description,
         category,
         nis2_incident_type: nis2Type === "not_applicable" ? null : nis2Type,
         iso27001_controls: selectedControls.length > 0 ? selectedControls : null,
-        is_custom: true,
+        updated_at: new Date().toISOString()
       };
-      
-      console.log('📝 Insert data:', insertData);
 
-      const { data, error } = await supabase
-        .from("threat_library")
-        .insert(insertData)
-        .select()
-        .single();
+      if (isEditMode) {
+        // Update existing threat
+        const { data, error } = await supabase
+          .from("threat_library")
+          .update(threatData)
+          .eq("id", initialData.id)
+          .select()
+          .single();
 
-      console.log('✅ Insert result:', data);
-      console.log('❌ Insert error:', error);
+        if (error) throw error;
+        return data;
+      } else {
+        // Create new threat
+        const newThreatData = {
+          ...threatData,
+          threat_id: `CT-${Date.now()}`,
+          is_custom: true,
+          created_at: new Date().toISOString()
+        };
 
-      if (error) {
-        console.error('💥 Full error details:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        });
-        throw error;
+        const { data, error } = await supabase
+          .from("threat_library")
+          .insert(newThreatData)
+          .select()
+          .single();
+
+        console.log('✅ Insert result:', data);
+
+        if (error) {
+          console.error('💥 Full error details:', error);
+          throw error;
+        }
+
+        return data;
       }
-      
-      return data;
     },
     onSuccess: (data) => {
-      console.log('✅ Threat created successfully, ID:', data.id);
-      console.log('🔄 Invalidating threat_library queries...');
+      console.log(isEditMode ? '✅ Threat updated' : '✅ Threat created successfully, ID:', data.id);
       
-      // Invalidate all threat-related queries
       queryClient.invalidateQueries({ queryKey: ["threat-library"] });
       queryClient.invalidateQueries({ queryKey: ["threat_library"] });
       
-      // Small delay to ensure query invalidation completes
+      toast.success(isEditMode ? '✅ Minaccia aggiornata!' : '✅ Minaccia personalizzata creata!', {
+        description: isEditMode ? 'Le modifiche sono state salvate' : 'La nuova minaccia è ora disponibile nella libreria'
+      });
+      
       setTimeout(() => {
         resetForm();
-        
-        toast.success("✅ Minaccia personalizzata creata!", {
-          description: "La nuova minaccia è ora disponibile nella libreria"
-        });
-        
-        console.log('🎯 Triggering onThreatCreated callback');
         if (onThreatCreated) {
           onThreatCreated(data.threat_id || data.id);
         }
-        
         onOpenChange(false);
-      }, 200);
+      }, 100);
     },
     onError: (error: any) => {
       console.error('💥 Mutation failed:', error);
-      console.error("Error details:", {
-        message: error?.message,
-        details: error?.details,
-        hint: error?.hint,
-        code: error?.code,
-        status: error?.status
-      });
       
       let errorMessage = "Dettagli in console";
       if (error?.message) {
@@ -161,13 +158,9 @@ export function CustomThreatDialog({ open, onOpenChange, onThreatCreated }: Cust
         errorMessage = "Errore 406: Verifica le policy RLS nel database";
       }
       
-      toast.error("❌ Errore nella creazione", {
+      toast.error(`❌ Errore ${isEditMode ? "nell'aggiornamento" : "nella creazione"}`, {
         description: errorMessage,
-        duration: 5000,
-        action: {
-          label: 'Log',
-          onClick: () => console.error('Full error:', error)
-        }
+        duration: 5000
       });
     },
   });
@@ -190,7 +183,7 @@ export function CustomThreatDialog({ open, onOpenChange, onThreatCreated }: Cust
       return;
     }
 
-    createThreatMutation.mutate();
+    saveMutation.mutate();
   };
 
   const toggleControl = (control: string) => {
@@ -208,7 +201,7 @@ export function CustomThreatDialog({ open, onOpenChange, onThreatCreated }: Cust
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            ✍️ Crea Nuova Minaccia Personalizzata
+            {isEditMode ? '✏️ Modifica Minaccia' : '✍️ Crea Nuova Minaccia Personalizzata'}
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-6 w-6">
@@ -229,7 +222,9 @@ export function CustomThreatDialog({ open, onOpenChange, onThreatCreated }: Cust
             </Popover>
           </DialogTitle>
           <DialogDescription>
-            Crea una minaccia personalizzata specifica per la tua organizzazione
+            {isEditMode 
+              ? 'Modifica i dettagli della minaccia personalizzata' 
+              : 'Crea una minaccia personalizzata specifica per la tua organizzazione'}
           </DialogDescription>
         </DialogHeader>
 
@@ -353,12 +348,14 @@ export function CustomThreatDialog({ open, onOpenChange, onThreatCreated }: Cust
             />
           </div>
 
-          <Alert>
-            <InfoIcon className="h-4 w-4" />
-            <AlertDescription>
-              Dopo aver creato la minaccia, potrai immediatamente valutarla su asset specifici
-            </AlertDescription>
-          </Alert>
+          {!isEditMode && (
+            <Alert>
+              <InfoIcon className="h-4 w-4" />
+              <AlertDescription>
+                Dopo aver creato la minaccia, potrai immediatamente valutarla su asset specifici
+              </AlertDescription>
+            </Alert>
+          )}
 
           <DialogFooter>
             <Button
@@ -371,8 +368,13 @@ export function CustomThreatDialog({ open, onOpenChange, onThreatCreated }: Cust
             >
               ❌ Annulla
             </Button>
-            <Button type="submit" disabled={createThreatMutation.isPending}>
-              💾 Salva & Valuta Rischio
+            <Button type="submit" disabled={saveMutation.isPending}>
+              {saveMutation.isPending 
+                ? '💾 Salvataggio...' 
+                : isEditMode 
+                  ? '💾 Salva Modifiche' 
+                  : '💾 Salva & Valuta Rischio'
+              }
             </Button>
           </DialogFooter>
         </form>

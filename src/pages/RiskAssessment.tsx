@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -20,7 +21,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Search, AlertTriangle, Info as InfoIcon } from "lucide-react";
+import { Plus, Search, AlertTriangle, Info as InfoIcon, Pencil, Trash2, Eye } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { RiskWizard } from "@/components/risk/RiskWizard";
@@ -45,6 +56,9 @@ export default function RiskAssessment() {
   const [selectedThreatId, setSelectedThreatId] = useState<string | null>(null);
   const [showThreatEvaluation, setShowThreatEvaluation] = useState(false);
   const [showCustomThreatDialog, setShowCustomThreatDialog] = useState(false);
+  const [editingRisk, setEditingRisk] = useState<any>(null);
+  const [riskToDelete, setRiskToDelete] = useState<any>(null);
+  const [showDeleteRiskConfirm, setShowDeleteRiskConfirm] = useState(false);
 
   // Define filter options
   const LEVEL_OPTIONS = [
@@ -145,9 +159,45 @@ export default function RiskAssessment() {
   };
 
   const handleCustomThreatCreated = (threatId: string) => {
-    setSelectedThreatId(threatId);
+    if (threatId) {
+      setSelectedThreatId(threatId);
+      setShowThreatEvaluation(true);
+    }
+  };
+
+  const queryClient = useQueryClient();
+
+  const handleEditRisk = (risk: any) => {
+    setEditingRisk(risk);
+    setSelectedThreatId(risk.threat_id);
     setShowThreatEvaluation(true);
   };
+
+  const handleDeleteRisk = async (risk: any) => {
+    setRiskToDelete(risk);
+    setShowDeleteRiskConfirm(true);
+  };
+
+  const deleteRiskMutation = useMutation({
+    mutationFn: async (riskId: string) => {
+      const { error } = await supabase
+        .from('risks')
+        .delete()
+        .eq('id', riskId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['risks'] });
+      toast.success('🗑️ Rischio eliminato');
+      setShowDeleteRiskConfirm(false);
+      setRiskToDelete(null);
+    },
+    onError: (error: any) => {
+      console.error('Delete error:', error);
+      toast.error('Errore nell\'eliminazione: ' + error.message);
+    }
+  });
 
   return (
     <div className="container mx-auto py-8 space-y-6">
@@ -346,7 +396,7 @@ export default function RiskAssessment() {
                       <TableHead className="text-center">Inerente</TableHead>
                       <TableHead className="text-center">Residuo</TableHead>
                       <TableHead>Stato</TableHead>
-                      <TableHead>Azioni</TableHead>
+                      <TableHead className="text-right">Azioni</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -404,15 +454,24 @@ export default function RiskAssessment() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                // TODO: Open risk detail
-                              }}
-                            >
-                              Dettagli
-                            </Button>
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleEditRisk(risk)}
+                                title="Modifica rischio"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleDeleteRisk(risk)}
+                                title="Elimina rischio"
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))
@@ -435,8 +494,12 @@ export default function RiskAssessment() {
 
       <ThreatEvaluationDialog
         open={showThreatEvaluation}
-        onOpenChange={setShowThreatEvaluation}
+        onOpenChange={(open) => {
+          setShowThreatEvaluation(open);
+          if (!open) setEditingRisk(null);
+        }}
         threatId={selectedThreatId}
+        initialRiskData={editingRisk}
       />
 
       <CustomThreatDialog
@@ -444,6 +507,40 @@ export default function RiskAssessment() {
         onOpenChange={setShowCustomThreatDialog}
         onThreatCreated={handleCustomThreatCreated}
       />
+
+      <AlertDialog open={showDeleteRiskConfirm} onOpenChange={setShowDeleteRiskConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>🗑️ Eliminare questa valutazione rischio?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Stai per eliminare:
+              <div className="mt-2 p-3 bg-muted rounded">
+                <strong>{riskToDelete?.risk_id}</strong>: {riskToDelete?.name}
+              </div>
+              
+              {riskToDelete?.related_controls?.length > 0 && (
+                <div className="mt-2 p-2 bg-warning/10 border border-warning rounded">
+                  ⚠️ Questo rischio è collegato a {riskToDelete.related_controls.length} controlli.
+                  I collegamenti saranno rimossi.
+                </div>
+              )}
+              
+              <p className="mt-2">
+                Questa azione è <strong>irreversibile</strong>.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>❌ Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => riskToDelete && deleteRiskMutation.mutate(riskToDelete.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              🗑️ Elimina
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

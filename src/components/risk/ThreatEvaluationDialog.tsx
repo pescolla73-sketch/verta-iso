@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -16,6 +16,7 @@ interface ThreatEvaluationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   threatId: string | null;
+  initialRiskData?: any;
 }
 
 const PROBABILITY_LEVELS = [
@@ -34,7 +35,8 @@ const IMPACT_LEVELS = [
   { value: 5, label: "Critico (5)", description: "Impatto catastrofico" }
 ];
 
-export function ThreatEvaluationDialog({ open, onOpenChange, threatId }: ThreatEvaluationDialogProps) {
+export function ThreatEvaluationDialog({ open, onOpenChange, threatId, initialRiskData }: ThreatEvaluationDialogProps) {
+  const isEditMode = !!initialRiskData;
   const [currentStep, setCurrentStep] = useState<'assessment' | 'treatment' | 'summary'>('assessment');
   const [probability, setProbability] = useState<number | null>(null);
   const [operationalImpact, setOperationalImpact] = useState<number | null>(null);
@@ -49,6 +51,24 @@ export function ThreatEvaluationDialog({ open, onOpenChange, threatId }: ThreatE
   const [residualImpact, setResidualImpact] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const queryClient = useQueryClient();
+
+  // Pre-fill form when editing
+  useEffect(() => {
+    if (initialRiskData && open) {
+      setProbability(parseInt(initialRiskData.inherent_probability) || null);
+      const impact = parseInt(initialRiskData.inherent_impact) || null;
+      setOperationalImpact(impact);
+      setEconomicImpact(impact);
+      setLegalImpact(impact);
+      setSelectedControls(initialRiskData.related_controls || []);
+      setTreatmentPlan(initialRiskData.treatment_description || "");
+      setTreatmentCost(initialRiskData.treatment_cost?.toString() || "");
+      setTreatmentDeadline(initialRiskData.treatment_deadline || "");
+      setResponsible(initialRiskData.treatment_responsible || "");
+      setResidualProbability(parseInt(initialRiskData.residual_probability) || null);
+      setResidualImpact(parseInt(initialRiskData.residual_impact) || null);
+    }
+  }, [initialRiskData, open]);
 
   const { data: threat } = useQuery({
     queryKey: ["threat", threatId],
@@ -98,7 +118,6 @@ export function ThreatEvaluationDialog({ open, onOpenChange, threatId }: ThreatE
       const residualLevel = getRiskLevel(residualScore);
 
       const riskData = {
-        risk_id: `RISK-${Date.now()}`,
         risk_type: 'scenario',
         name: threat.name,
         description: threat.description,
@@ -120,13 +139,33 @@ export function ThreatEvaluationDialog({ open, onOpenChange, threatId }: ThreatE
         status: 'Identificato'
       };
 
-      console.log('🔍 Saving risk assessment:', riskData);
+      console.log(isEditMode ? '🔍 Updating risk assessment:' : '🔍 Saving risk assessment:', riskData);
 
-      const { data, error } = await supabase
-        .from("risks")
-        .insert(riskData)
-        .select()
-        .single();
+      let data, error;
+      
+      if (isEditMode) {
+        // Update existing risk
+        const result = await supabase
+          .from("risks")
+          .update(riskData)
+          .eq("id", initialRiskData.id)
+          .select()
+          .single();
+        data = result.data;
+        error = result.error;
+      } else {
+        // Create new risk
+        const result = await supabase
+          .from("risks")
+          .insert({
+            ...riskData,
+            risk_id: `RISK-${Date.now()}`
+          })
+          .select()
+          .single();
+        data = result.data;
+        error = result.error;
+      }
 
       console.log('✅ Risk save result:', data);
       console.log('❌ Risk save error:', error);
@@ -144,7 +183,7 @@ export function ThreatEvaluationDialog({ open, onOpenChange, threatId }: ThreatE
       console.log('🔄 Invalidating risks queries...');
       await queryClient.invalidateQueries({ queryKey: ["risks"] });
       
-      toast.success("✅ Rischio salvato con successo!", {
+      toast.success(isEditMode ? "✅ Rischio aggiornato!" : "✅ Rischio salvato con successo!", {
         description: `${data.name} - ${data.inherent_risk_level}`
       });
       
@@ -152,7 +191,7 @@ export function ThreatEvaluationDialog({ open, onOpenChange, threatId }: ThreatE
       resetForm();
     } catch (error: any) {
       console.error("💥 Error saving risk:", error);
-      toast.error("❌ Errore nel salvataggio", {
+      toast.error(`❌ Errore ${isEditMode ? "nell'aggiornamento" : "nel salvataggio"}`, {
         description: error.message || 'Dettagli in console',
         action: {
           label: 'Log',
@@ -193,7 +232,7 @@ export function ThreatEvaluationDialog({ open, onOpenChange, threatId }: ThreatE
         <DialogHeader>
           <DialogTitle className="text-2xl flex items-center gap-2">
             <AlertTriangle className="h-6 w-6 text-amber-500" />
-            Valutazione Rischio: {threat.name}
+            {isEditMode ? 'Modifica Rischio:' : 'Valutazione Rischio:'} {threat.name}
           </DialogTitle>
           <div className="flex gap-2 mt-2">
             <Badge variant="outline">{threat.threat_id}</Badge>

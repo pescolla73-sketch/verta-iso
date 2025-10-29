@@ -1,17 +1,43 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Shield, AlertTriangle, Search } from "lucide-react";
+import { Shield, AlertTriangle, Search, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { CustomThreatDialog } from "./CustomThreatDialog";
 
 interface ThreatLibraryBrowserProps {
   onSelectThreat: (threatId: string) => void;
   selectedSector?: string;
+}
+
+interface Threat {
+  id: string;
+  threat_id: string;
+  name: string;
+  description: string;
+  category: string;
+  is_custom: boolean;
+  organization_id?: string;
+  nis2_incident_type?: string;
+  typical_probability?: number;
+  typical_impact?: number;
+  iso27001_controls?: string[];
+  relevant_sectors?: string[];
 }
 
 const CATEGORIES = [
@@ -38,6 +64,12 @@ export function ThreatLibraryBrowser({ onSelectThreat, selectedSector }: ThreatL
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [nis2Filter, setNis2Filter] = useState("all");
   const [selectedThreats, setSelectedThreats] = useState<string[]>([]);
+  const [editingThreat, setEditingThreat] = useState<Threat | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [threatToDelete, setThreatToDelete] = useState<Threat | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  
+  const queryClient = useQueryClient();
 
   const { data: threats = [], isLoading, error: queryError } = useQuery({
     queryKey: ["threat-library", categoryFilter, nis2Filter, selectedSector],
@@ -126,6 +158,59 @@ export function ThreatLibraryBrowser({ onSelectThreat, selectedSector }: ThreatL
         : [...prev, threatId]
     );
   };
+
+  const handleEditThreat = (threat: Threat, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingThreat(threat);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleDeleteThreat = async (threat: Threat, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    // Check if threat is used in any risks
+    const { data: risks, error } = await supabase
+      .from('risks')
+      .select('id, name')
+      .eq('threat_id', threat.threat_id);
+    
+    if (error) {
+      console.error('Error checking threat usage:', error);
+      toast.error('Errore nel controllo utilizzo minaccia');
+      return;
+    }
+    
+    if (risks && risks.length > 0) {
+      toast.error('Impossibile eliminare', {
+        description: `Questa minaccia è usata in ${risks.length} rischi. Elimina prima i rischi.`
+      });
+      return;
+    }
+    
+    setThreatToDelete(threat);
+    setShowDeleteConfirm(true);
+  };
+
+  const deleteMutation = useMutation({
+    mutationFn: async (threatId: string) => {
+      const { error } = await supabase
+        .from('threat_library')
+        .delete()
+        .eq('id', threatId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['threat-library'] });
+      toast.success('🗑️ Minaccia eliminata');
+      setShowDeleteConfirm(false);
+      setThreatToDelete(null);
+    },
+    onError: (error: any) => {
+      console.error('Delete error:', error);
+      toast.error('Errore nell\'eliminazione: ' + error.message);
+    }
+  });
 
   return (
     <div className="space-y-6">
@@ -287,22 +372,80 @@ export function ThreatLibraryBrowser({ onSelectThreat, selectedSector }: ThreatL
                     )}
                   </div>
 
-                  <Button
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSelectThreat(threat.threat_id);
-                    }}
-                  >
-                    <AlertTriangle className="h-4 w-4 mr-2" />
-                    Valuta
-                  </Button>
+                  <div className="flex gap-2">
+                    {threat.is_custom && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => handleEditThreat(threat, e)}
+                        >
+                          <Pencil className="h-4 w-4 mr-1" />
+                          Modifica
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={(e) => handleDeleteThreat(threat, e)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Elimina
+                        </Button>
+                      </>
+                    )}
+                    <Button
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectThreat(threat.threat_id);
+                      }}
+                    >
+                      <AlertTriangle className="h-4 w-4 mr-2" />
+                      Valuta
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           ))
         )}
       </div>
+
+      <CustomThreatDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        initialData={editingThreat}
+        onThreatCreated={() => {
+          setIsEditDialogOpen(false);
+          setEditingThreat(null);
+        }}
+      />
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>🗑️ Eliminare questa minaccia?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Stai per eliminare la minaccia personalizzata:
+              <div className="mt-2 p-3 bg-muted rounded">
+                <strong>{threatToDelete?.name}</strong>
+              </div>
+              <p className="mt-2">
+                Questa azione è <strong>irreversibile</strong>.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>❌ Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => threatToDelete && deleteMutation.mutate(threatToDelete.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              🗑️ Elimina
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
