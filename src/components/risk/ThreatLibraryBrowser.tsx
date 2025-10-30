@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { CustomThreatDialog } from "./CustomThreatDialog";
+import { logAuditEvent } from "@/utils/auditLog";
 
 interface ThreatLibraryBrowserProps {
   onSelectThreat: (threatId: string) => void;
@@ -214,7 +215,19 @@ export function ThreatLibraryBrowser({ onSelectThreat, selectedSector }: ThreatL
       
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Log audit event
+      if (threatToDelete) {
+        await logAuditEvent({
+          action: 'delete',
+          entityType: 'threat',
+          entityId: threatToDelete.id,
+          entityName: threatToDelete.name,
+          oldValues: threatToDelete,
+          notes: 'Custom threat deleted from library'
+        });
+      }
+      
       queryClient.invalidateQueries({ queryKey: ['threat-library'] });
       toast.success('🗑️ Minaccia eliminata');
       setShowDeleteConfirm(false);

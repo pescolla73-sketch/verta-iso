@@ -12,6 +12,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { calculateRiskFromAnswers, getQuestionsForAsset, RiskAnswers } from "@/data/riskQuestions";
 import { scenarioCategories, getScenarioById, calculateScenarioRisk, type Scenario } from "@/data/scenarioLibrary";
 import { WizardStepper } from "../wizard/WizardStepper";
+import { logAuditEvent } from "@/utils/auditLog";
 
 interface RiskWizardProps {
   open: boolean;
@@ -93,7 +94,7 @@ export function RiskWizard({ open, onOpenChange, assetId, scenarioId, mode = 'as
       if (mode === 'asset') {
         const riskData = calculateRiskFromAnswers(answers, asset?.asset_type || 'default');
         
-        const { error } = await supabase.from("risks").insert({
+        const riskPayload = {
           risk_type: 'asset-specific',
           asset_id: assetId,
           scope: 'Asset singolo',
@@ -111,13 +112,31 @@ export function RiskWizard({ open, onOpenChange, assetId, scenarioId, mode = 'as
           residual_risk_score: riskData.residual.score,
           residual_risk_level: riskData.residual.level,
           status: "Identificato"
-        });
+        };
+        
+        const { data: createdRisk, error } = await supabase
+          .from("risks")
+          .insert(riskPayload)
+          .select()
+          .single();
         
         if (error) throw error;
+        
+        // Log audit event
+        if (createdRisk) {
+          await logAuditEvent({
+            action: 'create',
+            entityType: 'risk',
+            entityId: createdRisk.id,
+            entityName: createdRisk.name,
+            newValues: riskPayload,
+            notes: `Risk created for asset: ${asset?.name} - Level: ${riskData.inherent.level} (Score: ${riskData.inherent.score})`
+          });
+        }
       } else {
         const scenarioRisk = calculateScenarioRisk(selectedScenario!, answers);
         
-        const { error } = await supabase.from("risks").insert({
+        const scenarioPayload = {
           risk_type: 'scenario',
           asset_id: null,
           affected_asset_ids: selectedAssetIds.length > 0 ? selectedAssetIds : null,
@@ -136,9 +155,27 @@ export function RiskWizard({ open, onOpenChange, assetId, scenarioId, mode = 'as
           residual_risk_score: scenarioRisk.residual.score,
           residual_risk_level: scenarioRisk.residual.level,
           status: "Identificato"
-        });
+        };
+        
+        const { data: createdRisk, error } = await supabase
+          .from("risks")
+          .insert(scenarioPayload)
+          .select()
+          .single();
         
         if (error) throw error;
+        
+        // Log audit event
+        if (createdRisk) {
+          await logAuditEvent({
+            action: 'create',
+            entityType: 'risk',
+            entityId: createdRisk.id,
+            entityName: createdRisk.name,
+            newValues: scenarioPayload,
+            notes: `Scenario risk created: ${selectedScenario!.name} - Level: ${scenarioRisk.inherent.level} (Score: ${scenarioRisk.inherent.score})`
+          });
+        }
       }
       
       await queryClient.invalidateQueries({ queryKey: ["risks"] });
