@@ -14,6 +14,7 @@ import { ArrowLeft, BookOpen, CheckCircle2, FileText, AlertTriangle, Upload, Dow
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useRef } from "react";
+import { logAuditEvent } from "@/utils/auditLog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 type ControlFormData = {
@@ -85,12 +86,23 @@ export default function ControlDetail() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: ControlFormData) => {
-      console.log("Updating control with data:", data);
+      console.log("🔧 [1] ControlDetail: Starting control update for ID:", id);
+      console.log("🔧 [2] ControlDetail: Update data:", data);
       
       // Validate justification for not_applicable status
       if (data.status === "not_applicable" && (!data.justification || data.justification.trim().length < 20)) {
         throw new Error("Giustificazione obbligatoria per controlli Non Applicabili (minimo 20 caratteri)");
       }
+      
+      // Get old control data for audit log
+      console.log("🔧 [3] ControlDetail: Fetching old control data...");
+      const { data: oldControl } = await supabase
+        .from("controls")
+        .select("*")
+        .eq("id", id)
+        .single();
+      
+      console.log("🔧 [4] ControlDetail: Old control data:", oldControl);
       
       const { data: result, error } = await supabase
         .from("controls")
@@ -100,11 +112,40 @@ export default function ControlDetail() {
         .single();
       
       if (error) {
-        console.error("Update error:", error);
+        console.error("❌ [5] ControlDetail: Update error:", error);
         throw error;
       }
       
-      console.log("Update successful:", result);
+      console.log("✅ [6] ControlDetail: Update successful:", result);
+      console.log("🔧 [7] ControlDetail: About to call logAuditEvent...");
+      
+      // Log audit event
+      try {
+        const logSuccess = await logAuditEvent({
+          action: 'update',
+          entityType: 'control',
+          entityId: id!,
+          entityName: `${result.control_id} - ${result.title}`,
+          oldValues: {
+            status: oldControl?.status,
+            implementation_notes: oldControl?.implementation_notes,
+            responsible: oldControl?.responsible,
+            justification: oldControl?.justification
+          },
+          newValues: {
+            status: result.status,
+            implementation_notes: result.implementation_notes,
+            responsible: result.responsible,
+            justification: result.justification
+          },
+          notes: 'Control updated from detail page'
+        });
+        
+        console.log("✅ [8] ControlDetail: logAuditEvent completed successfully");
+      } catch (logError) {
+        console.error("⚠️ [8] ControlDetail: Audit logging failed but update succeeded:", logError);
+      }
+      
       return result;
     },
     onSuccess: () => {
@@ -113,7 +154,7 @@ export default function ControlDetail() {
       toast.success("Controllo aggiornato con successo");
     },
     onError: (error: any) => {
-      console.error("Mutation error:", error);
+      console.error("❌ ControlDetail: Mutation error:", error);
       toast.error(error.message || "Errore nell'aggiornamento del controllo");
     },
   });

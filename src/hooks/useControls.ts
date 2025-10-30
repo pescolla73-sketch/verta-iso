@@ -30,7 +30,8 @@ export function useUpdateControl() {
 
   return useMutation({
     mutationFn: async ({ id, updates, oldData }: { id: string; updates: any; oldData?: any }) => {
-      console.log("Updating control:", id, updates);
+      console.log("🔧 [1] useUpdateControl: Starting control update for ID:", id);
+      console.log("🔧 [2] useUpdateControl: Update data:", updates);
       
       // Get control data for audit log
       const { data: control } = await supabase
@@ -39,26 +40,35 @@ export function useUpdateControl() {
         .eq("id", id)
         .single();
       
+      console.log("🔧 [3] useUpdateControl: Control info:", control);
+      
       const { error } = await supabase
         .from("controls")
         .update(updates)
         .eq("id", id);
       
       if (error) {
-        console.error("Update error:", error);
+        console.error("❌ [4] useUpdateControl: Update error:", error);
         throw error;
       }
 
+      console.log("✅ [5] useUpdateControl: Update successful, now logging...");
+
       // Log audit event
-      await logAuditEvent({
-        action: 'update',
-        entityType: 'control',
-        entityId: id,
-        entityName: control ? `${control.control_id} - ${control.title}` : 'Unknown Control',
-        oldValues: oldData,
-        newValues: updates,
-        notes: 'Control updated'
-      });
+      try {
+        await logAuditEvent({
+          action: 'update',
+          entityType: 'control',
+          entityId: id,
+          entityName: control ? `${control.control_id} - ${control.title}` : 'Unknown Control',
+          oldValues: oldData,
+          newValues: updates,
+          notes: 'Control updated from wizard'
+        });
+        console.log("✅ [6] useUpdateControl: Audit event logged successfully");
+      } catch (logError) {
+        console.error("⚠️ [6] useUpdateControl: Audit logging failed but update succeeded:", logError);
+      }
     },
     onSuccess: () => {
       // Invalidate and refetch controls
