@@ -60,7 +60,7 @@ export function AppSidebar() {
     { title: "Risk Assessment", url: "/risk-assessment", icon: AlertTriangle },
     { title: "SoA", url: "/soa", icon: FileText },
     { title: "Audit Esterni", url: "/audits", icon: ClipboardCheck },
-    { title: "Audit Trail", url: "/audit", icon: ScrollText },
+    { title: "Registro Eventi", url: "/audit", icon: ScrollText },
     { title: "Politiche", url: "/policies", icon: FileText },
     { title: "Ruoli", url: "/roles", icon: Users },
     { title: "Setup Azienda", url: "/setup-azienda", icon: Building2 },
