@@ -23,12 +23,12 @@ export const logAuditEvent = async (params: AuditLogParams) => {
       return;
     }
 
-    // Get organization ID from first organization (simplified)
+    // Get organization ID from first organization in database
     const { data: orgData } = await supabase
       .from('organization')
       .select('id')
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (!orgData) {
       console.warn('No organization found for audit log');
@@ -42,13 +42,13 @@ export const logAuditEvent = async (params: AuditLogParams) => {
         organization_id: orgData.id,
         user_id: user.id,
         user_email: user.email,
-        user_name: user.user_metadata?.full_name || user.email,
+        user_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Unknown User',
         action: params.action,
         entity_type: params.entityType,
         entity_id: params.entityId,
         entity_name: params.entityName,
-        old_values: params.oldValues,
-        new_values: params.newValues,
+        old_values: params.oldValues || null,
+        new_values: params.newValues || null,
         notes: params.notes,
         user_agent: navigator.userAgent,
         timestamp: new Date().toISOString()

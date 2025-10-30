@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { logAuditEvent } from "@/utils/auditLog";
 import {
   Dialog,
   DialogContent,
@@ -130,9 +131,20 @@ export function CustomThreatDialog({ open, onOpenChange, onThreatCreated, initia
         return data;
       }
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log(isEditMode ? '✅ Threat updated' : '✅ Threat created successfully, ID:', data.id);
       
+      // Log audit event
+      await logAuditEvent({
+        action: isEditMode ? 'update' : 'create',
+        entityType: 'threat',
+        entityId: data.id,
+        entityName: name,
+        oldValues: isEditMode ? initialData : undefined,
+        newValues: { name, description, category, nis2_incident_type: nis2Type, iso27001_controls: selectedControls },
+        notes: isEditMode ? 'Custom threat updated' : 'New custom threat created'
+      });
+
       queryClient.invalidateQueries({ queryKey: ["threat-library"] });
       queryClient.invalidateQueries({ queryKey: ["threat_library"] });
       

@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { generateSoAPDF, generateSoAWord, generateSoAHTML, calculateStatistics } from "@/utils/soaExport";
 import { toast } from "sonner";
 import { useState } from "react";
+import { logAuditEvent } from "@/utils/auditLog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -72,7 +73,16 @@ export default function SoA() {
       
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Log audit event for SoA deletion
+      await logAuditEvent({
+        action: 'delete',
+        entityType: 'soa',
+        entityId: selectedDocId || undefined,
+        entityName: 'Statement of Applicability document',
+        notes: 'SoA document deleted'
+      });
+
       queryClient.invalidateQueries({ queryKey: ['soa_documents'] });
       toast.success('SoA eliminato con successo');
     },
@@ -149,6 +159,14 @@ export default function SoA() {
 
       if (error) throw error;
 
+      // Log audit event for SoA export
+      await logAuditEvent({
+        action: 'export',
+        entityType: 'soa',
+        entityName: `Statement of Applicability ${nextVersion}`,
+        notes: `SoA exported to PDF (${documentId})`
+      });
+
       queryClient.invalidateQueries({ queryKey: ['soa_documents'] });
       toast.success(`SoA ${nextVersion} generato e salvato!`);
     } catch (error) {
@@ -173,6 +191,15 @@ export default function SoA() {
         date: new Date().toLocaleDateString('it-IT'),
         version: 'v1.0',
       });
+
+      // Log audit event for Word export
+      await logAuditEvent({
+        action: 'export',
+        entityType: 'soa',
+        entityName: 'Statement of Applicability v1.0',
+        notes: 'SoA exported to Word format'
+      });
+
       toast.success('SoA Word generato con successo!');
     } catch (error) {
       console.error('Errore generazione Word:', error);
@@ -196,6 +223,15 @@ export default function SoA() {
         date: new Date().toLocaleDateString('it-IT'),
         version: nextVersion,
       });
+
+      // Log audit event for HTML export
+      logAuditEvent({
+        action: 'export',
+        entityType: 'soa',
+        entityName: `Statement of Applicability ${nextVersion}`,
+        notes: 'SoA exported to HTML for printing'
+      });
+
       toast.success('SoA HTML generato - pronto per la stampa!');
     } catch (error) {
       console.error('Errore generazione HTML:', error);

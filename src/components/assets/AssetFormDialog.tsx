@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { logAuditEvent } from "@/utils/auditLog";
 import {
   Dialog,
   DialogContent,
@@ -178,16 +179,43 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
           console.error("Asset update error:", error);
           throw error;
         }
+
+        // Log audit event for update
+        await logAuditEvent({
+          action: 'update',
+          entityType: 'asset',
+          entityId: asset.id,
+          entityName: values.name,
+          oldValues: asset,
+          newValues: assetData,
+          notes: 'Asset updated'
+        });
+
         toast.success("Asset aggiornato con successo");
       } else {
-        const { error } = await supabase
+        const { data: newAsset, error } = await supabase
           .from("assets")
-          .insert([assetData]);
+          .insert([assetData])
+          .select()
+          .single();
 
         if (error) {
           console.error("Asset creation error:", error);
           throw error;
         }
+
+        // Log audit event for create
+        if (newAsset) {
+          await logAuditEvent({
+            action: 'create',
+            entityType: 'asset',
+            entityId: newAsset.id,
+            entityName: values.name,
+            newValues: assetData,
+            notes: 'New asset created'
+          });
+        }
+
         toast.success("Asset creato con successo");
       }
 

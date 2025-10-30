@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { AlertTriangle, TrendingUp, TrendingDown, Shield, CheckCircle2 } from "lucide-react";
+import { logAuditEvent } from "@/utils/auditLog";
 
 interface ThreatEvaluationDialogProps {
   open: boolean;
@@ -179,6 +180,17 @@ export function ThreatEvaluationDialog({ open, onOpenChange, threatId, initialRi
         });
         throw error;
       }
+
+      // Log audit event
+      await logAuditEvent({
+        action: isEditMode ? 'update' : 'create',
+        entityType: 'risk',
+        entityId: data.id,
+        entityName: data.name,
+        oldValues: isEditMode ? initialRiskData : undefined,
+        newValues: riskData,
+        notes: isEditMode ? 'Risk updated in assessment' : 'New risk created from threat evaluation'
+      });
 
       console.log('🔄 Invalidating risks queries...');
       await queryClient.invalidateQueries({ queryKey: ["risks"] });

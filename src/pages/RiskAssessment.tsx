@@ -43,6 +43,7 @@ import { CustomThreatDialog } from "@/components/risk/CustomThreatDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getRiskBadgeVariant, RiskCategory } from "@/utils/riskCalculation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { logAuditEvent } from "@/utils/auditLog";
 
 export default function RiskAssessment() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -187,7 +188,19 @@ export default function RiskAssessment() {
       
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Log audit event
+      if (riskToDelete) {
+        await logAuditEvent({
+          action: 'delete',
+          entityType: 'risk',
+          entityId: riskToDelete.id,
+          entityName: riskToDelete.name,
+          oldValues: riskToDelete,
+          notes: 'Risk deleted from assessment'
+        });
+      }
+
       queryClient.invalidateQueries({ queryKey: ['risks'] });
       toast.success('🗑️ Rischio eliminato');
       setShowDeleteRiskConfirm(false);

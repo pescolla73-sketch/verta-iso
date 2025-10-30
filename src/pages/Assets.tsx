@@ -41,6 +41,7 @@ import { AssetFormDialog } from "@/components/assets/AssetFormDialog";
 import { AssetDetailDialog } from "@/components/assets/AssetDetailDialog";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
+import { logAuditEvent } from "@/utils/auditLog";
 
 export default function Assets() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -111,6 +112,16 @@ export default function Assets() {
         .eq("id", assetToDelete.id);
 
       if (error) throw error;
+
+      // Log audit event
+      await logAuditEvent({
+        action: 'delete',
+        entityType: 'asset',
+        entityId: assetToDelete.id,
+        entityName: assetToDelete.name,
+        oldValues: assetToDelete,
+        notes: 'Asset deleted from inventory'
+      });
 
       toast.success("Asset eliminato con successo");
       queryClient.invalidateQueries({ queryKey: ["assets"] });
