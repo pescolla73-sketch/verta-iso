@@ -10,6 +10,7 @@ import {
   Settings,
   Building2,
   AlertTriangle,
+  TrendingUp,
 } from "lucide-react";
 import {
   Sidebar,
@@ -46,6 +47,7 @@ export function AppSidebar() {
 
   const menuItems = [
     { title: "Dashboard", url: "/", icon: LayoutDashboard },
+    { title: "🎯 Percorso ISO 27001", url: "/progress", icon: TrendingUp },
     { 
       title: "Controlli", 
       url: "/controls", 

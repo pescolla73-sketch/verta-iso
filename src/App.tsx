@@ -20,6 +20,7 @@ import SetupAzienda from "./pages/SetupAzienda";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Wizard from "./pages/Wizard";
+import ProgressPage from "./pages/ProgressPage";
 
 const queryClient = new QueryClient();
 
@@ -147,6 +148,14 @@ const App = () => (
             element={
               <AppLayout>
                 <Settings />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/progress"
+            element={
+              <AppLayout>
+                <ProgressPage />
               </AppLayout>
             }
           />
