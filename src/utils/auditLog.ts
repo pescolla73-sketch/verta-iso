@@ -15,14 +15,9 @@ interface AuditLogParams {
 
 export const logAuditEvent = async (params: AuditLogParams) => {
   try {
-    // Get current user
+    // Get current user (or use demo user if not authenticated)
     const { data: { user } } = await supabase.auth.getUser();
     
-    if (!user) {
-      console.warn('No user found for audit log');
-      return;
-    }
-
     // Get organization ID from first organization in database
     const { data: orgData } = await supabase
       .from('organization')
@@ -31,18 +26,30 @@ export const logAuditEvent = async (params: AuditLogParams) => {
       .maybeSingle();
 
     if (!orgData) {
-      console.warn('No organization found for audit log');
+      console.warn('⚠️ No organization found for audit log');
       return;
     }
+
+    // Use demo user data if not authenticated (for demo mode)
+    const userId = user?.id || '00000000-0000-0000-0000-000000000000';
+    const userEmail = user?.email || 'demo@example.com';
+    const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Demo User';
+
+    console.log('📝 Logging audit event:', {
+      action: params.action,
+      entityType: params.entityType,
+      entityName: params.entityName,
+      user: userName
+    });
 
     // Insert audit log
     const { error } = await supabase
       .from('audit_logs')
       .insert({
         organization_id: orgData.id,
-        user_id: user.id,
-        user_email: user.email,
-        user_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Unknown User',
+        user_id: userId,
+        user_email: userEmail,
+        user_name: userName,
         action: params.action,
         entity_type: params.entityType,
         entity_id: params.entityId,
@@ -55,13 +62,13 @@ export const logAuditEvent = async (params: AuditLogParams) => {
       });
 
     if (error) {
-      console.error('Audit log failed:', error);
+      console.error('❌ Audit log failed:', error);
       // Don't throw - logging failure shouldn't break the app
     } else {
-      console.log('✅ Audit event logged:', params.action, params.entityType);
+      console.log('✅ Audit event logged successfully:', params.action, params.entityType);
     }
   } catch (err) {
-    console.error('Audit logging error:', err);
+    console.error('❌ Audit logging exception:', err);
     // Don't throw - logging failure shouldn't break the app
   }
 };

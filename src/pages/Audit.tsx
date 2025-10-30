@@ -30,6 +30,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { logAuditEvent } from "@/utils/auditLog";
 
 type AuditLog = {
   id: string;
@@ -187,6 +188,21 @@ export default function Audit() {
     setFilterDateTo("");
   };
 
+  const testAuditLog = async () => {
+    await logAuditEvent({
+      action: 'create',
+      entityType: 'control',
+      entityName: 'Test Event - Controllo 8.7',
+      notes: '🧪 Log di test per verificare funzionamento Registro Eventi'
+    });
+    
+    toast.success('Log di test creato! Ricaricamento pagina...');
+    
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
+  };
+
   return (
     <div className="space-y-6 p-6">
       <div className="flex justify-between items-center">
@@ -196,10 +212,15 @@ export default function Audit() {
             Registro completo delle attività per compliance ISO 27001
           </p>
         </div>
-        <Button onClick={exportAuditLog} disabled={auditLogs.length === 0}>
-          <Download className="h-4 w-4 mr-2" />
-          Esporta CSV
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={testAuditLog} variant="outline" size="sm">
+            🧪 Test Log
+          </Button>
+          <Button onClick={exportAuditLog} disabled={auditLogs.length === 0}>
+            <Download className="h-4 w-4 mr-2" />
+            Esporta CSV
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
