@@ -653,6 +653,135 @@ export type Database = {
           },
         ]
       }
+      security_incidents: {
+        Row: {
+          affected_assets: string[] | null
+          affected_users_count: number | null
+          assigned_to: string | null
+          authority_reference: string | null
+          category: string
+          closed_at: string | null
+          containment_actions: string | null
+          created_at: string | null
+          created_by: string | null
+          data_compromised: boolean | null
+          description: string
+          detected_at: string
+          eradication_actions: string | null
+          estimated_impact: string | null
+          financial_impact_eur: number | null
+          id: string
+          immediate_actions: string | null
+          incident_id: string
+          lessons_learned: string | null
+          nis2_incident_type: string | null
+          organization_id: string
+          preventive_actions: string | null
+          recovery_actions: string | null
+          related_controls: string[] | null
+          related_risks: string[] | null
+          reported_at: string | null
+          reported_to_authorities: boolean | null
+          reported_to_dpo: boolean | null
+          resolved_at: string | null
+          response_team: string[] | null
+          root_cause: string | null
+          severity: string
+          status: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          affected_assets?: string[] | null
+          affected_users_count?: number | null
+          assigned_to?: string | null
+          authority_reference?: string | null
+          category: string
+          closed_at?: string | null
+          containment_actions?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          data_compromised?: boolean | null
+          description: string
+          detected_at: string
+          eradication_actions?: string | null
+          estimated_impact?: string | null
+          financial_impact_eur?: number | null
+          id?: string
+          immediate_actions?: string | null
+          incident_id: string
+          lessons_learned?: string | null
+          nis2_incident_type?: string | null
+          organization_id: string
+          preventive_actions?: string | null
+          recovery_actions?: string | null
+          related_controls?: string[] | null
+          related_risks?: string[] | null
+          reported_at?: string | null
+          reported_to_authorities?: boolean | null
+          reported_to_dpo?: boolean | null
+          resolved_at?: string | null
+          response_team?: string[] | null
+          root_cause?: string | null
+          severity: string
+          status?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          affected_assets?: string[] | null
+          affected_users_count?: number | null
+          assigned_to?: string | null
+          authority_reference?: string | null
+          category?: string
+          closed_at?: string | null
+          containment_actions?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          data_compromised?: boolean | null
+          description?: string
+          detected_at?: string
+          eradication_actions?: string | null
+          estimated_impact?: string | null
+          financial_impact_eur?: number | null
+          id?: string
+          immediate_actions?: string | null
+          incident_id?: string
+          lessons_learned?: string | null
+          nis2_incident_type?: string | null
+          organization_id?: string
+          preventive_actions?: string | null
+          recovery_actions?: string | null
+          related_controls?: string[] | null
+          related_risks?: string[] | null
+          reported_at?: string | null
+          reported_to_authorities?: boolean | null
+          reported_to_dpo?: boolean | null
+          resolved_at?: string | null
+          response_team?: string[] | null
+          root_cause?: string | null
+          severity?: string
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_incidents_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "security_incidents_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       soa_documents: {
         Row: {
           approval_date: string | null
