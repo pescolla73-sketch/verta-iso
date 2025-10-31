@@ -831,6 +831,75 @@ export type Database = {
           },
         ]
       }
+      training_records: {
+        Row: {
+          certificate_file_url: string | null
+          certificate_issued: boolean | null
+          certificate_number: string | null
+          completion_score: number | null
+          created_at: string | null
+          department: string | null
+          employee_email: string | null
+          employee_name: string
+          expiry_date: string | null
+          id: string
+          notes: string | null
+          organization_id: string
+          role: string | null
+          status: string | null
+          training_date: string
+          training_duration_hours: number | null
+          training_provider: string | null
+          training_title: string
+          training_type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          certificate_file_url?: string | null
+          certificate_issued?: boolean | null
+          certificate_number?: string | null
+          completion_score?: number | null
+          created_at?: string | null
+          department?: string | null
+          employee_email?: string | null
+          employee_name: string
+          expiry_date?: string | null
+          id?: string
+          notes?: string | null
+          organization_id: string
+          role?: string | null
+          status?: string | null
+          training_date: string
+          training_duration_hours?: number | null
+          training_provider?: string | null
+          training_title: string
+          training_type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          certificate_file_url?: string | null
+          certificate_issued?: boolean | null
+          certificate_number?: string | null
+          completion_score?: number | null
+          created_at?: string | null
+          department?: string | null
+          employee_email?: string | null
+          employee_name?: string
+          expiry_date?: string | null
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          role?: string | null
+          status?: string | null
+          training_date?: string
+          training_duration_hours?: number | null
+          training_provider?: string | null
+          training_title?: string
+          training_type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null

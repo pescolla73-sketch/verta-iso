@@ -11,6 +11,7 @@ import {
   Building2,
   AlertTriangle,
   TrendingUp,
+  GraduationCap,
 } from "lucide-react";
 import {
   Sidebar,
@@ -64,6 +65,7 @@ export function AppSidebar() {
     { title: "Audit Esterni", url: "/audits", icon: ClipboardCheck },
     { title: "Registro Eventi", url: "/audit", icon: ScrollText },
     { title: "Politiche", url: "/policies", icon: FileText },
+    { title: "Training", url: "/training", icon: GraduationCap },
     { title: "Ruoli", url: "/roles", icon: Users },
     { title: "Setup Azienda", url: "/setup-azienda", icon: Building2 },
     { title: "Impostazioni", url: "/settings", icon: Settings },

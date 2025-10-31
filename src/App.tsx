@@ -21,6 +21,7 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Wizard from "./pages/Wizard";
 import ProgressPage from "./pages/ProgressPage";
+import Training from "./pages/Training";
 
 const queryClient = new QueryClient();
 
@@ -156,6 +157,14 @@ const App = () => (
             element={
               <AppLayout>
                 <ProgressPage />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/training"
+            element={
+              <AppLayout>
+                <Training />
               </AppLayout>
             }
           />
