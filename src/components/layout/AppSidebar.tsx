@@ -12,6 +12,7 @@ import {
   AlertTriangle,
   TrendingUp,
   GraduationCap,
+  Shield as ShieldAlert,
 } from "lucide-react";
 import {
   Sidebar,
@@ -66,6 +67,7 @@ export function AppSidebar() {
     { title: "Registro Eventi", url: "/audit", icon: ScrollText },
     { title: "Politiche", url: "/policies", icon: FileText },
     { title: "Training", url: "/training", icon: GraduationCap },
+    { title: "Incidenti", url: "/incidents", icon: ShieldAlert },
     { title: "Ruoli", url: "/roles", icon: Users },
     { title: "Setup Azienda", url: "/setup-azienda", icon: Building2 },
     { title: "Impostazioni", url: "/settings", icon: Settings },

@@ -22,6 +22,7 @@ import NotFound from "./pages/NotFound";
 import Wizard from "./pages/Wizard";
 import ProgressPage from "./pages/ProgressPage";
 import Training from "./pages/Training";
+import Incidents from "./pages/Incidents";
 
 const queryClient = new QueryClient();
 
@@ -165,6 +166,14 @@ const App = () => (
             element={
               <AppLayout>
                 <Training />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/incidents"
+            element={
+              <AppLayout>
+                <Incidents />
               </AppLayout>
             }
           />

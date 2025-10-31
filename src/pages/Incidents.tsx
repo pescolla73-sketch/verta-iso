@@ -1,0 +1,566 @@
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { AlertTriangle, Plus, Eye, CheckCircle, Clock } from 'lucide-react';
+import { format } from 'date-fns';
+import { it } from 'date-fns/locale';
+import { toast } from 'sonner';
+
+export default function Incidents() {
+  const [incidents, setIncidents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [selectedIncident, setSelectedIncident] = useState<any>(null);
+  const [showDetailDialog, setShowDetailDialog] = useState(false);
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    severity: 'medium',
+    category: 'other',
+    detected_at: new Date().toISOString().slice(0, 16),
+    affected_users_count: '',
+    data_compromised: false,
+    estimated_impact: 'medium',
+    assigned_to: '',
+    immediate_actions: ''
+  });
+
+  useEffect(() => {
+    loadIncidents();
+  }, []);
+
+  const loadIncidents = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('security_incidents')
+        .select('*')
+        .order('detected_at', { ascending: false });
+
+      if (error) throw error;
+      setIncidents(data || []);
+    } catch (error) {
+      console.error('Error loading incidents:', error);
+      toast.error('Errore nel caricamento');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      const { error } = await supabase
+        .from('security_incidents')
+        .insert({
+          ...formData,
+          status: 'open',
+          reported_at: new Date().toISOString()
+        } as any);
+
+      if (error) throw error;
+
+      toast.success('⚠️ Incidente registrato!');
+      setShowAddDialog(false);
+      setFormData({
+        title: '',
+        description: '',
+        severity: 'medium',
+        category: 'other',
+        detected_at: new Date().toISOString().slice(0, 16),
+        affected_users_count: '',
+        data_compromised: false,
+        estimated_impact: 'medium',
+        assigned_to: '',
+        immediate_actions: ''
+      });
+      loadIncidents();
+    } catch (error) {
+      console.error('Error adding incident:', error);
+      toast.error('Errore nel salvataggio');
+    }
+  };
+
+  const updateStatus = async (incidentId: string, newStatus: string) => {
+    try {
+      const updates: any = { status: newStatus };
+      
+      if (newStatus === 'resolved') {
+        updates.resolved_at = new Date().toISOString();
+      } else if (newStatus === 'closed') {
+        updates.closed_at = new Date().toISOString();
+      }
+
+      const { error } = await supabase
+        .from('security_incidents')
+        .update(updates)
+        .eq('id', incidentId);
+
+      if (error) throw error;
+
+      toast.success('Status aggiornato!');
+      loadIncidents();
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast.error('Errore aggiornamento');
+    }
+  };
+
+  const getSeverityColor = (severity: string) => {
+    const colors: Record<string, string> = {
+      critical: 'bg-red-500',
+      high: 'bg-orange-500',
+      medium: 'bg-yellow-500',
+      low: 'bg-blue-500'
+    };
+    return colors[severity] || 'bg-gray-500';
+  };
+
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, any> = {
+      open: 'destructive',
+      investigating: 'secondary',
+      contained: 'secondary',
+      resolved: 'default',
+      closed: 'outline'
+    };
+    return colors[status] || 'outline';
+  };
+
+  const getStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      open: 'Aperto',
+      investigating: 'In Analisi',
+      contained: 'Contenuto',
+      resolved: 'Risolto',
+      closed: 'Chiuso'
+    };
+    return labels[status] || status;
+  };
+
+  const getCategoryLabel = (category: string) => {
+    const labels: Record<string, string> = {
+      data_breach: 'Data Breach',
+      malware: 'Malware',
+      unauthorized_access: 'Accesso Non Autorizzato',
+      ddos: 'DDoS',
+      phishing: 'Phishing',
+      physical: 'Sicurezza Fisica',
+      other: 'Altro'
+    };
+    return labels[category] || category;
+  };
+
+  // Calculate stats
+  const stats = {
+    total: incidents.length,
+    open: incidents.filter(i => i.status === 'open').length,
+    critical: incidents.filter(i => i.severity === 'critical' && i.status !== 'closed').length,
+    resolved: incidents.filter(i => i.status === 'resolved' || i.status === 'closed').length
+  };
+
+  return (
+    <div className="space-y-6 p-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <AlertTriangle className="h-8 w-8 text-orange-500" />
+            Gestione Incidenti Sicurezza
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Registro incidenti per compliance ISO 27001 (Clause 5.24-5.28)
+          </p>
+        </div>
+        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Registra Incidente
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Nuovo Incidente di Sicurezza</DialogTitle>
+              <DialogDescription>
+                Registra un incidente di sicurezza delle informazioni
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Titolo Incidente *</Label>
+                <Input
+                  required
+                  value={formData.title}
+                  onChange={(e) => setFormData({...formData, title: e.target.value})}
+                  placeholder="es. Tentativo accesso non autorizzato al server"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Descrizione *</Label>
+                <Textarea
+                  required
+                  value={formData.description}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  placeholder="Descrivi l'incidente in dettaglio..."
+                  rows={4}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Severità *</Label>
+                  <Select 
+                    value={formData.severity}
+                    onValueChange={(value) => setFormData({...formData, severity: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="critical">🔴 Critica</SelectItem>
+                      <SelectItem value="high">🟠 Alta</SelectItem>
+                      <SelectItem value="medium">🟡 Media</SelectItem>
+                      <SelectItem value="low">🔵 Bassa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Categoria *</Label>
+                  <Select 
+                    value={formData.category}
+                    onValueChange={(value) => setFormData({...formData, category: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="data_breach">Data Breach</SelectItem>
+                      <SelectItem value="malware">Malware</SelectItem>
+                      <SelectItem value="unauthorized_access">Accesso Non Autorizzato</SelectItem>
+                      <SelectItem value="ddos">DDoS</SelectItem>
+                      <SelectItem value="phishing">Phishing</SelectItem>
+                      <SelectItem value="physical">Sicurezza Fisica</SelectItem>
+                      <SelectItem value="other">Altro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Data/Ora Rilevamento *</Label>
+                  <Input
+                    type="datetime-local"
+                    required
+                    value={formData.detected_at}
+                    onChange={(e) => setFormData({...formData, detected_at: e.target.value})}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Impatto Stimato</Label>
+                  <Select 
+                    value={formData.estimated_impact}
+                    onValueChange={(value) => setFormData({...formData, estimated_impact: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="critical">Critico</SelectItem>
+                      <SelectItem value="high">Alto</SelectItem>
+                      <SelectItem value="medium">Medio</SelectItem>
+                      <SelectItem value="low">Basso</SelectItem>
+                      <SelectItem value="minimal">Minimo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Utenti Coinvolti (n.)</Label>
+                  <Input
+                    type="number"
+                    value={formData.affected_users_count}
+                    onChange={(e) => setFormData({...formData, affected_users_count: e.target.value})}
+                    placeholder="0"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Dati Compromessi</Label>
+                  <Select 
+                    value={formData.data_compromised ? 'true' : 'false'}
+                    onValueChange={(value) => setFormData({...formData, data_compromised: value === 'true'})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="false">No</SelectItem>
+                      <SelectItem value="true">Sì</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Assegnato a</Label>
+                <Input
+                  value={formData.assigned_to}
+                  onChange={(e) => setFormData({...formData, assigned_to: e.target.value})}
+                  placeholder="Nome responsabile"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Azioni Immediate</Label>
+                <Textarea
+                  value={formData.immediate_actions}
+                  onChange={(e) => setFormData({...formData, immediate_actions: e.target.value})}
+                  placeholder="Azioni intraprese immediatamente..."
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setShowAddDialog(false)}>
+                  Annulla
+                </Button>
+                <Button type="submit">
+                  Registra Incidente
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Totali</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{stats.total}</div>
+          </CardContent>
+        </Card>
+        <Card className="border-red-200">
+          <CardHeader className="pb-2">
+            <CardDescription>Aperti</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-red-600">{stats.open}</div>
+          </CardContent>
+        </Card>
+        <Card className="border-orange-200">
+          <CardHeader className="pb-2">
+            <CardDescription>Critici Attivi</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-orange-600">{stats.critical}</div>
+          </CardContent>
+        </Card>
+        <Card className="border-green-200">
+          <CardHeader className="pb-2">
+            <CardDescription>Risolti</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-green-600">{stats.resolved}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Incidents Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Registro Incidenti</CardTitle>
+          <CardDescription>
+            Storico completo incidenti di sicurezza
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="text-center py-8">Caricamento...</div>
+          ) : incidents.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Nessun incidente registrato 🎉
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ID</TableHead>
+                  <TableHead>Incidente</TableHead>
+                  <TableHead>Severità</TableHead>
+                  <TableHead>Categoria</TableHead>
+                  <TableHead>Rilevato</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Azioni</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {incidents.map((incident) => (
+                  <TableRow key={incident.id}>
+                    <TableCell className="font-mono text-sm">
+                      {incident.incident_id}
+                    </TableCell>
+                    <TableCell>
+                      <div className="max-w-xs">
+                        <div className="font-medium">{incident.title}</div>
+                        {incident.assigned_to && (
+                          <div className="text-xs text-muted-foreground">
+                            Ass.: {incident.assigned_to}
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={getSeverityColor(incident.severity)}>
+                        {incident.severity.toUpperCase()}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm">{getCategoryLabel(incident.category)}</span>
+                    </TableCell>
+                    <TableCell>
+                      {format(new Date(incident.detected_at), 'dd/MM/yyyy HH:mm', { locale: it })}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusColor(incident.status)}>
+                        {getStatusLabel(incident.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setSelectedIncident(incident);
+                            setShowDetailDialog(true);
+                          }}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {incident.status === 'open' && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => updateStatus(incident.id, 'investigating')}
+                          >
+                            <Clock className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {(incident.status === 'investigating' || incident.status === 'contained') && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => updateStatus(incident.id, 'resolved')}
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Detail Dialog */}
+      <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {selectedIncident?.incident_id} - {selectedIncident?.title}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedIncident && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Severità</Label>
+                  <div className="mt-1">
+                    <Badge className={getSeverityColor(selectedIncident.severity)}>
+                      {selectedIncident.severity.toUpperCase()}
+                    </Badge>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Status</Label>
+                  <div className="mt-1">
+                    <Badge variant={getStatusColor(selectedIncident.status)}>
+                      {getStatusLabel(selectedIncident.status)}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs text-muted-foreground">Descrizione</Label>
+                <p className="text-sm mt-1">{selectedIncident.description}</p>
+              </div>
+
+              {selectedIncident.immediate_actions && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Azioni Immediate</Label>
+                  <p className="text-sm mt-1">{selectedIncident.immediate_actions}</p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Rilevato</Label>
+                  <p>{format(new Date(selectedIncident.detected_at), 'dd/MM/yyyy HH:mm', { locale: it })}</p>
+                </div>
+                {selectedIncident.resolved_at && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Risolto</Label>
+                    <p>{format(new Date(selectedIncident.resolved_at), 'dd/MM/yyyy HH:mm', { locale: it })}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
