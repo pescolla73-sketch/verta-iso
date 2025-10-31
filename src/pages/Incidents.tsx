@@ -40,6 +40,8 @@ export default function Incidents() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedIncident, setSelectedIncident] = useState<any>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState<any>(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -180,10 +182,144 @@ export default function Incidents() {
       if (error) throw error;
 
       toast.success('Status aggiornato!');
+      
+      // Update local state if this is the selected incident
+      if (selectedIncident?.id === incidentId) {
+        setSelectedIncident({ ...selectedIncident, ...updates });
+      }
+      
       loadIncidents();
     } catch (error) {
       console.error('Error updating status:', error);
       toast.error('Errore aggiornamento');
+    }
+  };
+
+  const handleSaveDetails = async () => {
+    try {
+      const { error } = await supabase
+        .from('security_incidents')
+        .update({
+          containment_actions: editData.containment_actions,
+          eradication_actions: editData.eradication_actions,
+          recovery_actions: editData.recovery_actions,
+          root_cause: editData.root_cause,
+          lessons_learned: editData.lessons_learned,
+          preventive_actions: editData.preventive_actions,
+          reported_to_authorities: editData.reported_to_authorities,
+          authority_reference: editData.authority_reference,
+          reported_to_dpo: editData.reported_to_dpo,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', selectedIncident.id);
+
+      if (error) throw error;
+
+      toast.success('Incidente aggiornato!');
+      setSelectedIncident({ ...selectedIncident, ...editData });
+      setIsEditing(false);
+      loadIncidents();
+    } catch (error: any) {
+      console.error('Update error:', error);
+      toast.error('Errore aggiornamento: ' + error.message);
+    }
+  };
+
+  const exportIncidentReport = (incident: any) => {
+    const reportContent = `
+INCIDENT REPORT
+================
+
+ID: ${incident.incident_id}
+Title: ${incident.title}
+Severity: ${incident.severity.toUpperCase()}
+Category: ${getCategoryLabel(incident.category)}
+Status: ${getStatusLabel(incident.status)}
+
+DESCRIPTION:
+${incident.description}
+
+IMPACT:
+- Estimated Impact: ${incident.estimated_impact || 'N/A'}
+- Affected Users: ${incident.affected_users_count || 0}
+- Data Compromised: ${incident.data_compromised ? 'Yes' : 'No'}
+
+TIMELINE:
+- Detected: ${format(new Date(incident.detected_at), 'dd/MM/yyyy HH:mm', { locale: it })}
+- Reported: ${format(new Date(incident.reported_at), 'dd/MM/yyyy HH:mm', { locale: it })}
+${incident.resolved_at ? `- Resolved: ${format(new Date(incident.resolved_at), 'dd/MM/yyyy HH:mm', { locale: it })}` : ''}
+${incident.closed_at ? `- Closed: ${format(new Date(incident.closed_at), 'dd/MM/yyyy HH:mm', { locale: it })}` : ''}
+
+RESPONSE ACTIONS:
+==================
+
+1. IMMEDIATE ACTIONS:
+${incident.immediate_actions || 'N/A'}
+
+2. CONTAINMENT:
+${incident.containment_actions || 'N/A'}
+
+3. ERADICATION:
+${incident.eradication_actions || 'N/A'}
+
+4. RECOVERY:
+${incident.recovery_actions || 'N/A'}
+
+ANALYSIS:
+=========
+
+ROOT CAUSE:
+${incident.root_cause || 'TBD'}
+
+LESSONS LEARNED:
+${incident.lessons_learned || 'TBD'}
+
+PREVENTIVE ACTIONS:
+${incident.preventive_actions || 'TBD'}
+
+REPORTING:
+==========
+- Reported to Authorities: ${incident.reported_to_authorities ? 'Yes' : 'No'}
+${incident.authority_reference ? `- Authority Reference: ${incident.authority_reference}` : ''}
+- Reported to DPO: ${incident.reported_to_dpo ? 'Yes' : 'No'}
+
+Assigned to: ${incident.assigned_to || 'N/A'}
+`;
+
+    const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `incident_report_${incident.incident_id}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    toast.success('Report esportato!');
+  };
+
+  const getNextActions = (status: string) => {
+    switch (status) {
+      case 'open':
+        return [
+          { label: '🔍 Inizia Investigazione', status: 'investigating', variant: 'default' as const }
+        ];
+      case 'investigating':
+        return [
+          { label: '🛡️ Contieni Incidente', status: 'contained', variant: 'default' as const },
+          { label: '✅ Risolvi Direttamente', status: 'resolved', variant: 'secondary' as const }
+        ];
+      case 'contained':
+        return [
+          { label: '✅ Segna come Risolto', status: 'resolved', variant: 'default' as const }
+        ];
+      case 'resolved':
+        return [
+          { label: '🔒 Chiudi Incidente', status: 'closed', variant: 'default' as const }
+        ];
+      default:
+        return [];
     }
   };
 
@@ -558,58 +694,409 @@ export default function Incidents() {
       </Card>
 
       {/* Detail Dialog */}
-      <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={showDetailDialog} onOpenChange={(open) => {
+        setShowDetailDialog(open);
+        if (!open) {
+          setIsEditing(false);
+          setEditData(null);
+        }
+      }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {selectedIncident?.incident_id} - {selectedIncident?.title}
-            </DialogTitle>
-          </DialogHeader>
-          {selectedIncident && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-xs text-muted-foreground">Severità</Label>
-                  <div className="mt-1">
-                    <Badge className={getSeverityColor(selectedIncident.severity)}>
-                      {selectedIncident.severity.toUpperCase()}
-                    </Badge>
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Status</Label>
-                  <div className="mt-1">
-                    <Badge variant={getStatusColor(selectedIncident.status)}>
-                      {getStatusLabel(selectedIncident.status)}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <Label className="text-xs text-muted-foreground">Descrizione</Label>
-                <p className="text-sm mt-1">{selectedIncident.description}</p>
-              </div>
-
-              {selectedIncident.immediate_actions && (
-                <div>
-                  <Label className="text-xs text-muted-foreground">Azioni Immediate</Label>
-                  <p className="text-sm mt-1">{selectedIncident.immediate_actions}</p>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <Label className="text-xs text-muted-foreground">Rilevato</Label>
-                  <p>{format(new Date(selectedIncident.detected_at), 'dd/MM/yyyy HH:mm', { locale: it })}</p>
-                </div>
-                {selectedIncident.resolved_at && (
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Risolto</Label>
-                    <p>{format(new Date(selectedIncident.resolved_at), 'dd/MM/yyyy HH:mm', { locale: it })}</p>
-                  </div>
+            <div className="flex justify-between items-start gap-4">
+              <DialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5" />
+                {selectedIncident?.incident_id} - {selectedIncident?.title}
+              </DialogTitle>
+              <div className="flex gap-2">
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => selectedIncident && exportIncidentReport(selectedIncident)}
+                >
+                  📥 Export
+                </Button>
+                {!isEditing && selectedIncident?.status !== 'closed' && (
+                  <Button size="sm" variant="outline" onClick={() => {
+                    setIsEditing(true);
+                    setEditData(selectedIncident);
+                  }}>
+                    ✏️ Modifica
+                  </Button>
+                )}
+                {isEditing && (
+                  <>
+                    <Button size="sm" variant="outline" onClick={() => {
+                      setIsEditing(false);
+                      setEditData(null);
+                    }}>
+                      Annulla
+                    </Button>
+                    <Button size="sm" onClick={handleSaveDetails}>
+                      💾 Salva
+                    </Button>
+                  </>
                 )}
               </div>
+            </div>
+          </DialogHeader>
+
+          {selectedIncident && (
+            <div className="space-y-6">
+              {/* Status & Actions */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Status e Azioni</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Status Corrente</Label>
+                      <div className="mt-1">
+                        <Badge variant={getStatusColor(selectedIncident.status)} className="text-base">
+                          {getStatusLabel(selectedIncident.status)}
+                        </Badge>
+                      </div>
+                    </div>
+                    {selectedIncident.status !== 'closed' && (
+                      <div className="flex gap-2 flex-wrap">
+                        {getNextActions(selectedIncident.status).map(action => (
+                          <Button
+                            key={action.status}
+                            variant={action.variant}
+                            size="sm"
+                            onClick={() => updateStatus(selectedIncident.id, action.status)}
+                          >
+                            {action.label}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Timeline */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Timeline</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex gap-3">
+                      <div className="w-2 h-2 rounded-full bg-red-500 mt-2 flex-shrink-0"></div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Incidente Rilevato</p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(selectedIncident.detected_at), 'dd/MM/yyyy HH:mm', { locale: it })}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <div className="w-2 h-2 rounded-full bg-blue-500 mt-2 flex-shrink-0"></div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Incidente Registrato</p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(selectedIncident.reported_at), 'dd/MM/yyyy HH:mm', { locale: it })}
+                        </p>
+                      </div>
+                    </div>
+
+                    {selectedIncident.resolved_at && (
+                      <div className="flex gap-3">
+                        <div className="w-2 h-2 rounded-full bg-green-500 mt-2 flex-shrink-0"></div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">Incidente Risolto</p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(selectedIncident.resolved_at), 'dd/MM/yyyy HH:mm', { locale: it })}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedIncident.closed_at && (
+                      <div className="flex gap-3">
+                        <div className="w-2 h-2 rounded-full bg-gray-500 mt-2 flex-shrink-0"></div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">Incidente Chiuso</p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(selectedIncident.closed_at), 'dd/MM/yyyy HH:mm', { locale: it })}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Basic Info */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Informazioni Base</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Severità</Label>
+                      <div className="mt-1">
+                        <Badge className={getSeverityColor(selectedIncident.severity)}>
+                          {selectedIncident.severity.toUpperCase()}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Categoria</Label>
+                      <p className="text-sm mt-1">{getCategoryLabel(selectedIncident.category)}</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Descrizione</Label>
+                    <p className="text-sm mt-1 whitespace-pre-wrap">{selectedIncident.description}</p>
+                  </div>
+
+                  {selectedIncident.assigned_to && (
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Assegnato a</Label>
+                      <p className="text-sm mt-1">{selectedIncident.assigned_to}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Impact */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Impatto</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Impatto Stimato</Label>
+                      <Badge variant="outline" className="mt-1">
+                        {selectedIncident.estimated_impact || 'N/A'}
+                      </Badge>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Utenti Coinvolti</Label>
+                      <p className="text-sm mt-1">{selectedIncident.affected_users_count || 0}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Dati Compromessi</Label>
+                      <Badge variant={selectedIncident.data_compromised ? 'destructive' : 'outline'} className="mt-1">
+                        {selectedIncident.data_compromised ? '⚠️ Sì' : '✅ No'}
+                      </Badge>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Response Actions */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Risposta all'Incidente</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Immediate Actions */}
+                  <div>
+                    <Label className="text-xs text-muted-foreground">1️⃣ Azioni Immediate</Label>
+                    {isEditing ? (
+                      <Textarea
+                        value={editData?.immediate_actions || ''}
+                        onChange={(e) => setEditData({...editData, immediate_actions: e.target.value})}
+                        placeholder="Azioni intraprese subito dopo la scoperta..."
+                        rows={3}
+                        className="mt-1"
+                      />
+                    ) : (
+                      <p className="text-sm mt-1 whitespace-pre-wrap">
+                        {selectedIncident.immediate_actions || '—'}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Containment */}
+                  <div>
+                    <Label className="text-xs text-muted-foreground">2️⃣ Contenimento</Label>
+                    {isEditing ? (
+                      <Textarea
+                        value={editData?.containment_actions || ''}
+                        onChange={(e) => setEditData({...editData, containment_actions: e.target.value})}
+                        placeholder="Come è stato contenuto l'incidente..."
+                        rows={3}
+                        className="mt-1"
+                      />
+                    ) : (
+                      <p className="text-sm mt-1 whitespace-pre-wrap">
+                        {selectedIncident.containment_actions || '—'}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Eradication */}
+                  <div>
+                    <Label className="text-xs text-muted-foreground">3️⃣ Eradicazione</Label>
+                    {isEditing ? (
+                      <Textarea
+                        value={editData?.eradication_actions || ''}
+                        onChange={(e) => setEditData({...editData, eradication_actions: e.target.value})}
+                        placeholder="Come è stata eliminata la causa..."
+                        rows={3}
+                        className="mt-1"
+                      />
+                    ) : (
+                      <p className="text-sm mt-1 whitespace-pre-wrap">
+                        {selectedIncident.eradication_actions || '—'}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Recovery */}
+                  <div>
+                    <Label className="text-xs text-muted-foreground">4️⃣ Recupero</Label>
+                    {isEditing ? (
+                      <Textarea
+                        value={editData?.recovery_actions || ''}
+                        onChange={(e) => setEditData({...editData, recovery_actions: e.target.value})}
+                        placeholder="Come è stato ripristinato il servizio..."
+                        rows={3}
+                        className="mt-1"
+                      />
+                    ) : (
+                      <p className="text-sm mt-1 whitespace-pre-wrap">
+                        {selectedIncident.recovery_actions || '—'}
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Analysis */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Analisi Post-Incidente</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Root Cause */}
+                  <div>
+                    <Label className="text-xs text-muted-foreground">🔍 Root Cause (Causa Radice)</Label>
+                    {isEditing ? (
+                      <Textarea
+                        value={editData?.root_cause || ''}
+                        onChange={(e) => setEditData({...editData, root_cause: e.target.value})}
+                        placeholder="Quale è stata la causa principale dell'incidente..."
+                        rows={3}
+                        className="mt-1"
+                      />
+                    ) : (
+                      <p className="text-sm mt-1 whitespace-pre-wrap">
+                        {selectedIncident.root_cause || '—'}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Lessons Learned */}
+                  <div>
+                    <Label className="text-xs text-muted-foreground">💡 Lessons Learned (Lezioni Apprese)</Label>
+                    {isEditing ? (
+                      <Textarea
+                        value={editData?.lessons_learned || ''}
+                        onChange={(e) => setEditData({...editData, lessons_learned: e.target.value})}
+                        placeholder="Cosa abbiamo imparato da questo incidente..."
+                        rows={3}
+                        className="mt-1"
+                      />
+                    ) : (
+                      <p className="text-sm mt-1 whitespace-pre-wrap">
+                        {selectedIncident.lessons_learned || '—'}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Preventive Actions */}
+                  <div>
+                    <Label className="text-xs text-muted-foreground">🛡️ Azioni Preventive</Label>
+                    {isEditing ? (
+                      <Textarea
+                        value={editData?.preventive_actions || ''}
+                        onChange={(e) => setEditData({...editData, preventive_actions: e.target.value})}
+                        placeholder="Cosa faremo per prevenire incidenti simili..."
+                        rows={3}
+                        className="mt-1"
+                      />
+                    ) : (
+                      <p className="text-sm mt-1 whitespace-pre-wrap">
+                        {selectedIncident.preventive_actions || '—'}
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Reporting */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Segnalazioni</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {isEditing ? (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="reported_authorities"
+                          checked={editData?.reported_to_authorities || false}
+                          onChange={(e) => setEditData({...editData, reported_to_authorities: e.target.checked})}
+                          className="rounded"
+                        />
+                        <Label htmlFor="reported_authorities" className="text-sm">
+                          🏛️ Segnalato alle Autorità
+                        </Label>
+                      </div>
+                      {editData?.reported_to_authorities && (
+                        <Input
+                          placeholder="Riferimento autorità"
+                          value={editData?.authority_reference || ''}
+                          onChange={(e) => setEditData({...editData, authority_reference: e.target.value})}
+                          className="ml-6"
+                        />
+                      )}
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="reported_dpo"
+                          checked={editData?.reported_to_dpo || false}
+                          onChange={(e) => setEditData({...editData, reported_to_dpo: e.target.checked})}
+                          className="rounded"
+                        />
+                        <Label htmlFor="reported_dpo" className="text-sm">
+                          👤 Segnalato al DPO
+                        </Label>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {selectedIncident.reported_to_authorities && (
+                        <div className="flex items-center gap-2">
+                          <Badge>🏛️ Segnalato alle Autorità</Badge>
+                          {selectedIncident.authority_reference && (
+                            <span className="text-sm text-muted-foreground">
+                              Rif: {selectedIncident.authority_reference}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {selectedIncident.reported_to_dpo && (
+                        <Badge>👤 Segnalato al DPO</Badge>
+                      )}
+                      {!selectedIncident.reported_to_authorities && !selectedIncident.reported_to_dpo && (
+                        <p className="text-sm text-muted-foreground">Nessuna segnalazione effettuata</p>
+                      )}
+                    </>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           )}
         </DialogContent>
