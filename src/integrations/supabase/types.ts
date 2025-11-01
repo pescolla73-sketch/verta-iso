@@ -436,6 +436,7 @@ export type Database = {
           approval_date: string | null
           approved_by: string | null
           category: string | null
+          compliance_requirements: string | null
           content: string | null
           created_at: string | null
           id: string
@@ -443,8 +444,16 @@ export type Database = {
           next_review_date: string | null
           nis2_reference: string[] | null
           organization_id: string | null
+          policy_id: string | null
           policy_name: string
+          policy_statement: string | null
           policy_type: string
+          prepared_by: string | null
+          procedures: string | null
+          purpose: string | null
+          review_requirements: string | null
+          roles_responsibilities: string | null
+          scope: string | null
           sections: Json | null
           status: string | null
           template_id: string | null
@@ -456,6 +465,7 @@ export type Database = {
           approval_date?: string | null
           approved_by?: string | null
           category?: string | null
+          compliance_requirements?: string | null
           content?: string | null
           created_at?: string | null
           id?: string
@@ -463,8 +473,16 @@ export type Database = {
           next_review_date?: string | null
           nis2_reference?: string[] | null
           organization_id?: string | null
+          policy_id?: string | null
           policy_name: string
+          policy_statement?: string | null
           policy_type: string
+          prepared_by?: string | null
+          procedures?: string | null
+          purpose?: string | null
+          review_requirements?: string | null
+          roles_responsibilities?: string | null
+          scope?: string | null
           sections?: Json | null
           status?: string | null
           template_id?: string | null
@@ -476,6 +494,7 @@ export type Database = {
           approval_date?: string | null
           approved_by?: string | null
           category?: string | null
+          compliance_requirements?: string | null
           content?: string | null
           created_at?: string | null
           id?: string
@@ -483,8 +502,16 @@ export type Database = {
           next_review_date?: string | null
           nis2_reference?: string[] | null
           organization_id?: string | null
+          policy_id?: string | null
           policy_name?: string
+          policy_statement?: string | null
           policy_type?: string
+          prepared_by?: string | null
+          procedures?: string | null
+          purpose?: string | null
+          review_requirements?: string | null
+          roles_responsibilities?: string | null
+          scope?: string | null
           sections?: Json | null
           status?: string | null
           template_id?: string | null
@@ -501,6 +528,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      policy_templates: {
+        Row: {
+          category: string
+          compliance_template: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          iso_reference: string[] | null
+          name: string
+          nis2_reference: string[] | null
+          order_index: number | null
+          policy_statement_template: string | null
+          procedures_template: string | null
+          purpose_template: string | null
+          review_template: string | null
+          roles_template: string | null
+          scope_template: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          compliance_template?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          iso_reference?: string[] | null
+          name: string
+          nis2_reference?: string[] | null
+          order_index?: number | null
+          policy_statement_template?: string | null
+          procedures_template?: string | null
+          purpose_template?: string | null
+          review_template?: string | null
+          roles_template?: string | null
+          scope_template?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          compliance_template?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          iso_reference?: string[] | null
+          name?: string
+          nis2_reference?: string[] | null
+          order_index?: number | null
+          policy_statement_template?: string | null
+          procedures_template?: string | null
+          purpose_template?: string | null
+          review_template?: string | null
+          roles_template?: string | null
+          scope_template?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       policy_versions: {
         Row: {
