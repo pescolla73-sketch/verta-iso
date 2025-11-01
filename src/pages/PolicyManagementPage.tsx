@@ -4,10 +4,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Plus, Edit, CheckCircle, Home, Loader2 } from 'lucide-react';
+import { FileText, Plus, Edit, CheckCircle, Home, Loader2, Eye, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useNavigate } from 'react-router-dom';
+import { PolicyNavigation } from '@/components/PolicyNavigation';
 
 export default function PolicyManagementPage() {
   const [templates, setTemplates] = useState<any[]>([]);
@@ -140,19 +141,7 @@ export default function PolicyManagementPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        {/* Navigation Breadcrumbs */}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/')}
-          >
-            <Home className="h-4 w-4 mr-1" />
-            Home
-          </Button>
-          <span>/</span>
-          <span className="text-foreground font-medium">Policy Management</span>
-        </div>
+        <PolicyNavigation />
 
         {/* Header */}
         <div className="flex justify-between items-center">
@@ -242,7 +231,20 @@ export default function PolicyManagementPage() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => navigate(`/policy-editor/${existingPolicy.id}`)}
+                                onClick={() => {
+                                  console.log('👁️ Viewing policy:', existingPolicy.id);
+                                  navigate(`/policies/${existingPolicy.id}`);
+                                }}
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                Vedi
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  console.log('✏️ Editing policy:', existingPolicy.id);
+                                  navigate(`/policy-editor/${existingPolicy.id}`);
+                                }}
                               >
                                 <Edit className="h-4 w-4 mr-1" />
                                 Modifica
@@ -311,7 +313,21 @@ export default function PolicyManagementPage() {
                             <>
                               <Button
                                 size="sm"
-                                onClick={() => navigate(`/policy-editor/${existingPolicy.id}`)}
+                                variant="outline"
+                                onClick={() => {
+                                  console.log('👁️ Viewing policy:', existingPolicy.id);
+                                  navigate(`/policies/${existingPolicy.id}`);
+                                }}
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                Vedi
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  console.log('✏️ Editing policy:', existingPolicy.id);
+                                  navigate(`/policy-editor/${existingPolicy.id}`);
+                                }}
                               >
                                 <Edit className="h-4 w-4 mr-1" />
                                 Modifica
@@ -385,7 +401,20 @@ export default function PolicyManagementPage() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => navigate(`/policy-editor/${policy.id}`)}
+                            onClick={() => {
+                              console.log('👁️ Viewing policy:', policy.id);
+                              navigate(`/policies/${policy.id}`);
+                            }}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              console.log('✏️ Editing policy:', policy.id);
+                              navigate(`/policy-editor/${policy.id}`);
+                            }}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>

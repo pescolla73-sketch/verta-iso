@@ -17,6 +17,7 @@ import Policies from "./pages/Policies";
 import PolicyDetail from "./pages/PolicyDetail";
 import PolicyManagementPage from "./pages/PolicyManagementPage";
 import PolicyEditor from "./pages/PolicyEditor";
+import PolicyView from "./pages/PolicyView";
 import Roles from "./pages/Roles";
 import SetupAzienda from "./pages/SetupAzienda";
 import Settings from "./pages/Settings";
@@ -127,7 +128,7 @@ const App = () => (
             path="/policies/:id"
             element={
               <AppLayout>
-                <PolicyDetail />
+                <PolicyView />
               </AppLayout>
             }
           />

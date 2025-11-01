@@ -27,6 +27,7 @@ import { PolicyTemplate, PolicySection } from "@/data/policyTemplates";
 import jsPDF from "jspdf";
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from "docx";
 import { ProfessionalPDF, Organization, DocumentMetadata, calculateNextReviewDate } from "@/utils/pdfBranding";
+import { PolicyNavigation } from "@/components/PolicyNavigation";
 interface PolicyData {
   id?: string;
   policy_name: string;
@@ -372,6 +373,8 @@ export default function PolicyEditor() {
   return (
     <AppLayout>
       <div className="space-y-6">
+        <PolicyNavigation currentPage={policyData.policy_name || 'Nuova Policy'} />
+        
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
