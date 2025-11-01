@@ -435,13 +435,19 @@ export type Database = {
         Row: {
           approval_date: string | null
           approved_by: string | null
+          category: string | null
           content: string | null
           created_at: string | null
           id: string
+          iso_reference: string[] | null
+          next_review_date: string | null
+          nis2_reference: string[] | null
           organization_id: string | null
           policy_name: string
           policy_type: string
+          sections: Json | null
           status: string | null
+          template_id: string | null
           updated_at: string | null
           user_id: string | null
           version: string | null
@@ -449,13 +455,19 @@ export type Database = {
         Insert: {
           approval_date?: string | null
           approved_by?: string | null
+          category?: string | null
           content?: string | null
           created_at?: string | null
           id?: string
+          iso_reference?: string[] | null
+          next_review_date?: string | null
+          nis2_reference?: string[] | null
           organization_id?: string | null
           policy_name: string
           policy_type: string
+          sections?: Json | null
           status?: string | null
+          template_id?: string | null
           updated_at?: string | null
           user_id?: string | null
           version?: string | null
@@ -463,13 +475,19 @@ export type Database = {
         Update: {
           approval_date?: string | null
           approved_by?: string | null
+          category?: string | null
           content?: string | null
           created_at?: string | null
           id?: string
+          iso_reference?: string[] | null
+          next_review_date?: string | null
+          nis2_reference?: string[] | null
           organization_id?: string | null
           policy_name?: string
           policy_type?: string
+          sections?: Json | null
           status?: string | null
+          template_id?: string | null
           updated_at?: string | null
           user_id?: string | null
           version?: string | null
@@ -480,6 +498,47 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      policy_versions: {
+        Row: {
+          change_description: string | null
+          changed_by: string | null
+          content: string | null
+          created_at: string | null
+          id: string
+          policy_id: string
+          sections: Json | null
+          version: string
+        }
+        Insert: {
+          change_description?: string | null
+          changed_by?: string | null
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          policy_id: string
+          sections?: Json | null
+          version: string
+        }
+        Update: {
+          change_description?: string | null
+          changed_by?: string | null
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          policy_id?: string
+          sections?: Json | null
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "policy_versions_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "policies"
             referencedColumns: ["id"]
           },
         ]

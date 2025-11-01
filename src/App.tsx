@@ -15,6 +15,7 @@ import Audits from "./pages/Audits";
 import Audit from "./pages/Audit";
 import Policies from "./pages/Policies";
 import PolicyDetail from "./pages/PolicyDetail";
+import PolicyEditor from "./pages/PolicyEditor";
 import Roles from "./pages/Roles";
 import SetupAzienda from "./pages/SetupAzienda";
 import Settings from "./pages/Settings";
@@ -126,6 +127,22 @@ const App = () => (
             element={
               <AppLayout>
                 <PolicyDetail />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/policy-editor"
+            element={
+              <AppLayout>
+                <PolicyEditor />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/policy-editor/:id"
+            element={
+              <AppLayout>
+                <PolicyEditor />
               </AppLayout>
             }
           />
