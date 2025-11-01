@@ -26,7 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PolicyTemplate, PolicySection } from "@/data/policyTemplates";
 import jsPDF from "jspdf";
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from "docx";
-
+import { ProfessionalPDF, Organization, DocumentMetadata, calculateNextReviewDate } from "@/utils/pdfBranding";
 interface PolicyData {
   id?: string;
   policy_name: string;
@@ -233,54 +233,83 @@ export default function PolicyEditor() {
   };
 
   const exportToPDF = async () => {
-    const doc = new jsPDF();
-    let yPos = 20;
-
-    // Title
-    doc.setFontSize(20);
-    doc.text(policyData.policy_name, 20, yPos);
-    yPos += 15;
-
-    // Metadata
-    doc.setFontSize(10);
-    doc.text(`Version: ${policyData.version} | Status: ${policyData.status}`, 20, yPos);
-    yPos += 10;
-
-    if (policyData.iso_reference && policyData.iso_reference.length > 0) {
-      doc.text(`ISO 27001 References: ${policyData.iso_reference.join(', ')}`, 20, yPos);
-      yPos += 10;
-    }
-
-    // Content
-    doc.setFontSize(12);
-    policyData.sections.forEach((section) => {
-      if (yPos > 270) {
-        doc.addPage();
-        yPos = 20;
+    try {
+      if (!organizationData) {
+        toast.error('Dati organizzazione non disponibili');
+        return;
       }
 
-      // Section title
-      doc.setFont('helvetica', 'bold');
-      doc.text(section.title, 20, yPos);
-      yPos += 8;
+      const today = new Date().toISOString().split('T')[0];
 
-      // Section content
-      doc.setFont('helvetica', 'normal');
-      const contentLines = doc.splitTextToSize(replacePlaceholders(section.content), 170);
-      contentLines.forEach((line: string) => {
-        if (yPos > 270) {
-          doc.addPage();
-          yPos = 20;
+      // Create organization and metadata objects
+      const orgData: Organization = {
+        name: organizationData.name,
+        piva: organizationData.piva,
+        sector: organizationData.sector,
+        scope: organizationData.scope,
+        isms_scope: organizationData.isms_scope,
+        website: organizationData.website,
+        contact_phone: organizationData.contact_phone,
+        contact_email: organizationData.contact_email,
+        legal_address_street: organizationData.legal_address_street,
+        legal_address_city: organizationData.legal_address_city,
+        legal_address_zip: organizationData.legal_address_zip,
+        legal_address_province: organizationData.legal_address_province,
+        legal_address_country: organizationData.legal_address_country,
+        ciso: organizationData.ciso,
+        ceo: organizationData.ceo
+      };
+
+      const metadataObj: DocumentMetadata = {
+        documentType: policyData.policy_name,
+        documentId: policyData.id || 'POL-XXX',
+        version: policyData.version,
+        issueDate: today,
+        revisionDate: policyData.approval_date || today,
+        nextReviewDate: policyData.next_review_date || calculateNextReviewDate(today),
+        status: (policyData.status as any) || 'draft',
+        classification: 'confidential',
+        preparedBy: organizationData.ciso || 'N/A',
+        approvedBy: policyData.approved_by || 'N/A',
+        approvalDate: policyData.approval_date
+      };
+
+      // Use ProfessionalPDF class for consistent formatting
+      const pdf = new ProfessionalPDF(orgData, metadataObj);
+      const doc = pdf.getDoc(); // Get the internal jsPDF instance
+
+      // Add content sections
+      let yPos = pdf.getContentStartY();
+      const margin = pdf.getMargin();
+
+      policyData.sections.forEach((section, index) => {
+        if (yPos > 250) { 
+          pdf.addPage(); 
+          yPos = pdf.getContentStartY(); 
         }
-        doc.text(line, 20, yPos);
-        yPos += 6;
+
+        // Section title
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text(section.title, margin, yPos);
+        yPos += 10;
+        
+        // Section content
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+        const contentLines = doc.splitTextToSize(replacePlaceholders(section.content), 170);
+        doc.text(contentLines, margin, yPos);
+        yPos += contentLines.length * 6 + 10;
       });
 
-      yPos += 10;
-    });
+      // Finalize (adds headers/footers to all pages)
+      await pdf.finalize(`${policyData.policy_name.replace(/\s+/g, '_')}_v${policyData.version}.pdf`);
 
-    doc.save(`${policyData.policy_name.replace(/\s+/g, '_')}.pdf`);
-    toast.success('PDF esportato!');
+      toast.success('📄 PDF esportato con successo!');
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error('Errore durante l\'export PDF');
+    }
   };
 
   const exportToWord = async () => {
