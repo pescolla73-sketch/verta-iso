@@ -63,7 +63,7 @@ export default function PolicyEditor() {
 
   useEffect(() => {
     loadOrganizationData();
-    if (id) {
+    if (id && id !== 'new') {
       loadPolicy();
     }
   }, [id]);

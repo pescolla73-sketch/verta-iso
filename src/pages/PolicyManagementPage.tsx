@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Plus, Edit, CheckCircle } from 'lucide-react';
+import { FileText, Plus, Edit, CheckCircle, Home, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useNavigate } from 'react-router-dom';
@@ -13,6 +13,7 @@ export default function PolicyManagementPage() {
   const [templates, setTemplates] = useState<any[]>([]);
   const [policies, setPolicies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
   const [organization, setOrganization] = useState<any>(null);
   const navigate = useNavigate();
 
@@ -54,49 +55,69 @@ export default function PolicyManagementPage() {
   };
 
   const createFromTemplate = async (template: any) => {
+    console.log('🔍 [1] Creating policy from template:', template.name);
+    setCreating(true);
+    
     try {
       if (!organization) {
-        toast.error('Organizzazione non trovata');
+        console.error('❌ No organization');
+        toast.error('Nessuna organizzazione selezionata');
         return;
       }
+      console.log('🔍 [2] Organization:', organization.id);
 
       // Check if already exists
       const existing = policies.find(p => p.policy_name === template.name);
       if (existing) {
+        console.log('⚠️ Policy already exists');
         toast.error('Policy già esistente');
         return;
       }
 
-      // Create policy from template with placeholders
+      // Prepare policy data - use 'custom' as fallback for policy_type
+      const policyData = {
+        organization_id: organization.id,
+        policy_name: template.name,
+        policy_type: 'custom', // Use 'custom' instead of category
+        category: template.category,
+        iso_reference: template.iso_reference,
+        nis2_reference: template.nis2_reference,
+        purpose: template.purpose_template?.replace(/{{organization_name}}/g, organization.name) || '',
+        scope: template.scope_template?.replace(/{{organization_name}}/g, organization.name) || '',
+        policy_statement: template.policy_statement_template?.replace(/{{organization_name}}/g, organization.name) || '',
+        review_requirements: 'This policy shall be reviewed annually.',
+        status: 'draft',
+        version: '1.0'
+      };
+
+      console.log('🔍 [3] Policy data:', policyData);
+
+      // Create policy from template
       const { data, error } = await supabase
         .from('policies')
-        .insert({
-          organization_id: organization.id,
-          policy_name: template.name,
-          policy_type: template.category,
-          category: template.category,
-          iso_reference: template.iso_reference,
-          nis2_reference: template.nis2_reference,
-          purpose: template.purpose_template?.replace(/{{organization_name}}/g, organization.name) || '',
-          scope: template.scope_template?.replace(/{{organization_name}}/g, organization.name) || '',
-          policy_statement: template.policy_statement_template?.replace(/{{organization_name}}/g, organization.name) || '',
-          review_requirements: 'This policy shall be reviewed annually.',
-          status: 'draft',
-          version: '1.0'
-        })
+        .insert(policyData)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ [4] Insert error:', error);
+        console.error('Error code:', error.code);
+        console.error('Error message:', error.message);
+        throw error;
+      }
 
+      console.log('✅ [5] Policy created:', data);
       toast.success('✅ Policy creata da template!');
-      loadData();
+      
+      await loadData();
       
       // Open editor
       navigate(`/policy-editor/${data.id}`);
-    } catch (error) {
-      console.error('Error creating policy:', error);
-      toast.error('Errore creazione policy');
+    } catch (error: any) {
+      console.error('❌ Exception:', error);
+      toast.error('Errore: ' + (error.message || 'Errore creazione policy'));
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -119,6 +140,20 @@ export default function PolicyManagementPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
+        {/* Navigation Breadcrumbs */}
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/')}
+          >
+            <Home className="h-4 w-4 mr-1" />
+            Home
+          </Button>
+          <span>/</span>
+          <span className="text-foreground font-medium">Policy Management</span>
+        </div>
+
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
@@ -214,9 +249,21 @@ export default function PolicyManagementPage() {
                               </Button>
                             </>
                           ) : (
-                            <Button onClick={() => createFromTemplate(template)}>
-                              <Plus className="h-4 w-4 mr-1" />
-                              Crea da Template
+                            <Button 
+                              onClick={() => createFromTemplate(template)}
+                              disabled={creating}
+                            >
+                              {creating ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                  Creazione...
+                                </>
+                              ) : (
+                                <>
+                                  <Plus className="h-4 w-4 mr-1" />
+                                  Crea da Template
+                                </>
+                              )}
                             </Button>
                           )}
                         </div>
@@ -271,9 +318,22 @@ export default function PolicyManagementPage() {
                               </Button>
                             </>
                           ) : (
-                            <Button onClick={() => createFromTemplate(template)} variant="outline">
-                              <Plus className="h-4 w-4 mr-1" />
-                              Crea da Template
+                            <Button 
+                              onClick={() => createFromTemplate(template)} 
+                              variant="outline"
+                              disabled={creating}
+                            >
+                              {creating ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                  Creazione...
+                                </>
+                              ) : (
+                                <>
+                                  <Plus className="h-4 w-4 mr-1" />
+                                  Crea da Template
+                                </>
+                              )}
                             </Button>
                           )}
                         </div>
