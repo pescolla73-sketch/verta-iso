@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { Edit, Download, ArrowLeft, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { ProfessionalPDF, type Organization, type DocumentMetadata } from '@/utils/pdfBranding';
 
 export default function PolicyView() {
   const { id } = useParams();
@@ -55,6 +56,168 @@ export default function PolicyView() {
         {config.label}
       </Badge>
     );
+  };
+
+  const exportPDF = async () => {
+    try {
+      console.log('📄 Starting PDF export...');
+      
+      // Load organization data
+      const { data: orgData, error: orgError } = await supabase
+        .from('organization')
+        .select('*')
+        .limit(1)
+        .single();
+
+      if (orgError || !orgData) {
+        toast.error('Dati organizzazione mancanti');
+        return;
+      }
+
+      const organization: Organization = {
+        name: orgData.name,
+        piva: orgData.piva,
+        sector: orgData.sector,
+        scope: orgData.scope,
+        isms_scope: orgData.isms_scope,
+        website: orgData.website,
+        contact_phone: orgData.contact_phone,
+        contact_email: orgData.contact_email,
+        legal_address_street: orgData.legal_address_street,
+        legal_address_city: orgData.legal_address_city,
+        legal_address_zip: orgData.legal_address_zip,
+        legal_address_province: orgData.legal_address_province,
+        legal_address_country: orgData.legal_address_country,
+        ciso: orgData.ciso,
+        ceo: orgData.ceo,
+      };
+
+      const metadata: DocumentMetadata = {
+        documentType: 'Policy - ' + (policy.policy_name || 'Untitled'),
+        documentId: policy.policy_id || 'POL-XXX',
+        version: policy.version || '1.0',
+        issueDate: policy.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+        revisionDate: policy.updated_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+        nextReviewDate: policy.next_review_date || new Date(Date.now() + 180*24*60*60*1000).toISOString().split('T')[0],
+        status: (policy.status === 'approved' ? 'approved' : policy.status === 'in_review' ? 'in_review' : 'draft') as 'draft' | 'approved' | 'in_review',
+        classification: 'confidential',
+        preparedBy: policy.prepared_by || 'TBD',
+        approvedBy: policy.approved_by || 'TBD',
+        approvalDate: policy.approval_date || undefined,
+      };
+
+      const pdf = new ProfessionalPDF(organization, metadata);
+      
+      let yPos = pdf.getContentStartY();
+
+      // 1. Purpose
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.addText('1. PURPOSE', yPos);
+      yPos += 10;
+      
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      const purposeLines = pdf.getDoc().splitTextToSize(policy.purpose || 'N/A', 170);
+      pdf.addText(purposeLines, yPos);
+      yPos += purposeLines.length * 6 + 10;
+
+      // 2. Scope
+      if (yPos > 250) { pdf.addPage(); yPos = pdf.getContentStartY(); }
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.addText('2. SCOPE', yPos);
+      yPos += 10;
+      
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      const scopeLines = pdf.getDoc().splitTextToSize(policy.scope || 'N/A', 170);
+      pdf.addText(scopeLines, yPos);
+      yPos += scopeLines.length * 6 + 10;
+
+      // 3. Policy Statement
+      if (yPos > 250) { pdf.addPage(); yPos = pdf.getContentStartY(); }
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.addText('3. POLICY STATEMENT', yPos);
+      yPos += 10;
+      
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      const statementLines = pdf.getDoc().splitTextToSize(policy.policy_statement || 'N/A', 170);
+      pdf.addText(statementLines, yPos);
+      yPos += statementLines.length * 6 + 10;
+
+      // 4. Roles & Responsibilities
+      if (policy.roles_responsibilities) {
+        if (yPos > 250) { pdf.addPage(); yPos = pdf.getContentStartY(); }
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.addText('4. ROLES & RESPONSIBILITIES', yPos);
+        yPos += 10;
+        
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'normal');
+        const rolesLines = pdf.getDoc().splitTextToSize(policy.roles_responsibilities, 170);
+        pdf.addText(rolesLines, yPos);
+        yPos += rolesLines.length * 6 + 10;
+      }
+
+      // 5. Procedures
+      if (policy.procedures) {
+        if (yPos > 250) { pdf.addPage(); yPos = pdf.getContentStartY(); }
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.addText('5. PROCEDURES', yPos);
+        yPos += 10;
+        
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'normal');
+        const procLines = pdf.getDoc().splitTextToSize(policy.procedures, 170);
+        pdf.addText(procLines, yPos);
+        yPos += procLines.length * 6 + 10;
+      }
+
+      // 6. Compliance Requirements
+      if (policy.compliance_requirements) {
+        if (yPos > 250) { pdf.addPage(); yPos = pdf.getContentStartY(); }
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.addText('6. COMPLIANCE REQUIREMENTS', yPos);
+        yPos += 10;
+        
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'normal');
+        const complianceLines = pdf.getDoc().splitTextToSize(policy.compliance_requirements, 170);
+        pdf.addText(complianceLines, yPos);
+        yPos += complianceLines.length * 6 + 10;
+      }
+
+      // 7. Review Requirements
+      if (yPos > 250) { pdf.addPage(); yPos = pdf.getContentStartY(); }
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.addText('7. POLICY REVIEW', yPos);
+      yPos += 10;
+      
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      const reviewLines = pdf.getDoc().splitTextToSize(
+        policy.review_requirements || 'This policy shall be reviewed annually.',
+        170
+      );
+      pdf.addText(reviewLines, yPos);
+
+      // Finalize and save
+      const filename = `${policy.policy_id || 'Policy'}_${(policy.policy_name || 'Document').replace(/\s+/g, '_')}.pdf`;
+      await pdf.finalize(filename);
+
+      console.log('✅ PDF exported successfully');
+      toast.success('📄 PDF esportato con successo!');
+    } catch (error) {
+      console.error('❌ Export error:', error);
+      toast.error('Errore durante l\'esportazione PDF');
+    }
   };
 
   if (loading) {
@@ -111,6 +274,13 @@ export default function PolicyView() {
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Indietro
+            </Button>
+            <Button
+              variant="outline"
+              onClick={exportPDF}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Esporta PDF
             </Button>
             <Button
               onClick={() => navigate(`/policy-editor/${id}`)}
