@@ -18,6 +18,9 @@ import PolicyDetail from "./pages/PolicyDetail";
 import PolicyManagementPage from "./pages/PolicyManagementPage";
 import PolicyEditor from "./pages/PolicyEditor";
 import PolicyView from "./pages/PolicyView";
+import ProcedureManagementPage from "./pages/ProcedureManagementPage";
+import ProcedureEditor from "./pages/ProcedureEditor";
+import ProcedureView from "./pages/ProcedureView";
 import Roles from "./pages/Roles";
 import SetupAzienda from "./pages/SetupAzienda";
 import Settings from "./pages/Settings";
@@ -145,6 +148,30 @@ const App = () => (
             element={
               <AppLayout>
                 <PolicyEditor />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/procedures"
+            element={
+              <AppLayout>
+                <ProcedureManagementPage />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/procedures/:id"
+            element={
+              <AppLayout>
+                <ProcedureView />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/procedures/:id/edit"
+            element={
+              <AppLayout>
+                <ProcedureEditor />
               </AppLayout>
             }
           />

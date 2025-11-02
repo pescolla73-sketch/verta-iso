@@ -13,6 +13,7 @@ import {
   TrendingUp,
   GraduationCap,
   Shield as ShieldAlert,
+  ClipboardList,
 } from "lucide-react";
 import {
   Sidebar,
@@ -66,6 +67,7 @@ export function AppSidebar() {
     { title: "Audit Esterni", url: "/audits", icon: ClipboardCheck },
     { title: "Registro Eventi", url: "/audit", icon: ScrollText },
     { title: "Politiche", url: "/policies", icon: FileText },
+    { title: "Procedure", url: "/procedures", icon: ClipboardList },
     { title: "Training", url: "/training", icon: GraduationCap },
     { title: "Incidenti", url: "/incidents", icon: ShieldAlert },
     { title: "Ruoli", url: "/roles", icon: Users },

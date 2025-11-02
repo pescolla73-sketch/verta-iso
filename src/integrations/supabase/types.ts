@@ -627,6 +627,147 @@ export type Database = {
           },
         ]
       }
+      procedure_templates: {
+        Row: {
+          category: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          iso_reference: string[] | null
+          name: string
+          order_index: number | null
+          purpose_template: string | null
+          records_template: string | null
+          related_policy: string | null
+          responsibilities_template: string | null
+          scope_template: string | null
+          steps_template: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          iso_reference?: string[] | null
+          name: string
+          order_index?: number | null
+          purpose_template?: string | null
+          records_template?: string | null
+          related_policy?: string | null
+          responsibilities_template?: string | null
+          scope_template?: string | null
+          steps_template?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          iso_reference?: string[] | null
+          name?: string
+          order_index?: number | null
+          purpose_template?: string | null
+          records_template?: string | null
+          related_policy?: string | null
+          responsibilities_template?: string | null
+          scope_template?: string | null
+          steps_template?: string | null
+        }
+        Relationships: []
+      }
+      procedures: {
+        Row: {
+          approval_date: string | null
+          approved_by: string | null
+          category: string
+          created_at: string | null
+          created_by: string | null
+          definitions: string | null
+          id: string
+          iso_reference: string[] | null
+          next_review_date: string | null
+          organization_id: string | null
+          prepared_by: string | null
+          procedure_id: string | null
+          procedure_steps: string
+          purpose: string
+          records: string | null
+          related_documents: string | null
+          related_policy_id: string | null
+          responsibilities: string | null
+          scope: string
+          status: string | null
+          title: string
+          updated_at: string | null
+          version: string | null
+        }
+        Insert: {
+          approval_date?: string | null
+          approved_by?: string | null
+          category?: string
+          created_at?: string | null
+          created_by?: string | null
+          definitions?: string | null
+          id?: string
+          iso_reference?: string[] | null
+          next_review_date?: string | null
+          organization_id?: string | null
+          prepared_by?: string | null
+          procedure_id?: string | null
+          procedure_steps: string
+          purpose: string
+          records?: string | null
+          related_documents?: string | null
+          related_policy_id?: string | null
+          responsibilities?: string | null
+          scope: string
+          status?: string | null
+          title: string
+          updated_at?: string | null
+          version?: string | null
+        }
+        Update: {
+          approval_date?: string | null
+          approved_by?: string | null
+          category?: string
+          created_at?: string | null
+          created_by?: string | null
+          definitions?: string | null
+          id?: string
+          iso_reference?: string[] | null
+          next_review_date?: string | null
+          organization_id?: string | null
+          prepared_by?: string | null
+          procedure_id?: string | null
+          procedure_steps?: string
+          purpose?: string
+          records?: string | null
+          related_documents?: string | null
+          related_policy_id?: string | null
+          responsibilities?: string | null
+          scope?: string
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+          version?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procedures_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "procedures_related_policy_id_fkey"
+            columns: ["related_policy_id"]
+            isOneToOne: false
+            referencedRelation: "policies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string | null
