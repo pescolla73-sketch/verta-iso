@@ -188,9 +188,21 @@ export default function PolicyEditor() {
       
       pdf.setFontSize(11);
       pdf.setFont('helvetica', 'normal');
-      const purposeLines = pdf.getDoc().splitTextToSize(policy.purpose || 'N/A', 170);
-      pdf.addText(purposeLines, yPos);
-      yPos += purposeLines.length * 6 + 10;
+      if (policy.purpose) {
+        const purposeLines = pdf.getDoc().splitTextToSize(policy.purpose, 170);
+        for (let i = 0; i < purposeLines.length; i++) {
+          if (yPos > 250) { 
+            pdf.addPage(); 
+            yPos = pdf.getContentStartY(); 
+          }
+          pdf.addText(purposeLines[i], yPos);
+          yPos += 6;
+        }
+        yPos += 10;
+      } else {
+        pdf.addText('N/A', yPos);
+        yPos += 10;
+      }
 
       // 2. Scope
       if (yPos > 250) { pdf.addPage(); yPos = pdf.getContentStartY(); }
@@ -201,9 +213,21 @@ export default function PolicyEditor() {
       
       pdf.setFontSize(11);
       pdf.setFont('helvetica', 'normal');
-      const scopeLines = pdf.getDoc().splitTextToSize(policy.scope || 'N/A', 170);
-      pdf.addText(scopeLines, yPos);
-      yPos += scopeLines.length * 6 + 10;
+      if (policy.scope) {
+        const scopeLines = pdf.getDoc().splitTextToSize(policy.scope, 170);
+        for (let i = 0; i < scopeLines.length; i++) {
+          if (yPos > 250) { 
+            pdf.addPage(); 
+            yPos = pdf.getContentStartY(); 
+          }
+          pdf.addText(scopeLines[i], yPos);
+          yPos += 6;
+        }
+        yPos += 10;
+      } else {
+        pdf.addText('N/A', yPos);
+        yPos += 10;
+      }
 
       // 3. Policy Statement
       if (yPos > 250) { pdf.addPage(); yPos = pdf.getContentStartY(); }
@@ -214,9 +238,21 @@ export default function PolicyEditor() {
       
       pdf.setFontSize(11);
       pdf.setFont('helvetica', 'normal');
-      const statementLines = pdf.getDoc().splitTextToSize(policy.policy_statement || 'N/A', 170);
-      pdf.addText(statementLines, yPos);
-      yPos += statementLines.length * 6 + 10;
+      if (policy.policy_statement) {
+        const statementLines = pdf.getDoc().splitTextToSize(policy.policy_statement, 170);
+        for (let i = 0; i < statementLines.length; i++) {
+          if (yPos > 250) { 
+            pdf.addPage(); 
+            yPos = pdf.getContentStartY(); 
+          }
+          pdf.addText(statementLines[i], yPos);
+          yPos += 6;
+        }
+        yPos += 10;
+      } else {
+        pdf.addText('N/A', yPos);
+        yPos += 10;
+      }
 
       // 4. Roles & Responsibilities
       if (policy.roles_responsibilities) {
@@ -229,8 +265,15 @@ export default function PolicyEditor() {
         pdf.setFontSize(11);
         pdf.setFont('helvetica', 'normal');
         const rolesLines = pdf.getDoc().splitTextToSize(policy.roles_responsibilities, 170);
-        pdf.addText(rolesLines, yPos);
-        yPos += rolesLines.length * 6 + 10;
+        for (let i = 0; i < rolesLines.length; i++) {
+          if (yPos > 250) { 
+            pdf.addPage(); 
+            yPos = pdf.getContentStartY(); 
+          }
+          pdf.addText(rolesLines[i], yPos);
+          yPos += 6;
+        }
+        yPos += 10;
       }
 
       // 5. Procedures
@@ -244,8 +287,15 @@ export default function PolicyEditor() {
         pdf.setFontSize(11);
         pdf.setFont('helvetica', 'normal');
         const procLines = pdf.getDoc().splitTextToSize(policy.procedures, 170);
-        pdf.addText(procLines, yPos);
-        yPos += procLines.length * 6 + 10;
+        for (let i = 0; i < procLines.length; i++) {
+          if (yPos > 250) { 
+            pdf.addPage(); 
+            yPos = pdf.getContentStartY(); 
+          }
+          pdf.addText(procLines[i], yPos);
+          yPos += 6;
+        }
+        yPos += 10;
       }
 
       // 6. Compliance Requirements
@@ -259,8 +309,15 @@ export default function PolicyEditor() {
         pdf.setFontSize(11);
         pdf.setFont('helvetica', 'normal');
         const complianceLines = pdf.getDoc().splitTextToSize(policy.compliance_requirements, 170);
-        pdf.addText(complianceLines, yPos);
-        yPos += complianceLines.length * 6 + 10;
+        for (let i = 0; i < complianceLines.length; i++) {
+          if (yPos > 250) { 
+            pdf.addPage(); 
+            yPos = pdf.getContentStartY(); 
+          }
+          pdf.addText(complianceLines[i], yPos);
+          yPos += 6;
+        }
+        yPos += 10;
       }
 
       // 7. Review Requirements
@@ -272,11 +329,17 @@ export default function PolicyEditor() {
       
       pdf.setFontSize(11);
       pdf.setFont('helvetica', 'normal');
-      const reviewLines = pdf.getDoc().splitTextToSize(
-        policy.review_requirements || 'This policy shall be reviewed annually.',
-        170
-      );
-      pdf.addText(reviewLines, yPos);
+      const reviewText = policy.review_requirements || 'This policy shall be reviewed annually.';
+      const reviewLines = pdf.getDoc().splitTextToSize(reviewText, 170);
+      // Render line by line with page break checks
+      for (let i = 0; i < reviewLines.length; i++) {
+        if (yPos > 250) { 
+          pdf.addPage(); 
+          yPos = pdf.getContentStartY(); 
+        }
+        pdf.addText(reviewLines[i], yPos);
+        yPos += 6;
+      }
 
       // Finalize and save
       const filename = `${policy.policy_id || 'Policy'}_${(policy.policy_name || 'Document').replace(/\s+/g, '_')}.pdf`;
