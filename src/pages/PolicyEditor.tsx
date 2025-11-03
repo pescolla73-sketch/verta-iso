@@ -176,8 +176,9 @@ export default function PolicyEditor() {
 
       const pdf = new ProfessionalPDF(organization, metadata);
       
+      // Start content on a new page (cover page is page 1)
+      pdf.addPage();
       let yPos = pdf.getContentStartY();
-      const margin = pdf.getMargin();
 
       // 1. Purpose
       pdf.setFontSize(14);

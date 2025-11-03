@@ -108,6 +108,8 @@ export default function PolicyView() {
 
       const pdf = new ProfessionalPDF(organization, metadata);
       
+      // Start content on a new page (cover page is page 1)
+      pdf.addPage();
       let yPos = pdf.getContentStartY();
 
       // 1. Purpose
