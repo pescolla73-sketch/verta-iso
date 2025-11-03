@@ -11,6 +11,8 @@ import { toast } from 'sonner';
 
 export default function ManagementReview() {
   const navigate = useNavigate();
+  console.log('🔍 ManagementReview mounted, navigate:', typeof navigate);
+  
   const [reviews, setReviews] = useState([]);
   const [stats, setStats] = useState({
     totalReviews: 0,
@@ -67,12 +69,21 @@ export default function ManagementReview() {
   };
 
   const createNewReview = async () => {
+    console.log('🔍 [1] Create button clicked');
     try {
       const orgData = localStorage.getItem('selectedOrganization');
-      if (!orgData) return;
+      console.log('🔍 [2] Org data:', orgData);
+      
+      if (!orgData) {
+        console.log('❌ No organization data');
+        toast.error('Nessuna organizzazione selezionata');
+        return;
+      }
       const org = JSON.parse(orgData);
+      console.log('🔍 [3] Organization:', org.id);
 
       const { data: { user } } = await supabase.auth.getUser();
+      console.log('🔍 [4] User:', user?.email);
 
       // Default to next quarter review date
       const nextQuarter = new Date();
@@ -89,12 +100,18 @@ export default function ManagementReview() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ [5] Insert error:', error);
+        throw error;
+      }
 
+      console.log('✅ [6] Review created:', data);
       toast.success('✅ Management Review creato!');
+      
+      console.log('🔍 [7] Navigating to:', `/management-review/${data.id}/edit`);
       navigate(`/management-review/${data.id}/edit`);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('💥 Exception:', error);
       toast.error('Errore creazione review');
     }
   };
@@ -280,7 +297,11 @@ export default function ManagementReview() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => navigate(`/management-review/${review.id}`)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              console.log('🔍 Navigating to view:', review.id);
+                              navigate(`/management-review/${review.id}`);
+                            }}
                           >
                             <Eye className="h-4 w-4 mr-1" />
                             Vedi
@@ -288,7 +309,11 @@ export default function ManagementReview() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => navigate(`/management-review/${review.id}/edit`)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              console.log('🔍 Navigating to edit:', review.id);
+                              navigate(`/management-review/${review.id}/edit`);
+                            }}
                           >
                             <Edit className="h-4 w-4 mr-1" />
                             Modifica
