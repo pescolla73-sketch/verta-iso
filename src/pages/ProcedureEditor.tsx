@@ -107,9 +107,9 @@ export default function ProcedureEditor() {
 
   const exportPDF = async () => {
     try {
-      console.log('📄 Exporting PDF...');
+      console.log('📄 Starting PDF export...');
       
-      // Get organization
+      // Load organization data
       const { data: orgData, error: orgError } = await supabase
         .from('organization')
         .select('*')
@@ -117,7 +117,7 @@ export default function ProcedureEditor() {
         .single();
 
       if (orgError || !orgData) {
-        toast.error('Organizzazione non trovata');
+        toast.error('Dati organizzazione mancanti');
         return;
       }
 
@@ -154,8 +154,8 @@ export default function ProcedureEditor() {
       };
 
       const pdf = new ProfessionalPDF(organization, metadata);
-
-      // ✅ START CONTENT ON NEW PAGE (cover is page 1)
+      
+      // Start content on a new page (cover page is page 1)
       pdf.addPage();
       let yPos = pdf.getContentStartY();
 
@@ -167,11 +167,9 @@ export default function ProcedureEditor() {
       
       pdf.setFontSize(11);
       pdf.setFont('helvetica', 'normal');
-      if (procedure.purpose) {
-        const purposeLines = pdf.getDoc().splitTextToSize(procedure.purpose, 170);
-        pdf.addText(purposeLines, yPos);
-        yPos += purposeLines.length * 6 + 10;
-      }
+      const purposeLines = pdf.getDoc().splitTextToSize(procedure.purpose || 'N/A', 170);
+      pdf.addText(purposeLines, yPos);
+      yPos += purposeLines.length * 6 + 10;
 
       // 2. SCOPE
       if (yPos > 250) { pdf.addPage(); yPos = pdf.getContentStartY(); }
@@ -182,11 +180,9 @@ export default function ProcedureEditor() {
       
       pdf.setFontSize(11);
       pdf.setFont('helvetica', 'normal');
-      if (procedure.scope) {
-        const scopeLines = pdf.getDoc().splitTextToSize(procedure.scope, 170);
-        pdf.addText(scopeLines, yPos);
-        yPos += scopeLines.length * 6 + 10;
-      }
+      const scopeLines = pdf.getDoc().splitTextToSize(procedure.scope || 'N/A', 170);
+      pdf.addText(scopeLines, yPos);
+      yPos += scopeLines.length * 6 + 10;
 
       // 3. RESPONSIBILITIES
       if (procedure.responsibilities) {
@@ -205,26 +201,24 @@ export default function ProcedureEditor() {
 
       // 4. PROCEDURE STEPS
       if (yPos > 250) { pdf.addPage(); yPos = pdf.getContentStartY(); }
-      const stepsNum = procedure.responsibilities ? '4' : '3';
       pdf.setFontSize(14);
       pdf.setFont('helvetica', 'bold');
+      const stepsNum = procedure.responsibilities ? '4' : '3';
       pdf.addText(`${stepsNum}. PROCEDURE STEPS`, yPos);
       yPos += 10;
       
       pdf.setFontSize(11);
       pdf.setFont('helvetica', 'normal');
-      if (procedure.procedure_steps) {
-        const stepsLines = pdf.getDoc().splitTextToSize(procedure.procedure_steps, 170);
-        pdf.addText(stepsLines, yPos);
-        yPos += stepsLines.length * 6 + 10;
-      }
+      const stepsLines = pdf.getDoc().splitTextToSize(procedure.procedure_steps || 'N/A', 170);
+      pdf.addText(stepsLines, yPos);
+      yPos += stepsLines.length * 6 + 10;
 
       // 5. RECORDS
       if (procedure.records) {
         if (yPos > 250) { pdf.addPage(); yPos = pdf.getContentStartY(); }
-        const recordsNum = procedure.responsibilities ? '5' : '4';
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
+        const recordsNum = procedure.responsibilities ? '5' : '4';
         pdf.addText(`${recordsNum}. RECORDS`, yPos);
         yPos += 10;
         
@@ -234,10 +228,11 @@ export default function ProcedureEditor() {
         pdf.addText(recordsLines, yPos);
       }
 
+      // Finalize and save
       const filename = `${procedure.procedure_id}_${procedure.title.replace(/\s+/g, '_')}_v${procedure.version}.pdf`;
       await pdf.finalize(filename);
 
-      console.log('✅ PDF exported:', filename);
+      console.log('✅ PDF exported successfully');
       toast.success('📄 PDF esportato con successo!');
     } catch (error) {
       console.error('❌ Export error:', error);
