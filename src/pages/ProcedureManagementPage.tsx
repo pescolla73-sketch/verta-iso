@@ -115,6 +115,42 @@ export default function ProcedureManagementPage() {
     }
   };
 
+  const createCustomProcedure = async () => {
+    try {
+      console.log('✨ Creating custom procedure...');
+
+      if (!orgId) {
+        toast.error('Organizzazione non trovata');
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('procedures')
+        .insert({
+          organization_id: orgId,
+          title: 'Nuova Procedura Personalizzata',
+          category: 'custom',
+          purpose: 'Definire lo scopo della procedura...',
+          scope: 'Definire l\'ambito di applicazione...',
+          procedure_steps: 'Elencare i passaggi della procedura...',
+          status: 'draft',
+          version: '1.0'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      console.log('✅ Custom procedure created:', data.procedure_id);
+      toast.success('✅ Procedura personalizzata creata!');
+      await loadData();
+      navigate(`/procedures/${data.id}/edit`);
+    } catch (error: any) {
+      console.error('❌ Error creating custom procedure:', error);
+      toast.error('Errore: ' + error.message);
+    }
+  };
+
   const mandatoryTemplates = templates.filter(t => t.category === 'mandatory');
   const recommendedTemplates = templates.filter(t => t.category === 'recommended');
   const mandatoryCount = mandatoryTemplates.length;
@@ -159,6 +195,10 @@ export default function ProcedureManagementPage() {
               Gestisci procedure operative ISO 27001:2022
             </p>
           </div>
+          <Button onClick={createCustomProcedure}>
+            <Plus className="h-4 w-4 mr-2" />
+            Procedura Personalizzata
+          </Button>
         </div>
 
         {/* Progress */}
@@ -307,9 +347,13 @@ export default function ProcedureManagementPage() {
               <Card>
                 <CardContent className="text-center py-12">
                   <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">
-                    Nessuna procedura creata. Inizia dai template!
+                  <p className="text-muted-foreground mb-4">
+                    Nessuna procedura creata. Inizia dai template o crea una procedura personalizzata!
                   </p>
+                  <Button onClick={createCustomProcedure}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Crea Procedura Personalizzata
+                  </Button>
                 </CardContent>
               </Card>
             ) : (
@@ -329,8 +373,16 @@ export default function ProcedureManagementPage() {
                                proc.status === 'review' ? '👁️ In Revisione' : '📝 Bozza'}
                             </Badge>
                             <span className="text-sm text-muted-foreground">v{proc.version}</span>
+                            {proc.category === 'custom' && (
+                              <Badge variant="outline" className="bg-purple-50">
+                                ✨ Personalizzata
+                              </Badge>
+                            )}
                           </div>
                           <CardTitle>{proc.title}</CardTitle>
+                          <CardDescription className="mt-2">
+                            {proc.purpose?.substring(0, 120)}...
+                          </CardDescription>
                         </div>
                         <div className="flex gap-2">
                           <Button size="sm" variant="outline" onClick={() => navigate(`/procedures/${proc.id}`)}>

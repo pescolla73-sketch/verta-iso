@@ -5,9 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Edit, ArrowLeft, Home, ClipboardList } from 'lucide-react';
+import { Edit, ArrowLeft, Home, ClipboardList, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { ProfessionalPDF } from '@/utils/pdfBranding';
+import type { Organization, DocumentMetadata } from '@/utils/pdfBranding';
 
 export default function ProcedureView() {
   const { id } = useParams();
@@ -54,6 +56,146 @@ export default function ProcedureView() {
         {config.label}
       </Badge>
     );
+  };
+
+  const exportPDF = async () => {
+    try {
+      console.log('📄 Exporting PDF...');
+      
+      // Get organization
+      const { data: orgData, error: orgError } = await supabase
+        .from('organization')
+        .select('*')
+        .limit(1)
+        .single();
+
+      if (orgError || !orgData) {
+        toast.error('Organizzazione non trovata');
+        return;
+      }
+
+      const organization: Organization = {
+        name: orgData.name,
+        piva: orgData.piva,
+        sector: orgData.sector,
+        scope: orgData.scope,
+        isms_scope: orgData.isms_scope,
+        website: orgData.website,
+        contact_phone: orgData.contact_phone,
+        contact_email: orgData.contact_email,
+        legal_address_street: orgData.legal_address_street,
+        legal_address_city: orgData.legal_address_city,
+        legal_address_zip: orgData.legal_address_zip,
+        legal_address_province: orgData.legal_address_province,
+        legal_address_country: orgData.legal_address_country,
+        ciso: orgData.ciso,
+        ceo: orgData.ceo,
+      };
+
+      const metadata: DocumentMetadata = {
+        documentType: 'Procedura - ' + (procedure.title || 'Untitled'),
+        documentId: procedure.procedure_id || 'PROC-XXX',
+        version: procedure.version || '1.0',
+        issueDate: procedure.approval_date || new Date().toISOString().split('T')[0],
+        revisionDate: new Date().toISOString().split('T')[0],
+        nextReviewDate: procedure.next_review_date || '',
+        status: (procedure.status === 'approved' ? 'approved' : procedure.status === 'review' ? 'in_review' : 'draft') as 'draft' | 'approved' | 'in_review',
+        classification: 'confidential',
+        preparedBy: procedure.prepared_by || '',
+        approvedBy: procedure.approved_by || '',
+        approvalDate: procedure.approval_date || undefined,
+      };
+
+      const pdf = new ProfessionalPDF(organization, metadata);
+
+      // ✅ START CONTENT ON NEW PAGE (cover is page 1)
+      pdf.addPage();
+      let yPos = pdf.getContentStartY();
+
+      // 1. PURPOSE
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.addText('1. PURPOSE', yPos);
+      yPos += 10;
+      
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      if (procedure.purpose) {
+        const purposeLines = pdf.getDoc().splitTextToSize(procedure.purpose, 170);
+        pdf.addText(purposeLines, yPos);
+        yPos += purposeLines.length * 6 + 10;
+      }
+
+      // 2. SCOPE
+      if (yPos > 250) { pdf.addPage(); yPos = pdf.getContentStartY(); }
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.addText('2. SCOPE', yPos);
+      yPos += 10;
+      
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      if (procedure.scope) {
+        const scopeLines = pdf.getDoc().splitTextToSize(procedure.scope, 170);
+        pdf.addText(scopeLines, yPos);
+        yPos += scopeLines.length * 6 + 10;
+      }
+
+      // 3. RESPONSIBILITIES
+      if (procedure.responsibilities) {
+        if (yPos > 250) { pdf.addPage(); yPos = pdf.getContentStartY(); }
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.addText('3. RESPONSIBILITIES', yPos);
+        yPos += 10;
+        
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'normal');
+        const respLines = pdf.getDoc().splitTextToSize(procedure.responsibilities, 170);
+        pdf.addText(respLines, yPos);
+        yPos += respLines.length * 6 + 10;
+      }
+
+      // 4. PROCEDURE STEPS
+      if (yPos > 250) { pdf.addPage(); yPos = pdf.getContentStartY(); }
+      const stepsNum = procedure.responsibilities ? '4' : '3';
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.addText(`${stepsNum}. PROCEDURE STEPS`, yPos);
+      yPos += 10;
+      
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      if (procedure.procedure_steps) {
+        const stepsLines = pdf.getDoc().splitTextToSize(procedure.procedure_steps, 170);
+        pdf.addText(stepsLines, yPos);
+        yPos += stepsLines.length * 6 + 10;
+      }
+
+      // 5. RECORDS
+      if (procedure.records) {
+        if (yPos > 250) { pdf.addPage(); yPos = pdf.getContentStartY(); }
+        const recordsNum = procedure.responsibilities ? '5' : '4';
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.addText(`${recordsNum}. RECORDS`, yPos);
+        yPos += 10;
+        
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'normal');
+        const recordsLines = pdf.getDoc().splitTextToSize(procedure.records, 170);
+        pdf.addText(recordsLines, yPos);
+      }
+
+      const filename = `${procedure.procedure_id}_${procedure.title.replace(/\s+/g, '_')}_v${procedure.version}.pdf`;
+      await pdf.finalize(filename);
+
+      console.log('✅ PDF exported:', filename);
+      toast.success('📄 PDF esportato con successo!');
+    } catch (error) {
+      console.error('❌ Export error:', error);
+      toast.error('Errore durante l\'esportazione del PDF');
+    }
   };
 
   if (loading) {
@@ -127,6 +269,13 @@ export default function ProcedureView() {
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Indietro
+            </Button>
+            <Button
+              variant="outline"
+              onClick={exportPDF}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Esporta PDF
             </Button>
             <Button
               onClick={() => navigate(`/procedures/${id}/edit`)}
