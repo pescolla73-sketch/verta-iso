@@ -70,6 +70,7 @@ export function AppSidebar() {
     { title: "Procedure", url: "/procedures", icon: ClipboardList },
     { title: "Training", url: "/training", icon: GraduationCap },
     { title: "Incidenti", url: "/incidents", icon: ShieldAlert },
+    { title: "Management Review", url: "/management-review", icon: TrendingUp },
     { title: "Ruoli", url: "/roles", icon: Users },
     { title: "Setup Azienda", url: "/setup-azienda", icon: Building2 },
     { title: "Impostazioni", url: "/settings", icon: Settings },

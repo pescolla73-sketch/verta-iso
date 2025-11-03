@@ -308,6 +308,96 @@ export type Database = {
           },
         ]
       }
+      management_reviews: {
+        Row: {
+          action_items: Json | null
+          attendees: string[] | null
+          audit_results_summary: string | null
+          chairman: string | null
+          created_at: string | null
+          created_by: string | null
+          decisions: Json | null
+          external_internal_changes: string | null
+          id: string
+          improvement_opportunities: string | null
+          isms_changes_needed: string | null
+          isms_performance_feedback: string | null
+          location: string | null
+          meeting_date: string
+          meeting_duration: number | null
+          minutes_approval_date: string | null
+          minutes_approved_by: string | null
+          minutes_draft: string | null
+          monitoring_results: string | null
+          nonconformities_summary: string | null
+          organization_id: string
+          previous_actions_status: string | null
+          resource_needs: string | null
+          review_id: string
+          secretary: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          action_items?: Json | null
+          attendees?: string[] | null
+          audit_results_summary?: string | null
+          chairman?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          decisions?: Json | null
+          external_internal_changes?: string | null
+          id?: string
+          improvement_opportunities?: string | null
+          isms_changes_needed?: string | null
+          isms_performance_feedback?: string | null
+          location?: string | null
+          meeting_date: string
+          meeting_duration?: number | null
+          minutes_approval_date?: string | null
+          minutes_approved_by?: string | null
+          minutes_draft?: string | null
+          monitoring_results?: string | null
+          nonconformities_summary?: string | null
+          organization_id: string
+          previous_actions_status?: string | null
+          resource_needs?: string | null
+          review_id: string
+          secretary?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          action_items?: Json | null
+          attendees?: string[] | null
+          audit_results_summary?: string | null
+          chairman?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          decisions?: Json | null
+          external_internal_changes?: string | null
+          id?: string
+          improvement_opportunities?: string | null
+          isms_changes_needed?: string | null
+          isms_performance_feedback?: string | null
+          location?: string | null
+          meeting_date?: string
+          meeting_duration?: number | null
+          minutes_approval_date?: string | null
+          minutes_approved_by?: string | null
+          minutes_draft?: string | null
+          monitoring_results?: string | null
+          nonconformities_summary?: string | null
+          organization_id?: string
+          previous_actions_status?: string | null
+          resource_needs?: string | null
+          review_id?: string
+          secretary?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       organization: {
         Row: {
           applicable_regulations: string[] | null
@@ -799,6 +889,56 @@ export type Database = {
             columns: ["selected_organization_id"]
             isOneToOne: false
             referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      review_action_items: {
+        Row: {
+          action_number: number
+          completion_date: string | null
+          completion_notes: string | null
+          created_at: string | null
+          description: string
+          due_date: string
+          id: string
+          responsible_person: string
+          review_id: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          action_number: number
+          completion_date?: string | null
+          completion_notes?: string | null
+          created_at?: string | null
+          description: string
+          due_date: string
+          id?: string
+          responsible_person: string
+          review_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          action_number?: number
+          completion_date?: string | null
+          completion_notes?: string | null
+          created_at?: string | null
+          description?: string
+          due_date?: string
+          id?: string
+          responsible_person?: string
+          review_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_action_items_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "management_reviews"
             referencedColumns: ["id"]
           },
         ]

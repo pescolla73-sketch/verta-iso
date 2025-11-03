@@ -29,6 +29,8 @@ import Wizard from "./pages/Wizard";
 import ProgressPage from "./pages/ProgressPage";
 import Training from "./pages/Training";
 import Incidents from "./pages/Incidents";
+import ManagementReview from "./pages/ManagementReview";
+import ManagementReviewEditor from "./pages/ManagementReviewEditor";
 
 const queryClient = new QueryClient();
 
@@ -220,6 +222,22 @@ const App = () => (
             element={
               <AppLayout>
                 <Incidents />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/management-review"
+            element={
+              <AppLayout>
+                <ManagementReview />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/management-review/:id/edit"
+            element={
+              <AppLayout>
+                <ManagementReviewEditor />
               </AppLayout>
             }
           />
