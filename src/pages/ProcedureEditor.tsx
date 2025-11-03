@@ -209,9 +209,22 @@ export default function ProcedureEditor() {
       
       pdf.setFontSize(11);
       pdf.setFont('helvetica', 'normal');
-      const stepsLines = pdf.getDoc().splitTextToSize(procedure.procedure_steps || 'N/A', 170);
-      pdf.addText(stepsLines, yPos);
-      yPos += stepsLines.length * 6 + 10;
+      if (procedure.procedure_steps) {
+        const stepsLines = pdf.getDoc().splitTextToSize(procedure.procedure_steps, 170);
+        // Render line by line with page break checks
+        for (let i = 0; i < stepsLines.length; i++) {
+          if (yPos > 250) { 
+            pdf.addPage(); 
+            yPos = pdf.getContentStartY(); 
+          }
+          pdf.addText(stepsLines[i], yPos);
+          yPos += 6;
+        }
+        yPos += 10;
+      } else {
+        pdf.addText('N/A', yPos);
+        yPos += 10;
+      }
 
       // 5. RECORDS
       if (procedure.records) {
