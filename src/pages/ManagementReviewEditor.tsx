@@ -46,15 +46,35 @@ export default function ManagementReviewEditor() {
   const autoPopulateInputs = async () => {
     try {
       setAutoFetching(true);
-      const orgData = localStorage.getItem('selectedOrganization');
-      if (!orgData) return;
-      const org = JSON.parse(orgData);
+      
+      // Get organization from database
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('Utente non autenticato');
+        setAutoFetching(false);
+        return;
+      }
 
-      // Fetch data from other modules
+      const { data: orgMembers } = await (supabase as any)
+        .from('organization_members')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .single();
+
+      if (!orgMembers) {
+        toast.error('Nessuna organizzazione trovata');
+        setAutoFetching(false);
+        return;
+      }
+
+      const orgId = orgMembers.organization_id;
+
+      // Fetch data from other modules  
       const [auditsRes, incidentsRes, risksRes] = await Promise.all([
-        supabase.from('audits').select('*').order('audit_date', { ascending: false }).limit(3) as any,
-        supabase.from('security_incidents').select('*').order('detected_at', { ascending: false }).limit(10) as any,
-        supabase.from('risks').select('*').gte('inherent_risk_score', 15) as any
+        (supabase.from('audits') as any).select('*').order('audit_date', { ascending: false }).limit(3),
+        (supabase.from('security_incidents') as any).select('*').order('detected_at', { ascending: false }).limit(10),
+        (supabase.from('risks') as any).select('*').gte('inherent_risk_score', 15)
       ]);
 
       // Build summaries
@@ -67,7 +87,7 @@ export default function ManagementReviewEditor() {
         : 'Nessun incidente significativo.';
 
       const risksSummary = risksRes.data?.length > 0
-        ? `${risksRes.data.length} rischi con livello ≥15 richiedono attenzione.`
+        ? `${risksRes.data.length} rischi critici identificati. Principali: ${risksRes.data.slice(0, 3).map(r => r.name).join('; ')}`
         : 'Nessun rischio critico identificato.';
 
       setReview((prev: any) => ({

@@ -28,14 +28,37 @@ export default function ManagementReview() {
 
   const loadData = async () => {
     try {
-      const orgData = localStorage.getItem('selectedOrganization');
-      if (!orgData) return;
-      const org = JSON.parse(orgData);
+      // Get organization from database
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('❌ No user authenticated');
+        setLoading(false);
+        return;
+      }
+
+      const { data: orgMembers } = await (supabase as any)
+        .from('organization_members')
+        .select('organization_id, organizations(*)')
+        .eq('user_id', user.id)
+        .limit(1)
+        .single();
+
+      if (!orgMembers?.organizations) {
+        console.log('❌ No organization found');
+        toast.error('Nessuna organizzazione trovata');
+        navigate('/setup-azienda');
+        setLoading(false);
+        return;
+      }
+
+      const org = orgMembers.organizations;
+      console.log('✅ Organization found:', org.id);
 
       // Load reviews
       const { data: reviewsData, error: reviewsError } = await supabase
         .from('management_reviews')
         .select('*, review_action_items(*)')
+        .eq('organization_id', org.id)
         .order('meeting_date', { ascending: false }) as any;
 
       if (reviewsError) throw reviewsError;
@@ -71,31 +94,43 @@ export default function ManagementReview() {
   const createNewReview = async () => {
     console.log('🔍 [1] Create button clicked');
     try {
-      const orgData = localStorage.getItem('selectedOrganization');
-      console.log('🔍 [2] Org data:', orgData);
-      
-      if (!orgData) {
-        console.log('❌ No organization data');
-        toast.error('Nessuna organizzazione selezionata');
+      // Get organization from database
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('❌ No user');
+        toast.error('Utente non autenticato');
         return;
       }
-      const org = JSON.parse(orgData);
-      console.log('🔍 [3] Organization:', org.id);
+      console.log('🔍 [2] User:', user.email);
 
-      const { data: { user } } = await supabase.auth.getUser();
-      console.log('🔍 [4] User:', user?.email);
+      const { data: orgMembers } = await (supabase as any)
+        .from('organization_members')
+        .select('organization_id, organizations(*)')
+        .eq('user_id', user.id)
+        .limit(1)
+        .single();
+
+      if (!orgMembers?.organizations) {
+        console.log('❌ No organization');
+        toast.error('Nessuna organizzazione trovata');
+        return;
+      }
+
+      const org = orgMembers.organizations;
+      console.log('🔍 [3] Organization:', org.id);
 
       // Default to next quarter review date
       const nextQuarter = new Date();
       nextQuarter.setMonth(nextQuarter.getMonth() + 3);
 
+      console.log('🔍 [4] Creating review...');
       const { data, error } = await supabase
         .from('management_reviews')
         .insert({
           organization_id: org.id,
           meeting_date: nextQuarter.toISOString().split('T')[0],
           status: 'scheduled',
-          created_by: user?.id
+          created_by: user.id
         } as any)
         .select()
         .single();
