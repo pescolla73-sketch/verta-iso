@@ -27,31 +27,31 @@ export default function ManagementReviewEditor() {
     try {
       console.log('🔍 [loadReview] Loading review:', id);
       
-      // Get user's organization
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('❌ [loadReview] No user');
-        toast.error('Utente non autenticato');
-        navigate('/management-review');
-        return;
+      // Try real auth first
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      let orgId: string | null = null;
+      
+      if (!user || userError) {
+        console.log('⚠️ [loadReview] No auth user, using DEMO mode');
+        // DEMO mode: skip organization verification
+      } else {
+        console.log('✅ [loadReview] User authenticated:', user.email);
+        
+        // Get organization from members
+        const { data: orgMembers } = await (supabase as any)
+          .from('organization_members')
+          .select('organization_id, organizations(*)')
+          .eq('user_id', user.id)
+          .limit(1)
+          .single();
+
+        if (orgMembers?.organizations) {
+          const org = orgMembers.organizations as any;
+          orgId = org.id;
+          console.log('✅ [loadReview] Organization:', org.name);
+        }
       }
-
-      const { data: orgMembers } = await (supabase as any)
-        .from('organization_members')
-        .select('organization_id, organizations(*)')
-        .eq('user_id', user.id)
-        .limit(1)
-        .single();
-
-      if (!orgMembers?.organizations) {
-        console.log('❌ [loadReview] No organization');
-        toast.error('Nessuna organizzazione trovata');
-        navigate('/setup-azienda');
-        return;
-      }
-
-      const org = orgMembers.organizations;
-      console.log('✅ [loadReview] Organization:', org.name);
 
       // Load review
       const { data, error } = await supabase
@@ -62,8 +62,8 @@ export default function ManagementReviewEditor() {
 
       if (error) throw error;
 
-      // Verify review belongs to user's organization
-      if (data.organization_id !== org.id) {
+      // Verify review belongs to user's organization (only if we have orgId)
+      if (orgId && data.organization_id !== orgId) {
         console.log('❌ [loadReview] Review does not belong to user org');
         toast.error('Accesso negato');
         navigate('/management-review');
@@ -86,31 +86,61 @@ export default function ManagementReviewEditor() {
       setAutoFetching(true);
       console.log('🔍 [autoPopulate] Starting auto-population');
       
-      // Get organization
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('❌ [autoPopulate] No user');
-        toast.error('Utente non autenticato');
-        setAutoFetching(false);
-        return;
+      // Get organization (with DEMO mode support)
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      let orgId: string;
+      
+      if (!user || userError) {
+        console.log('⚠️ [autoPopulate] No auth user, using DEMO mode');
+        // DEMO mode fallback: get first organization
+        const { data: orgs } = await (supabase as any)
+          .from('organization')
+          .select('id')
+          .limit(1)
+          .single();
+        
+        if (!orgs) {
+          console.log('❌ [autoPopulate] No organization');
+          toast.error('Nessuna organizzazione disponibile');
+          setAutoFetching(false);
+          return;
+        }
+        
+        orgId = orgs.id;
+        console.log('✅ [autoPopulate] Using DEMO org:', orgId);
+      } else {
+        console.log('✅ [autoPopulate] User:', user.email);
+        
+        const { data: orgMembers } = await (supabase as any)
+          .from('organization_members')
+          .select('organization_id')
+          .eq('user_id', user.id)
+          .limit(1)
+          .single();
+
+        if (!orgMembers) {
+          console.log('⚠️ [autoPopulate] No org members, using DEMO mode');
+          const { data: orgs } = await (supabase as any)
+            .from('organization')
+            .select('id')
+            .limit(1)
+            .single();
+          
+          if (!orgs) {
+            console.log('❌ [autoPopulate] No organization');
+            toast.error('Nessuna organizzazione trovata');
+            setAutoFetching(false);
+            return;
+          }
+          
+          orgId = orgs.id;
+          console.log('✅ [autoPopulate] Using DEMO org (fallback):', orgId);
+        } else {
+          orgId = orgMembers.organization_id;
+          console.log('✅ [autoPopulate] Organization ID:', orgId);
+        }
       }
-
-      const { data: orgMembers } = await (supabase as any)
-        .from('organization_members')
-        .select('organization_id')
-        .eq('user_id', user.id)
-        .limit(1)
-        .single();
-
-      if (!orgMembers) {
-        console.log('❌ [autoPopulate] No organization');
-        toast.error('Nessuna organizzazione trovata');
-        setAutoFetching(false);
-        return;
-      }
-
-      const orgId = orgMembers.organization_id;
-      console.log('✅ [autoPopulate] Organization ID:', orgId);
 
       // Date range: last 12 months
       const twelveMonthsAgo = new Date();

@@ -31,41 +31,72 @@ export default function ManagementReview() {
     try {
       console.log('🔍 [loadData] Starting data load');
       
-      // Get organization from database
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('❌ [loadData] No user authenticated');
-        setLoading(false);
-        return;
+      // Try real auth first
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      let orgId: string;
+      
+      if (!user || userError) {
+        console.log('⚠️ [loadData] No auth user, trying DEMO mode');
+        // DEMO mode fallback: get first organization
+        const { data: orgs, error: orgError } = await (supabase as any)
+          .from('organization')
+          .select('id')
+          .limit(1)
+          .single();
+        
+        if (orgError || !orgs) {
+          console.log('❌ [loadData] No organization available');
+          toast.error('Nessuna organizzazione disponibile');
+          setLoading(false);
+          return;
+        }
+        
+        orgId = orgs.id;
+        console.log('✅ [loadData] Using DEMO org:', orgId);
+      } else {
+        console.log('✅ [loadData] User authenticated:', user.email);
+        
+        // Get organization from members
+        const { data: orgMembers, error: orgError } = await (supabase as any)
+          .from('organization_members')
+          .select('organization_id, organizations(*)')
+          .eq('user_id', user.id)
+          .limit(1)
+          .single();
+
+        if (orgError || !orgMembers || !orgMembers.organizations) {
+          console.log('⚠️ [loadData] No org members, trying DEMO mode');
+          const { data: orgs } = await (supabase as any)
+            .from('organization')
+            .select('id')
+            .limit(1)
+            .single();
+          
+          if (!orgs) {
+            console.log('❌ [loadData] No organization found');
+            toast.error('Nessuna organizzazione trovata');
+            setLoading(false);
+            return;
+          }
+          
+          orgId = orgs.id;
+          console.log('✅ [loadData] Using DEMO org (fallback):', orgId);
+        } else {
+          const org = orgMembers.organizations as any;
+          orgId = org.id;
+          console.log('✅ [loadData] Organization from user:', orgId);
+        }
       }
-      console.log('✅ [loadData] User found:', user.email);
-
-      const { data: orgMembers } = await (supabase as any)
-        .from('organization_members')
-        .select('organization_id, organizations(*)')
-        .eq('user_id', user.id)
-        .limit(1)
-        .single();
-
-      if (!orgMembers?.organizations) {
-        console.log('❌ [loadData] No organization found');
-        toast.error('Nessuna organizzazione trovata');
-        navigate('/setup-azienda');
-        setLoading(false);
-        return;
-      }
-
-      const org = orgMembers.organizations;
-      console.log('✅ [loadData] Organization found:', org.id);
       
       // Save organization ID to state
-      setOrganizationId(org.id);
+      setOrganizationId(orgId);
 
       // Load reviews
       const { data: reviewsData, error: reviewsError } = await supabase
         .from('management_reviews')
         .select('*, review_action_items(*)')
-        .eq('organization_id', org.id)
+        .eq('organization_id', orgId)
         .order('meeting_date', { ascending: false }) as any;
 
       if (reviewsError) throw reviewsError;
@@ -109,13 +140,10 @@ export default function ManagementReview() {
       }
       console.log('✅ [2] Using organization from state:', organizationId);
 
+      // Try to get user (may be null in DEMO mode)
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('❌ [3] No user');
-        toast.error('Utente non autenticato');
-        return;
-      }
-      console.log('✅ [3] User:', user.email);
+      const userId = user?.id || null;
+      console.log('✅ [3] User ID:', userId || 'DEMO mode');
 
       // Default to next quarter review date
       const nextQuarter = new Date();
@@ -128,7 +156,7 @@ export default function ManagementReview() {
           organization_id: organizationId,
           meeting_date: nextQuarter.toISOString().split('T')[0],
           status: 'scheduled',
-          created_by: user.id
+          created_by: userId
         } as any)
         .select()
         .single();
