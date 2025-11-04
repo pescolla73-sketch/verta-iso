@@ -234,6 +234,14 @@ const App = () => (
             }
           />
           <Route
+            path="/management-review/:id"
+            element={
+              <AppLayout>
+                <ManagementReviewEditor />
+              </AppLayout>
+            }
+          />
+          <Route
             path="/management-review/:id/edit"
             element={
               <AppLayout>
