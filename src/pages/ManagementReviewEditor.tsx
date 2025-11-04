@@ -303,11 +303,11 @@ Trend: ${incidentsRes.data && incidentsRes.data.length > 0 ? 'Attività rilevata
     try {
       setSaving(true);
 
-      // Save review - only update actual database columns
+      // Save review - only update actual database columns, convert empty dates to null
       const { error: reviewError } = await supabase
         .from('management_reviews')
         .update({
-          meeting_date: review.meeting_date,
+          meeting_date: review.meeting_date || null,
           meeting_duration: review.meeting_duration,
           location: review.location,
           chairman: review.chairman,
@@ -324,6 +324,8 @@ Trend: ${incidentsRes.data && incidentsRes.data.length > 0 ? 'Attività rilevata
           isms_changes_needed: review.isms_changes_needed,
           resource_needs: review.resource_needs,
           minutes_draft: review.minutes_draft,
+          next_review_date: review.next_review_date || null,
+          minutes_approval_date: review.minutes_approval_date || null,
           updated_at: new Date().toISOString()
         })
         .eq('id', id);
@@ -429,7 +431,7 @@ Trend: ${incidentsRes.data && incidentsRes.data.length > 0 ? 'Attività rilevata
               <Input
                 type="date"
                 value={review.meeting_date || ''}
-                onChange={(e) => setReview({...review, meeting_date: e.target.value})}
+                onChange={(e) => setReview({...review, meeting_date: e.target.value || null})}
               />
             </div>
             <div className="space-y-2">
@@ -654,7 +656,7 @@ Trend: ${incidentsRes.data && incidentsRes.data.length > 0 ? 'Attività rilevata
                             value={action.due_date || ''}
                             onChange={(e) => {
                               const updated = [...actionItems];
-                              updated[index].due_date = e.target.value;
+                              updated[index].due_date = e.target.value || null;
                               setActionItems(updated);
                             }}
                           />
