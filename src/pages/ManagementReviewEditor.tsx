@@ -53,10 +53,10 @@ export default function ManagementReviewEditor() {
         }
       }
 
-      // Load review
+      // Load review (action_items are stored in JSONB column)
       const { data, error } = await supabase
         .from('management_reviews')
-        .select('*, review_action_items(*)')
+        .select('*')
         .eq('id', id)
         .single();
 
@@ -72,7 +72,8 @@ export default function ManagementReviewEditor() {
 
       console.log('✅ [loadReview] Review loaded successfully');
       setReview(data);
-      setActionItems(data.review_action_items || []);
+      // Load action items from JSONB column
+      setActionItems(Array.isArray(data.action_items) ? data.action_items : []);
     } catch (error) {
       console.error('Error loading review:', error);
       toast.error('Errore caricamento review');
@@ -284,15 +285,18 @@ Trend: ${incidentsRes.data && incidentsRes.data.length > 0 ? 'Attività rilevata
 
   const addActionItem = () => {
     const newAction = {
-      id: `temp_${Date.now()}`,
-      action_number: actionItems.length + 1,
       description: '',
       responsible_person: '',
       due_date: '',
-      status: 'open',
-      isNew: true
+      status: 'open'
     };
     setActionItems([...actionItems, newAction]);
+  };
+
+  const updateActionItem = (index: number, field: string, value: any) => {
+    const updated = [...actionItems];
+    updated[index] = { ...updated[index], [field]: value };
+    setActionItems(updated);
   };
 
   const removeActionItem = (index: number) => {
@@ -302,6 +306,16 @@ Trend: ${incidentsRes.data && incidentsRes.data.length > 0 ? 'Attività rilevata
   const handleSave = async () => {
     try {
       setSaving(true);
+
+      // Clean action items - remove empty ones and convert empty dates to null
+      const cleanedActionItems = actionItems
+        .filter(item => item.description?.trim()) // Only keep items with descriptions
+        .map(item => ({
+          description: item.description || '',
+          responsible_person: item.responsible_person || '',
+          due_date: item.due_date || null,
+          status: item.status || 'open'
+        }));
 
       // Save review - only actual database columns, convert empty dates to null
       const { error: reviewError } = await supabase
@@ -324,7 +338,7 @@ Trend: ${incidentsRes.data && incidentsRes.data.length > 0 ? 'Attività rilevata
           decisions: review.decisions,
           isms_changes_needed: review.isms_changes_needed,
           resource_needs: review.resource_needs,
-          action_items: review.action_items,
+          action_items: cleanedActionItems,
           minutes_draft: review.minutes_draft,
           minutes_approved_by: review.minutes_approved_by,
           minutes_approval_date: review.minutes_approval_date || null,
@@ -333,34 +347,6 @@ Trend: ${incidentsRes.data && incidentsRes.data.length > 0 ? 'Attività rilevata
         .eq('id', id);
 
       if (reviewError) throw reviewError;
-
-      // Save action items
-      for (const action of actionItems) {
-        if (action.isNew) {
-          const { error } = await supabase
-            .from('review_action_items')
-            .insert({
-              review_id: id,
-              action_number: action.action_number,
-              description: action.description,
-              responsible_person: action.responsible_person,
-              due_date: action.due_date,
-              status: action.status
-            });
-          if (error) throw error;
-        } else if (action.id && !action.id.toString().startsWith('temp_')) {
-          const { error } = await supabase
-            .from('review_action_items')
-            .update({
-              description: action.description,
-              responsible_person: action.responsible_person,
-              due_date: action.due_date,
-              status: action.status
-            })
-            .eq('id', action.id);
-          if (error) throw error;
-        }
-      }
 
       toast.success('✅ Management Review salvato!');
       await loadReview();
@@ -612,10 +598,10 @@ Trend: ${incidentsRes.data && incidentsRes.data.length > 0 ? 'Attività rilevata
           ) : (
             <div className="space-y-4">
               {actionItems.map((action, index) => (
-                <Card key={action.id || index} className="border">
+                <Card key={index} className="border">
                   <CardContent className="pt-4">
                     <div className="flex justify-between items-start mb-4">
-                      <div className="text-sm font-semibold">Azione #{action.action_number}</div>
+                      <div className="text-sm font-semibold">Azione #{index + 1}</div>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -629,11 +615,7 @@ Trend: ${incidentsRes.data && incidentsRes.data.length > 0 ? 'Attività rilevata
                         <Label>Descrizione *</Label>
                         <Textarea
                           value={action.description || ''}
-                          onChange={(e) => {
-                            const updated = [...actionItems];
-                            updated[index].description = e.target.value;
-                            setActionItems(updated);
-                          }}
+                          onChange={(e) => updateActionItem(index, 'description', e.target.value)}
                           placeholder="Cosa deve essere fatto..."
                           rows={2}
                         />
@@ -643,11 +625,7 @@ Trend: ${incidentsRes.data && incidentsRes.data.length > 0 ? 'Attività rilevata
                           <Label>Responsabile *</Label>
                           <Input
                             value={action.responsible_person || ''}
-                            onChange={(e) => {
-                              const updated = [...actionItems];
-                              updated[index].responsible_person = e.target.value;
-                              setActionItems(updated);
-                            }}
+                            onChange={(e) => updateActionItem(index, 'responsible_person', e.target.value)}
                             placeholder="Nome responsabile"
                           />
                         </div>
@@ -656,11 +634,7 @@ Trend: ${incidentsRes.data && incidentsRes.data.length > 0 ? 'Attività rilevata
                           <Input
                             type="date"
                             value={action.due_date || ''}
-                            onChange={(e) => {
-                              const updated = [...actionItems];
-                              updated[index].due_date = e.target.value || null;
-                              setActionItems(updated);
-                            }}
+                            onChange={(e) => updateActionItem(index, 'due_date', e.target.value || null)}
                           />
                         </div>
                       </div>

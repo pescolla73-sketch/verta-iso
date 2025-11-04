@@ -95,7 +95,7 @@ export default function ManagementReview() {
       // Load reviews
       const { data: reviewsData, error: reviewsError } = await supabase
         .from('management_reviews')
-        .select('*, review_action_items(*)')
+        .select('*')
         .eq('organization_id', orgId)
         .order('meeting_date', { ascending: false }) as any;
 
@@ -107,10 +107,12 @@ export default function ManagementReview() {
       const total = reviewsData?.length || 0;
       const completed = reviewsData?.filter(r => r.status === 'minutes_approved').length || 0;
       
-      const allActions = reviewsData?.flatMap(r => r.review_action_items || []) || [];
+      // Count action items from JSONB column
+      const allActions = reviewsData?.flatMap(r => Array.isArray(r.action_items) ? r.action_items : []) || [];
       const openActions = allActions.filter(a => a.status === 'open' || a.status === 'in_progress').length;
       const overdueActions = allActions.filter(a => {
         if (a.status === 'completed') return false;
+        if (!a.due_date) return false;
         return new Date(a.due_date) < new Date();
       }).length;
 
@@ -322,9 +324,10 @@ export default function ManagementReview() {
           ) : (
             <div className="space-y-4">
               {reviews.map((review) => {
-                const openActions = review.review_action_items?.filter(
+                const actionItemsArray = Array.isArray(review.action_items) ? review.action_items : [];
+                const openActions = actionItemsArray.filter(
                   a => a.status === 'open' || a.status === 'in_progress'
-                ).length || 0;
+                ).length;
 
                 return (
                   <Card key={review.id} className="border">
