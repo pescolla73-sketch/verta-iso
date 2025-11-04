@@ -21,6 +21,7 @@ export default function ManagementReview() {
     openActions: 0
   });
   const [loading, setLoading] = useState(true);
+  const [organizationId, setOrganizationId] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -28,13 +29,16 @@ export default function ManagementReview() {
 
   const loadData = async () => {
     try {
+      console.log('🔍 [loadData] Starting data load');
+      
       // Get organization from database
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        console.log('❌ No user authenticated');
+        console.log('❌ [loadData] No user authenticated');
         setLoading(false);
         return;
       }
+      console.log('✅ [loadData] User found:', user.email);
 
       const { data: orgMembers } = await (supabase as any)
         .from('organization_members')
@@ -44,7 +48,7 @@ export default function ManagementReview() {
         .single();
 
       if (!orgMembers?.organizations) {
-        console.log('❌ No organization found');
+        console.log('❌ [loadData] No organization found');
         toast.error('Nessuna organizzazione trovata');
         navigate('/setup-azienda');
         setLoading(false);
@@ -52,7 +56,10 @@ export default function ManagementReview() {
       }
 
       const org = orgMembers.organizations;
-      console.log('✅ Organization found:', org.id);
+      console.log('✅ [loadData] Organization found:', org.id);
+      
+      // Save organization ID to state
+      setOrganizationId(org.id);
 
       // Load reviews
       const { data: reviewsData, error: reviewsError } = await supabase
@@ -94,40 +101,31 @@ export default function ManagementReview() {
   const createNewReview = async () => {
     console.log('🔍 [1] Create button clicked');
     try {
-      // Get organization from database
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('❌ No user');
-        toast.error('Utente non autenticato');
-        return;
-      }
-      console.log('🔍 [2] User:', user.email);
-
-      const { data: orgMembers } = await (supabase as any)
-        .from('organization_members')
-        .select('organization_id, organizations(*)')
-        .eq('user_id', user.id)
-        .limit(1)
-        .single();
-
-      if (!orgMembers?.organizations) {
-        console.log('❌ No organization');
+      // Use organization ID from state
+      if (!organizationId) {
+        console.log('❌ [2] No organization ID in state');
         toast.error('Nessuna organizzazione trovata');
         return;
       }
+      console.log('✅ [2] Using organization from state:', organizationId);
 
-      const org = orgMembers.organizations;
-      console.log('🔍 [3] Organization:', org.id);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('❌ [3] No user');
+        toast.error('Utente non autenticato');
+        return;
+      }
+      console.log('✅ [3] User:', user.email);
 
       // Default to next quarter review date
       const nextQuarter = new Date();
       nextQuarter.setMonth(nextQuarter.getMonth() + 3);
 
-      console.log('🔍 [4] Creating review...');
+      console.log('🔍 [4] Creating review with org:', organizationId);
       const { data, error } = await supabase
         .from('management_reviews')
         .insert({
-          organization_id: org.id,
+          organization_id: organizationId,
           meeting_date: nextQuarter.toISOString().split('T')[0],
           status: 'scheduled',
           created_by: user.id

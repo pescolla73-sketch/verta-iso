@@ -25,6 +25,35 @@ export default function ManagementReviewEditor() {
 
   const loadReview = async () => {
     try {
+      console.log('🔍 [loadReview] Loading review:', id);
+      
+      // Get user's organization
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('❌ [loadReview] No user');
+        toast.error('Utente non autenticato');
+        navigate('/management-review');
+        return;
+      }
+
+      const { data: orgMembers } = await (supabase as any)
+        .from('organization_members')
+        .select('organization_id, organizations(*)')
+        .eq('user_id', user.id)
+        .limit(1)
+        .single();
+
+      if (!orgMembers?.organizations) {
+        console.log('❌ [loadReview] No organization');
+        toast.error('Nessuna organizzazione trovata');
+        navigate('/setup-azienda');
+        return;
+      }
+
+      const org = orgMembers.organizations;
+      console.log('✅ [loadReview] Organization:', org.name);
+
+      // Load review
       const { data, error } = await supabase
         .from('management_reviews')
         .select('*, review_action_items(*)')
@@ -33,11 +62,20 @@ export default function ManagementReviewEditor() {
 
       if (error) throw error;
 
+      // Verify review belongs to user's organization
+      if (data.organization_id !== org.id) {
+        console.log('❌ [loadReview] Review does not belong to user org');
+        toast.error('Accesso negato');
+        navigate('/management-review');
+        return;
+      }
+
+      console.log('✅ [loadReview] Review loaded successfully');
       setReview(data);
       setActionItems(data.review_action_items || []);
     } catch (error) {
-      console.error('Error:', error);
-      toast.error('Errore caricamento');
+      console.error('Error loading review:', error);
+      toast.error('Errore caricamento review');
     } finally {
       setLoading(false);
     }
@@ -46,10 +84,12 @@ export default function ManagementReviewEditor() {
   const autoPopulateInputs = async () => {
     try {
       setAutoFetching(true);
+      console.log('🔍 [autoPopulate] Starting auto-population');
       
-      // Get organization from database
+      // Get organization
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
+        console.log('❌ [autoPopulate] No user');
         toast.error('Utente non autenticato');
         setAutoFetching(false);
         return;
@@ -63,43 +103,150 @@ export default function ManagementReviewEditor() {
         .single();
 
       if (!orgMembers) {
+        console.log('❌ [autoPopulate] No organization');
         toast.error('Nessuna organizzazione trovata');
         setAutoFetching(false);
         return;
       }
 
       const orgId = orgMembers.organization_id;
+      console.log('✅ [autoPopulate] Organization ID:', orgId);
 
-      // Fetch data from other modules  
+      // Date range: last 12 months
+      const twelveMonthsAgo = new Date();
+      twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+      const dateFilter = twelveMonthsAgo.toISOString().split('T')[0];
+
+      // Fetch data from multiple sources
       const [auditsRes, incidentsRes, risksRes] = await Promise.all([
-        (supabase.from('audits') as any).select('*').order('audit_date', { ascending: false }).limit(3),
-        (supabase.from('security_incidents') as any).select('*').order('detected_at', { ascending: false }).limit(10),
-        (supabase.from('risks') as any).select('*').gte('inherent_risk_score', 15)
+        supabase
+          .from('audits')
+          .select('*')
+          .order('audit_date', { ascending: false })
+          .limit(5),
+        supabase
+          .from('security_incidents')
+          .select('*')
+          .eq('organization_id', orgId)
+          .gte('detected_at', dateFilter)
+          .order('detected_at', { ascending: false }),
+        supabase
+          .from('risks')
+          .select('*')
+          .eq('organization_id', orgId)
+          .eq('status', 'Identificato')
+          .order('inherent_risk_score', { ascending: false })
+          .limit(10)
       ]);
 
-      // Build summaries
-      const auditSummary = auditsRes.data?.length > 0
-        ? `Ultimi audit: ${auditsRes.data.map(a => `${a.audit_type} (${a.audit_date ? format(new Date(a.audit_date), 'dd/MM/yyyy') : 'N/A'})`).join(', ')}`
-        : 'Nessun audit recente registrato.';
+      console.log('📊 [autoPopulate] Data loaded:', {
+        audits: auditsRes.data?.length || 0,
+        incidents: incidentsRes.data?.length || 0,
+        risks: risksRes.data?.length || 0
+      });
 
-      const incidentsSummary = incidentsRes.data?.length > 0
-        ? `${incidentsRes.data.length} incidenti negli ultimi mesi. Severity: ${incidentsRes.data.filter(i => i.severity === 'critical' || i.severity === 'high').length} critici/high.`
-        : 'Nessun incidente significativo.';
+      // Build audit results summary
+      let auditSummary = '';
+      if (auditsRes.data && auditsRes.data.length > 0) {
+        const completedAudits = auditsRes.data.filter(a => a.status === 'completed');
+        auditSummary = `Audit recenti completati: ${completedAudits.length}\n\n`;
+        auditSummary += auditsRes.data.slice(0, 3).map(a => 
+          `• ${a.audit_name} (${new Date(a.audit_date).toLocaleDateString('it-IT')})\n  Tipo: ${a.audit_type}, Status: ${a.status}`
+        ).join('\n\n');
+      } else {
+        auditSummary = 'Nessun audit registrato nel sistema';
+      }
 
-      const risksSummary = risksRes.data?.length > 0
-        ? `${risksRes.data.length} rischi critici identificati. Principali: ${risksRes.data.slice(0, 3).map(r => r.name).join('; ')}`
-        : 'Nessun rischio critico identificato.';
+      // Build incidents summary
+      let incidentsSummary = '';
+      if (incidentsRes.data && incidentsRes.data.length > 0) {
+        const highSeverity = incidentsRes.data.filter(i => i.severity === 'high' || i.severity === 'critical').length;
+        incidentsSummary = `Incidenti ultimi 12 mesi: ${incidentsRes.data.length} totali\n`;
+        incidentsSummary += `• Alta/Critica severità: ${highSeverity}\n`;
+        incidentsSummary += `• Risolti: ${incidentsRes.data.filter(i => i.status === 'closed').length}\n\n`;
+        incidentsSummary += 'Incidenti principali:\n';
+        incidentsSummary += incidentsRes.data.slice(0, 5).map(i => 
+          `• ${i.title} [${i.severity}] - ${i.status}`
+        ).join('\n');
+      } else {
+        incidentsSummary = 'Nessun incidente registrato negli ultimi 12 mesi';
+      }
 
-      setReview((prev: any) => ({
-        ...prev,
+      // Build risks summary
+      let risksSummary = '';
+      if (risksRes.data && risksRes.data.length > 0) {
+        const highRisks = risksRes.data.filter(r => r.inherent_risk_score >= 15);
+        const mediumRisks = risksRes.data.filter(r => r.inherent_risk_score >= 9 && r.inherent_risk_score < 15);
+        
+        risksSummary = `Rischi aperti identificati: ${risksRes.data.length} totali\n`;
+        risksSummary += `• Alto rischio (≥15): ${highRisks.length}\n`;
+        risksSummary += `• Medio rischio (9-14): ${mediumRisks.length}\n\n`;
+        risksSummary += 'Rischi principali:\n';
+        risksSummary += highRisks.slice(0, 5).map(r => 
+          `• ${r.name} [Score: ${r.inherent_risk_score}]\n  Trattamento: ${r.treatment_strategy || 'Da definire'}`
+        ).join('\n\n');
+      } else {
+        risksSummary = 'Nessun rischio ad alto livello identificato';
+      }
+
+      // Build monitoring results
+      const monitoringSummary = `
+Performance ISMS - Ultimi 12 mesi:
+• Incidenti: ${incidentsRes.data?.length || 0}
+• Audit completati: ${auditsRes.data?.filter(a => a.status === 'completed').length || 0}
+• Rischi ad alto livello: ${risksRes.data?.filter(r => r.inherent_risk_score >= 15).length || 0}
+
+Trend: ${incidentsRes.data && incidentsRes.data.length > 0 ? 'Attività rilevata' : 'Nessuna attività significativa'}
+      `.trim();
+
+      // Build improvement opportunities
+      const improvements = [];
+      if (incidentsRes.data && incidentsRes.data.filter(i => i.severity === 'high' || i.severity === 'critical').length > 0) {
+        improvements.push('• Rafforzare procedure incident response per incidenti alta severità');
+      }
+      if (risksRes.data && risksRes.data.filter(r => !r.treatment_strategy).length > 0) {
+        improvements.push('• Definire strategie trattamento per rischi senza piano');
+      }
+      if (auditsRes.data && auditsRes.data.filter(a => a.status !== 'completed').length > 0) {
+        improvements.push('• Completare audit pianificati in sospeso');
+      }
+      
+      const improvementsSummary = improvements.length > 0 
+        ? improvements.join('\n')
+        : 'Mantenere il livello attuale di controllo e monitoraggio';
+
+      // Update review with auto-populated data
+      const updatedReview = {
+        ...review,
         audit_results_summary: auditSummary,
-        monitoring_results: `Incidenti: ${incidentsSummary}\n\nRischi: ${risksSummary}`,
-      }));
+        isms_performance_feedback: incidentsSummary,
+        improvement_opportunities: improvementsSummary,
+        monitoring_results: monitoringSummary
+      };
 
-      toast.success('✅ Dati caricati automaticamente!');
+      setReview(updatedReview);
+
+      // Save to database
+      const { error: updateError } = await supabase
+        .from('management_reviews')
+        .update({
+          audit_results_summary: auditSummary,
+          isms_performance_feedback: incidentsSummary,
+          improvement_opportunities: improvementsSummary,
+          monitoring_results: monitoringSummary
+        })
+        .eq('id', id);
+
+      if (updateError) {
+        console.error('❌ [autoPopulate] Error saving:', updateError);
+        throw updateError;
+      }
+
+      console.log('✅ [autoPopulate] Data auto-populated and saved');
+      toast.success('✅ Dati caricati e salvati automaticamente');
     } catch (error) {
-      console.error('Error:', error);
-      toast.error('Errore caricamento dati');
+      console.error('❌ [autoPopulate] Error:', error);
+      toast.error('Errore caricamento automatico dati');
     } finally {
       setAutoFetching(false);
     }
