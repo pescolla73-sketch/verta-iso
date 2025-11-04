@@ -303,7 +303,7 @@ Trend: ${incidentsRes.data && incidentsRes.data.length > 0 ? 'Attività rilevata
     try {
       setSaving(true);
 
-      // Save review - only update actual database columns, convert empty dates to null
+      // Save review - only actual database columns, convert empty dates to null
       const { error: reviewError } = await supabase
         .from('management_reviews')
         .update({
@@ -321,10 +321,12 @@ Trend: ${incidentsRes.data && incidentsRes.data.length > 0 ? 'Attività rilevata
           nonconformities_summary: review.nonconformities_summary,
           monitoring_results: review.monitoring_results,
           improvement_opportunities: review.improvement_opportunities,
+          decisions: review.decisions,
           isms_changes_needed: review.isms_changes_needed,
           resource_needs: review.resource_needs,
+          action_items: review.action_items,
           minutes_draft: review.minutes_draft,
-          next_review_date: review.next_review_date || null,
+          minutes_approved_by: review.minutes_approved_by,
           minutes_approval_date: review.minutes_approval_date || null,
           updated_at: new Date().toISOString()
         })
