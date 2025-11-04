@@ -14,7 +14,6 @@ export default function ManagementReviewEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [review, setReview] = useState<any>(null);
-  const [actionItems, setActionItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [autoFetching, setAutoFetching] = useState(false);
@@ -71,9 +70,11 @@ export default function ManagementReviewEditor() {
       }
 
       console.log('✅ [loadReview] Review loaded successfully');
-      setReview(data);
-      // Load action items from JSONB column
-      setActionItems(Array.isArray(data.action_items) ? data.action_items : []);
+      // Ensure action_items is always an array
+      setReview({
+        ...data,
+        action_items: Array.isArray(data.action_items) ? data.action_items : []
+      });
     } catch (error) {
       console.error('Error loading review:', error);
       toast.error('Errore caricamento review');
@@ -284,33 +285,47 @@ Trend: ${incidentsRes.data && incidentsRes.data.length > 0 ? 'Attività rilevata
   };
 
   const addActionItem = () => {
+    if (!review) return;
     const newAction = {
       description: '',
       responsible_person: '',
       due_date: '',
       status: 'open'
     };
-    setActionItems([...actionItems, newAction]);
+    setReview({
+      ...review,
+      action_items: [...(review.action_items || []), newAction]
+    });
   };
 
   const updateActionItem = (index: number, field: string, value: any) => {
-    const updated = [...actionItems];
-    updated[index] = { ...updated[index], [field]: value };
-    setActionItems(updated);
+    if (!review) return;
+    const updatedItems = [...(review.action_items || [])];
+    updatedItems[index] = { ...updatedItems[index], [field]: value };
+    setReview({
+      ...review,
+      action_items: updatedItems
+    });
   };
 
   const removeActionItem = (index: number) => {
-    setActionItems(actionItems.filter((_, i) => i !== index));
+    if (!review) return;
+    setReview({
+      ...review,
+      action_items: review.action_items.filter((_: any, i: number) => i !== index)
+    });
   };
 
   const handleSave = async () => {
+    if (!review) return;
+    
     try {
       setSaving(true);
 
       // Clean action items - remove empty ones and convert empty dates to null
-      const cleanedActionItems = actionItems
-        .filter(item => item.description?.trim()) // Only keep items with descriptions
-        .map(item => ({
+      const cleanedActionItems = (review.action_items || [])
+        .filter((item: any) => item.description?.trim()) // Only keep items with descriptions
+        .map((item: any) => ({
           description: item.description || '',
           responsible_person: item.responsible_person || '',
           due_date: item.due_date || null,
@@ -350,9 +365,9 @@ Trend: ${incidentsRes.data && incidentsRes.data.length > 0 ? 'Attività rilevata
 
       toast.success('✅ Management Review salvato!');
       await loadReview();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error:', error);
-      toast.error('Errore salvataggio');
+      toast.error(error.message || 'Errore salvataggio');
     } finally {
       setSaving(false);
     }
@@ -591,13 +606,13 @@ Trend: ${incidentsRes.data && incidentsRes.data.length > 0 ? 'Attività rilevata
           </div>
         </CardHeader>
         <CardContent>
-          {actionItems.length === 0 ? (
+          {!review.action_items || review.action_items.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <p>Nessuna azione definita. Aggiungi le azioni da intraprendere.</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {actionItems.map((action, index) => (
+              {review.action_items.map((action: any, index: number) => (
                 <Card key={index} className="border">
                   <CardContent className="pt-4">
                     <div className="flex justify-between items-start mb-4">
