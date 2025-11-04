@@ -303,11 +303,27 @@ Trend: ${incidentsRes.data && incidentsRes.data.length > 0 ? 'Attività rilevata
     try {
       setSaving(true);
 
-      // Save review
+      // Save review - only update actual database columns
       const { error: reviewError } = await supabase
         .from('management_reviews')
         .update({
-          ...review,
+          meeting_date: review.meeting_date,
+          meeting_duration: review.meeting_duration,
+          location: review.location,
+          chairman: review.chairman,
+          secretary: review.secretary,
+          attendees: review.attendees,
+          status: review.status,
+          previous_actions_status: review.previous_actions_status,
+          external_internal_changes: review.external_internal_changes,
+          isms_performance_feedback: review.isms_performance_feedback,
+          audit_results_summary: review.audit_results_summary,
+          nonconformities_summary: review.nonconformities_summary,
+          monitoring_results: review.monitoring_results,
+          improvement_opportunities: review.improvement_opportunities,
+          isms_changes_needed: review.isms_changes_needed,
+          resource_needs: review.resource_needs,
+          minutes_draft: review.minutes_draft,
           updated_at: new Date().toISOString()
         })
         .eq('id', id);
