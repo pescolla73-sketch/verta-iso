@@ -6,9 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ClipboardCheck, Plus, Calendar, FileCheck, CheckCircle, TrendingUp, AlertTriangle } from 'lucide-react';
+import { ClipboardCheck, Plus, Calendar, FileCheck, CheckCircle, TrendingUp, AlertTriangle, FileSpreadsheet, Download } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
+import * as XLSX from 'xlsx';
 
 export default function InternalAuditPage() {
   const navigate = useNavigate();
@@ -176,6 +177,207 @@ export default function InternalAuditPage() {
 
   const years = Array.from(new Set(audits.map(a => new Date(a.audit_date).getFullYear().toString())));
 
+  const exportToExcel = async () => {
+    try {
+      const workbook = XLSX.utils.book_new();
+
+      // 1. Statistiche Generali
+      const statsData = [
+        ['Statistiche Audit Interni'],
+        [''],
+        ['Metrica', 'Valore'],
+        ['Audit Totali', stats.total],
+        ['Audit Pianificati', stats.planned],
+        ['Audit Completati', stats.completed],
+        ['Audit Conformi', stats.conforming],
+        ['Percentuale Conformità', stats.completed > 0 ? `${Math.round((stats.conforming / stats.completed) * 100)}%` : '0%']
+      ];
+      const statsSheet = XLSX.utils.aoa_to_sheet(statsData);
+      XLSX.utils.book_append_sheet(workbook, statsSheet, 'Statistiche');
+
+      // 2. Trend Mensile
+      if (analytics.monthlyTrend.length > 0) {
+        const trendData = [
+          ['Trend Conformità Mensile'],
+          [''],
+          ['Mese', 'Conformi', 'Non Conformi', 'Parziali', 'Totale']
+        ];
+        
+        analytics.monthlyTrend.forEach(month => {
+          const total = month.conforming + month.nonConforming + month.partial;
+          trendData.push([
+            month.month,
+            month.conforming,
+            month.nonConforming,
+            month.partial,
+            total
+          ]);
+        });
+        
+        const trendSheet = XLSX.utils.aoa_to_sheet(trendData);
+        XLSX.utils.book_append_sheet(workbook, trendSheet, 'Trend Mensile');
+      }
+
+      // 3. Controlli Critici
+      if (analytics.controlHeatmap.length > 0) {
+        const heatmapData = [
+          ['Controlli più Critici'],
+          [''],
+          ['Controllo', 'Findings Critici', 'Findings Maggiori', 'Findings Minori', 'Totale Findings']
+        ];
+        
+        analytics.controlHeatmap.forEach(control => {
+          heatmapData.push([
+            control.control,
+            control.critical,
+            control.major,
+            control.minor,
+            control.total
+          ]);
+        });
+        
+        const heatmapSheet = XLSX.utils.aoa_to_sheet(heatmapData);
+        XLSX.utils.book_append_sheet(workbook, heatmapSheet, 'Controlli Critici');
+      }
+
+      // 4. Lista Audit
+      const auditData = [
+        ['Lista Completa Audit'],
+        [''],
+        ['Codice', 'Data', 'Ambito', 'Auditor', 'Stato', 'Risultato', 'Conclusione']
+      ];
+      
+      audits.forEach(audit => {
+        auditData.push([
+          audit.audit_code,
+          new Date(audit.audit_date).toLocaleDateString('it-IT'),
+          audit.audit_scope,
+          audit.auditor_name,
+          audit.status === 'planned' ? 'Pianificato' : audit.status === 'completed' ? 'Completato' : audit.status,
+          audit.overall_result === 'conforming' ? 'Conforme' : audit.overall_result === 'non_conforming' ? 'Non Conforme' : audit.overall_result === 'partial' ? 'Parziale' : '-',
+          audit.conclusion || '-'
+        ]);
+      });
+      
+      const auditSheet = XLSX.utils.aoa_to_sheet(auditData);
+      XLSX.utils.book_append_sheet(workbook, auditSheet, 'Audit');
+
+      // 5. Findings Completi
+      const auditIds = audits.map(a => a.id);
+      if (auditIds.length > 0) {
+        const { data: findingsData } = await supabase
+          .from('audit_findings')
+          .select('*, internal_audits(audit_code)')
+          .in('audit_id', auditIds)
+          .order('created_at', { ascending: false });
+
+        if (findingsData && findingsData.length > 0) {
+          const findingsExport = [
+            ['Lista Completa Findings'],
+            [''],
+            ['Audit', 'Data', 'Titolo', 'Descrizione', 'Severità', 'Controllo', 'Stato', 'Azione Raccomandata']
+          ];
+          
+          findingsData.forEach(finding => {
+            findingsExport.push([
+              (finding.internal_audits as any)?.audit_code || '-',
+              new Date(finding.created_at).toLocaleDateString('it-IT'),
+              finding.title,
+              finding.description || '-',
+              finding.severity === 'critical' ? 'Critico' : finding.severity === 'major' ? 'Maggiore' : finding.severity === 'minor' ? 'Minore' : 'Osservazione',
+              finding.control_reference || '-',
+              finding.status === 'open' ? 'Aperto' : 'Chiuso',
+              finding.recommended_action || '-'
+            ]);
+          });
+          
+          const findingsSheet = XLSX.utils.aoa_to_sheet(findingsExport);
+          XLSX.utils.book_append_sheet(workbook, findingsSheet, 'Findings');
+        }
+      }
+
+      // 6. Distribuzione per Categoria
+      if (analytics.categoryDistribution.length > 0) {
+        const categoryData = [
+          ['Distribuzione Findings per Categoria ISO'],
+          [''],
+          ['Categoria', 'Numero Findings']
+        ];
+        
+        analytics.categoryDistribution.forEach(cat => {
+          categoryData.push([cat.category, cat.count]);
+        });
+        
+        const categorySheet = XLSX.utils.aoa_to_sheet(categoryData);
+        XLSX.utils.book_append_sheet(workbook, categorySheet, 'Categorie ISO');
+      }
+
+      // Generate file
+      const timestamp = new Date().toISOString().split('T')[0];
+      XLSX.writeFile(workbook, `audit-analytics-${timestamp}.xlsx`);
+      
+      toast({
+        title: 'Successo',
+        description: 'Report Excel generato con successo'
+      });
+    } catch (error: any) {
+      console.error('Export error:', error);
+      toast({
+        title: 'Errore',
+        description: 'Impossibile generare il report',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const exportToCSV = async () => {
+    try {
+      const auditIds = audits.map(a => a.id);
+      const { data: findingsData } = await supabase
+        .from('audit_findings')
+        .select('*, internal_audits(audit_code)')
+        .in('audit_id', auditIds)
+        .order('created_at', { ascending: false });
+
+      let csv = 'Audit,Data,Titolo,Descrizione,Severità,Controllo,Stato,Azione Raccomandata\n';
+      
+      findingsData?.forEach(finding => {
+        const row = [
+          (finding.internal_audits as any)?.audit_code || '-',
+          new Date(finding.created_at).toLocaleDateString('it-IT'),
+          finding.title,
+          (finding.description || '-').replace(/,/g, ';'),
+          finding.severity === 'critical' ? 'Critico' : finding.severity === 'major' ? 'Maggiore' : finding.severity === 'minor' ? 'Minore' : 'Osservazione',
+          finding.control_reference || '-',
+          finding.status === 'open' ? 'Aperto' : 'Chiuso',
+          (finding.recommended_action || '-').replace(/,/g, ';')
+        ];
+        csv += row.join(',') + '\n';
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `audit-findings-${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: 'Successo',
+        description: 'File CSV generato con successo'
+      });
+    } catch (error: any) {
+      console.error('Export error:', error);
+      toast({
+        title: 'Errore',
+        description: 'Impossibile generare il CSV',
+        variant: 'destructive'
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto p-6">
@@ -196,10 +398,20 @@ export default function InternalAuditPage() {
           </h1>
           <p className="text-muted-foreground mt-1">Gestione audit interni ISO 27001:2022</p>
         </div>
-        <Button onClick={() => navigate('/audit-interni/piano')}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nuovo Audit
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={exportToCSV}>
+            <Download className="mr-2 h-4 w-4" />
+            Export CSV
+          </Button>
+          <Button variant="outline" onClick={exportToExcel}>
+            <FileSpreadsheet className="mr-2 h-4 w-4" />
+            Export Excel
+          </Button>
+          <Button onClick={() => navigate('/audit-interni/piano')}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nuovo Audit
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
