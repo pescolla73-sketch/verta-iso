@@ -103,6 +103,97 @@ export type Database = {
           },
         ]
       }
+      audit_checklist_items: {
+        Row: {
+          audit_id: string | null
+          audit_notes: string | null
+          control_reference: string
+          control_title: string
+          created_at: string | null
+          evidence_found: string | null
+          id: string
+          requirement: string
+          result: string | null
+        }
+        Insert: {
+          audit_id?: string | null
+          audit_notes?: string | null
+          control_reference: string
+          control_title: string
+          created_at?: string | null
+          evidence_found?: string | null
+          id?: string
+          requirement: string
+          result?: string | null
+        }
+        Update: {
+          audit_id?: string | null
+          audit_notes?: string | null
+          control_reference?: string
+          control_title?: string
+          created_at?: string | null
+          evidence_found?: string | null
+          id?: string
+          requirement?: string
+          result?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_checklist_items_audit_id_fkey"
+            columns: ["audit_id"]
+            isOneToOne: false
+            referencedRelation: "internal_audits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_findings: {
+        Row: {
+          audit_id: string | null
+          control_reference: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          organization_id: string
+          recommended_action: string | null
+          severity: string
+          status: string | null
+          title: string
+        }
+        Insert: {
+          audit_id?: string | null
+          control_reference?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          organization_id: string
+          recommended_action?: string | null
+          severity: string
+          status?: string | null
+          title: string
+        }
+        Update: {
+          audit_id?: string | null
+          control_reference?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          organization_id?: string
+          recommended_action?: string | null
+          severity?: string
+          status?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_findings_audit_id_fkey"
+            columns: ["audit_id"]
+            isOneToOne: false
+            referencedRelation: "internal_audits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -203,6 +294,96 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      certification_audits: {
+        Row: {
+          audit_date: string
+          audit_type: string
+          certifier_name: string
+          created_at: string | null
+          id: string
+          notes: string | null
+          organization_id: string
+          outcome: string | null
+          report_url: string | null
+        }
+        Insert: {
+          audit_date: string
+          audit_type: string
+          certifier_name: string
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          organization_id: string
+          outcome?: string | null
+          report_url?: string | null
+        }
+        Update: {
+          audit_date?: string
+          audit_type?: string
+          certifier_name?: string
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          outcome?: string | null
+          report_url?: string | null
+        }
+        Relationships: []
+      }
+      certifier_findings: {
+        Row: {
+          certification_audit_id: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          linked_nc_id: string | null
+          organization_id: string
+          required_action: string | null
+          severity: string
+          status: string | null
+          title: string
+        }
+        Insert: {
+          certification_audit_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          linked_nc_id?: string | null
+          organization_id: string
+          required_action?: string | null
+          severity: string
+          status?: string | null
+          title: string
+        }
+        Update: {
+          certification_audit_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          linked_nc_id?: string | null
+          organization_id?: string
+          required_action?: string | null
+          severity?: string
+          status?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certifier_findings_certification_audit_id_fkey"
+            columns: ["certification_audit_id"]
+            isOneToOne: false
+            referencedRelation: "certification_audits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "certifier_findings_linked_nc_id_fkey"
+            columns: ["linked_nc_id"]
+            isOneToOne: false
+            referencedRelation: "non_conformities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       controls: {
         Row: {
@@ -308,6 +489,60 @@ export type Database = {
           },
         ]
       }
+      internal_audits: {
+        Row: {
+          audit_code: string
+          audit_date: string
+          audit_scope: string
+          audit_type: string
+          auditee_name: string | null
+          auditor_name: string
+          conclusion: string | null
+          created_at: string | null
+          id: string
+          objective: string | null
+          organization_id: string
+          overall_result: string | null
+          planned_date: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          audit_code: string
+          audit_date: string
+          audit_scope: string
+          audit_type: string
+          auditee_name?: string | null
+          auditor_name: string
+          conclusion?: string | null
+          created_at?: string | null
+          id?: string
+          objective?: string | null
+          organization_id: string
+          overall_result?: string | null
+          planned_date?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          audit_code?: string
+          audit_date?: string
+          audit_scope?: string
+          audit_type?: string
+          auditee_name?: string | null
+          auditor_name?: string
+          conclusion?: string | null
+          created_at?: string | null
+          id?: string
+          objective?: string | null
+          organization_id?: string
+          overall_result?: string | null
+          planned_date?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       management_reviews: {
         Row: {
           action_items: Json | null
@@ -395,6 +630,48 @@ export type Database = {
           secretary?: string | null
           status?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      non_conformities: {
+        Row: {
+          closed_at: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          nc_code: string
+          organization_id: string
+          severity: string
+          source: string | null
+          source_id: string | null
+          status: string | null
+          title: string
+        }
+        Insert: {
+          closed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          nc_code: string
+          organization_id: string
+          severity: string
+          source?: string | null
+          source_id?: string | null
+          status?: string | null
+          title: string
+        }
+        Update: {
+          closed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          nc_code?: string
+          organization_id?: string
+          severity?: string
+          source?: string | null
+          source_id?: string | null
+          status?: string | null
+          title?: string
         }
         Relationships: []
       }
