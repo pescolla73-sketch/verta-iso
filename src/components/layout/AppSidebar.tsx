@@ -14,6 +14,7 @@ import {
   GraduationCap,
   Shield as ShieldAlert,
   ClipboardList,
+  Award,
 } from "lucide-react";
 import {
   Sidebar,
@@ -64,12 +65,13 @@ export function AppSidebar() {
     { title: "Asset", url: "/assets", icon: Box },
     { title: "Risk Assessment", url: "/risk-assessment", icon: AlertTriangle },
     { title: "SoA", url: "/soa", icon: FileText },
-    { title: "Audit Esterni", url: "/audits", icon: ClipboardCheck },
     { title: "Registro Eventi", url: "/audit", icon: ScrollText },
     { title: "Politiche", url: "/policies", icon: FileText },
     { title: "Procedure", url: "/procedures", icon: ClipboardList },
     { title: "Training", url: "/training", icon: GraduationCap },
     { title: "Incidenti", url: "/incidents", icon: ShieldAlert },
+    { title: "Audit Interni", url: "/audit-interni", icon: ClipboardCheck },
+    { title: "Audit Certificazione", url: "/audit-certificazione", icon: Award },
     { title: "Management Review", url: "/management-review", icon: TrendingUp },
     { title: "Ruoli", url: "/roles", icon: Users },
     { title: "Setup Azienda", url: "/setup-azienda", icon: Building2 },

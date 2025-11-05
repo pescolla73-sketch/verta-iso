@@ -31,6 +31,10 @@ import Training from "./pages/Training";
 import Incidents from "./pages/Incidents";
 import ManagementReview from "./pages/ManagementReview";
 import ManagementReviewEditor from "./pages/ManagementReviewEditor";
+import InternalAuditPage from "./pages/InternalAuditPage";
+import AuditPlanPage from "./pages/AuditPlanPage";
+import AuditExecutionPage from "./pages/AuditExecutionPage";
+import CertificationAuditPage from "./pages/CertificationAuditPage";
 
 const queryClient = new QueryClient();
 
@@ -246,6 +250,38 @@ const App = () => (
             element={
               <AppLayout>
                 <ManagementReviewEditor />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/audit-interni"
+            element={
+              <AppLayout>
+                <InternalAuditPage />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/audit-interni/piano"
+            element={
+              <AppLayout>
+                <AuditPlanPage />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/audit-interni/:id"
+            element={
+              <AppLayout>
+                <AuditExecutionPage />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/audit-certificazione"
+            element={
+              <AppLayout>
+                <CertificationAuditPage />
               </AppLayout>
             }
           />
