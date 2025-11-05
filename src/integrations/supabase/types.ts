@@ -107,35 +107,50 @@ export type Database = {
         Row: {
           audit_id: string | null
           audit_notes: string | null
+          auto_create_nc: boolean | null
           control_reference: string
           control_title: string
           created_at: string | null
           evidence_found: string | null
+          evidence_required: string | null
           id: string
+          pre_audit_status: string | null
           requirement: string
           result: string | null
+          source_type: string | null
+          update_linked: boolean | null
         }
         Insert: {
           audit_id?: string | null
           audit_notes?: string | null
+          auto_create_nc?: boolean | null
           control_reference: string
           control_title: string
           created_at?: string | null
           evidence_found?: string | null
+          evidence_required?: string | null
           id?: string
+          pre_audit_status?: string | null
           requirement: string
           result?: string | null
+          source_type?: string | null
+          update_linked?: boolean | null
         }
         Update: {
           audit_id?: string | null
           audit_notes?: string | null
+          auto_create_nc?: boolean | null
           control_reference?: string
           control_title?: string
           created_at?: string | null
           evidence_found?: string | null
+          evidence_required?: string | null
           id?: string
+          pre_audit_status?: string | null
           requirement?: string
           result?: string | null
+          source_type?: string | null
+          update_linked?: boolean | null
         }
         Relationships: [
           {
@@ -387,6 +402,7 @@ export type Database = {
       }
       controls: {
         Row: {
+          audit_history: Json | null
           control_id: string
           created_at: string | null
           domain: string
@@ -397,6 +413,8 @@ export type Database = {
           id: string
           implementation_notes: string | null
           justification: string | null
+          last_audit_date: string | null
+          last_audit_result: string | null
           last_verification_date: string | null
           objective: string | null
           responsible: string | null
@@ -405,6 +423,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          audit_history?: Json | null
           control_id: string
           created_at?: string | null
           domain: string
@@ -415,6 +434,8 @@ export type Database = {
           id?: string
           implementation_notes?: string | null
           justification?: string | null
+          last_audit_date?: string | null
+          last_audit_result?: string | null
           last_verification_date?: string | null
           objective?: string | null
           responsible?: string | null
@@ -423,6 +444,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          audit_history?: Json | null
           control_id?: string
           created_at?: string | null
           domain?: string
@@ -433,6 +455,8 @@ export type Database = {
           id?: string
           implementation_notes?: string | null
           justification?: string | null
+          last_audit_date?: string | null
+          last_audit_result?: string | null
           last_verification_date?: string | null
           objective?: string | null
           responsible?: string | null
@@ -636,11 +660,15 @@ export type Database = {
       non_conformities: {
         Row: {
           closed_at: string | null
+          closure_notes: string | null
           created_at: string | null
           description: string | null
+          detection_method: string | null
+          effectiveness_verified: boolean | null
           id: string
           nc_code: string
           organization_id: string
+          related_control: string | null
           severity: string
           source: string | null
           source_id: string | null
@@ -649,11 +677,15 @@ export type Database = {
         }
         Insert: {
           closed_at?: string | null
+          closure_notes?: string | null
           created_at?: string | null
           description?: string | null
+          detection_method?: string | null
+          effectiveness_verified?: boolean | null
           id?: string
           nc_code: string
           organization_id: string
+          related_control?: string | null
           severity: string
           source?: string | null
           source_id?: string | null
@@ -662,11 +694,15 @@ export type Database = {
         }
         Update: {
           closed_at?: string | null
+          closure_notes?: string | null
           created_at?: string | null
           description?: string | null
+          detection_method?: string | null
+          effectiveness_verified?: boolean | null
           id?: string
           nc_code?: string
           organization_id?: string
+          related_control?: string | null
           severity?: string
           source?: string | null
           source_id?: string | null
@@ -1233,6 +1269,7 @@ export type Database = {
           inherent_risk_level: string | null
           inherent_risk_score: number | null
           last_review_date: string | null
+          last_verification_date: string | null
           name: string
           next_review_date: string | null
           notes: string | null
@@ -1253,6 +1290,8 @@ export type Database = {
           treatment_responsible: string | null
           treatment_strategy: string | null
           updated_at: string | null
+          verification_audit_id: string | null
+          verification_status: string | null
           vulnerability_id: string | null
         }
         Insert: {
@@ -1267,6 +1306,7 @@ export type Database = {
           inherent_risk_level?: string | null
           inherent_risk_score?: number | null
           last_review_date?: string | null
+          last_verification_date?: string | null
           name: string
           next_review_date?: string | null
           notes?: string | null
@@ -1287,6 +1327,8 @@ export type Database = {
           treatment_responsible?: string | null
           treatment_strategy?: string | null
           updated_at?: string | null
+          verification_audit_id?: string | null
+          verification_status?: string | null
           vulnerability_id?: string | null
         }
         Update: {
@@ -1301,6 +1343,7 @@ export type Database = {
           inherent_risk_level?: string | null
           inherent_risk_score?: number | null
           last_review_date?: string | null
+          last_verification_date?: string | null
           name?: string
           next_review_date?: string | null
           notes?: string | null
@@ -1321,6 +1364,8 @@ export type Database = {
           treatment_responsible?: string | null
           treatment_strategy?: string | null
           updated_at?: string | null
+          verification_audit_id?: string | null
+          verification_status?: string | null
           vulnerability_id?: string | null
         }
         Relationships: [
@@ -1343,6 +1388,13 @@ export type Database = {
             columns: ["threat_id"]
             isOneToOne: false
             referencedRelation: "threats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "risks_verification_audit_id_fkey"
+            columns: ["verification_audit_id"]
+            isOneToOne: false
+            referencedRelation: "internal_audits"
             referencedColumns: ["id"]
           },
           {
@@ -1562,6 +1614,86 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      soa_items: {
+        Row: {
+          applicability: string
+          compliance_score: number | null
+          control_reference: string
+          control_title: string
+          created_at: string | null
+          evidence_documents: Json | null
+          id: string
+          implementation_date: string | null
+          implementation_status: string
+          justification: string | null
+          last_audit_date: string | null
+          last_audit_id: string | null
+          last_audit_result: string | null
+          last_review_date: string | null
+          next_review_date: string | null
+          organization_id: string
+          related_assets: string[] | null
+          related_risks: string[] | null
+          responsible_person: string | null
+          updated_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          applicability?: string
+          compliance_score?: number | null
+          control_reference: string
+          control_title: string
+          created_at?: string | null
+          evidence_documents?: Json | null
+          id?: string
+          implementation_date?: string | null
+          implementation_status?: string
+          justification?: string | null
+          last_audit_date?: string | null
+          last_audit_id?: string | null
+          last_audit_result?: string | null
+          last_review_date?: string | null
+          next_review_date?: string | null
+          organization_id: string
+          related_assets?: string[] | null
+          related_risks?: string[] | null
+          responsible_person?: string | null
+          updated_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          applicability?: string
+          compliance_score?: number | null
+          control_reference?: string
+          control_title?: string
+          created_at?: string | null
+          evidence_documents?: Json | null
+          id?: string
+          implementation_date?: string | null
+          implementation_status?: string
+          justification?: string | null
+          last_audit_date?: string | null
+          last_audit_id?: string | null
+          last_audit_result?: string | null
+          last_review_date?: string | null
+          next_review_date?: string | null
+          organization_id?: string
+          related_assets?: string[] | null
+          related_risks?: string[] | null
+          responsible_person?: string | null
+          updated_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "soa_items_last_audit_id_fkey"
+            columns: ["last_audit_id"]
+            isOneToOne: false
+            referencedRelation: "internal_audits"
             referencedColumns: ["id"]
           },
         ]

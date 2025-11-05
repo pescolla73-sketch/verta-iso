@@ -10,15 +10,23 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Plus, AlertTriangle, Trash2, Edit } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Calendar, Plus, AlertTriangle, Trash2, Edit, Target, Shield, CheckCircle2, Sparkles } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { getSmartSuggestions } from '@/utils/auditLinkage';
 
 export default function AuditPlanPage() {
   const navigate = useNavigate();
   const [audits, setAudits] = useState<any[]>([]);
-  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [smartSuggestions, setSmartSuggestions] = useState<any>({
+    toVerify: [],
+    highRisks: [],
+    ncToVerify: []
+  });
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [smartAuditModalOpen, setSmartAuditModalOpen] = useState(false);
+  const [selectedControls, setSelectedControls] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     audit_code: '',
     audit_date: '',
@@ -38,39 +46,30 @@ export default function AuditPlanPage() {
     try {
       setLoading(true);
       
+      // Get organization ID
+      const { data: orgData } = await supabase
+        .from('organization')
+        .select('id')
+        .limit(1)
+        .single();
+      
+      const orgId = orgData?.id || '00000000-0000-0000-0000-000000000000';
+
       // Load planned audits
       const { data: auditsData, error: auditsError } = await supabase
         .from('internal_audits')
         .select('*')
+        .eq('organization_id', orgId)
         .in('status', ['planned', 'in_progress'])
         .order('planned_date', { ascending: true });
       if (auditsError) throw auditsError;
 
       setAudits(auditsData || []);
 
-      // Load risk-based suggestions
-      const { data: risksData } = await supabase
-        .from('risks')
-        .select('*')
-        .gte('inherent_risk_score', 12);
+      // Load smart suggestions
+      const suggestions = await getSmartSuggestions(orgId);
+      setSmartSuggestions(suggestions);
 
-      if (risksData && risksData.length > 0) {
-        const controls = new Set<string>();
-        risksData.forEach(risk => {
-          if (risk.related_controls && Array.isArray(risk.related_controls)) {
-            risk.related_controls.forEach((c: string) => controls.add(c));
-          }
-        });
-        
-        const suggestionsArray = Array.from(controls).map(control => ({
-          control,
-          riskCount: risksData.filter(r => 
-            r.related_controls && r.related_controls.includes(control)
-          ).length
-        }));
-
-        setSuggestions(suggestionsArray.slice(0, 10));
-      }
     } catch (error: any) {
       console.error('Error loading data:', error);
       toast({
@@ -166,27 +165,131 @@ export default function AuditPlanPage() {
         </Button>
       </div>
 
-      {suggestions.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-orange-500" />
-              Suggerimenti Intelligenti
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Controlli da auditare prioritariamente in base ai rischi elevati:
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {suggestions.map((s, i) => (
-                <Badge key={i} variant="secondary">
-                  {s.control} ({s.riskCount} rischi)
-                </Badge>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      {/* SMART SUGGESTIONS - 3 SECTIONS */}
+      {(smartSuggestions.toVerify.length > 0 || smartSuggestions.highRisks.length > 0 || smartSuggestions.ncToVerify.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* SECTION 1: Controls To Verify */}
+          {smartSuggestions.toVerify.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Target className="h-5 w-5 text-red-500" />
+                  🔴 Controlli da Verificare
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Implementati ma non ancora verificati (o &gt;1 anno)
+                </p>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {smartSuggestions.toVerify.slice(0, 5).map((item: any, i: number) => (
+                    <div key={i} className="p-2 bg-muted rounded text-xs space-y-1">
+                      <div className="font-medium">{item.control_reference} - {item.control_title}</div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">Implementato</Badge>
+                        {item.implementation_date && (
+                          <span className="text-muted-foreground">
+                            {Math.floor((Date.now() - new Date(item.implementation_date).getTime()) / (1000 * 60 * 60 * 24))} gg
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* SECTION 2: High Risks Not Verified */}
+          {smartSuggestions.highRisks.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Shield className="h-5 w-5 text-orange-500" />
+                  🟠 Rischi Alti Non Verificati
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Rischi con score ≥12 da verificare in audit
+                </p>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {smartSuggestions.highRisks.slice(0, 5).map((risk: any, i: number) => (
+                    <div key={i} className="p-2 bg-muted rounded text-xs space-y-1">
+                      <div className="font-medium">{risk.name}</div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="destructive" className="text-xs">Score: {risk.inherent_risk_score}</Badge>
+                        {risk.related_controls && (
+                          <span className="text-muted-foreground">
+                            {risk.related_controls.length} controlli
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* SECTION 3: NC With Completed Actions */}
+          {smartSuggestions.ncToVerify.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <CheckCircle2 className="h-5 w-5 text-yellow-500" />
+                  🟡 NC con Azioni Completate
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground mb-3">
+                  NC pronte per verifica efficacia
+                </p>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {smartSuggestions.ncToVerify.slice(0, 5).map((nc: any, i: number) => (
+                    <div key={i} className="p-2 bg-muted rounded text-xs space-y-1">
+                      <div className="font-medium">{nc.title}</div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">{nc.severity}</Badge>
+                        {nc.related_control && (
+                          <span className="text-muted-foreground">{nc.related_control}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* SMART AUDIT BUTTON */}
+      {(smartSuggestions.toVerify.length > 0 || smartSuggestions.highRisks.length > 0 || smartSuggestions.ncToVerify.length > 0) && (
+        <div className="flex justify-center">
+          <Button 
+            size="lg" 
+            onClick={() => {
+              // Pre-select all suggested controls
+              const controls = new Set<string>();
+              smartSuggestions.toVerify.forEach((item: any) => controls.add(item.control_reference));
+              smartSuggestions.highRisks.forEach((risk: any) => {
+                if (risk.related_controls) {
+                  risk.related_controls.forEach((c: string) => controls.add(c));
+                }
+              });
+              smartSuggestions.ncToVerify.forEach((nc: any) => {
+                if (nc.related_control) controls.add(nc.related_control);
+              });
+              setSelectedControls(Array.from(controls));
+              setSmartAuditModalOpen(true);
+            }}
+            className="gap-2"
+          >
+            <Sparkles className="h-5 w-5" />
+            Crea Audit Intelligente
+          </Button>
+        </div>
       )}
 
       <Card>
@@ -281,6 +384,114 @@ export default function AuditPlanPage() {
                 <div className="flex justify-end gap-2 mt-4">
                   <Button variant="outline" onClick={() => setModalOpen(false)}>Annulla</Button>
                   <Button onClick={handleSave}>Salva e Inizia Audit</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* SMART AUDIT DIALOG */}
+            <Dialog open={smartAuditModalOpen} onOpenChange={setSmartAuditModalOpen}>
+              <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Sparkles className="h-5 w-5" />
+                    Crea Audit Intelligente
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Controlli pre-selezionati in base a suggerimenti intelligenti. Puoi deselezionare o aggiungerne altri.
+                  </p>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Codice Audit</Label>
+                      <Input
+                        value={formData.audit_code}
+                        onChange={e => setFormData({ ...formData, audit_code: e.target.value })}
+                        placeholder="AUD-2024-SMART-01"
+                      />
+                    </div>
+                    <div>
+                      <Label>Data Pianificata</Label>
+                      <Input
+                        type="date"
+                        value={formData.planned_date}
+                        onChange={e => setFormData({ ...formData, planned_date: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label>Auditor</Label>
+                    <Input
+                      value={formData.auditor_name}
+                      onChange={e => setFormData({ ...formData, auditor_name: e.target.value })}
+                      placeholder="Nome Cognome"
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Controlli Selezionati ({selectedControls.length})</Label>
+                    <div className="border rounded p-4 space-y-2 max-h-64 overflow-y-auto">
+                      {selectedControls.map(control => (
+                        <div key={control} className="flex items-center gap-2">
+                          <Checkbox
+                            checked={true}
+                            onCheckedChange={(checked) => {
+                              if (!checked) {
+                                setSelectedControls(prev => prev.filter(c => c !== control));
+                              }
+                            }}
+                          />
+                          <span className="text-sm">{control}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setSmartAuditModalOpen(false)}
+                    >
+                      Annulla
+                    </Button>
+                    <Button 
+                      onClick={async () => {
+                        const { data, error } = await supabase
+                          .from('internal_audits')
+                          .insert({
+                            ...formData,
+                            organization_id: '00000000-0000-0000-0000-000000000000',
+                            audit_scope: `Audit intelligente: ${selectedControls.length} controlli`,
+                            objective: 'Verifica controlli suggeriti dal sistema intelligente',
+                            audit_type: 'internal',
+                            status: 'planned'
+                          })
+                          .select()
+                          .single();
+
+                        if (error) {
+                          toast({
+                            title: 'Errore',
+                            description: error.message,
+                            variant: 'destructive'
+                          });
+                          return;
+                        }
+
+                        toast({
+                          title: 'Successo',
+                          description: 'Audit intelligente creato'
+                        });
+
+                        setSmartAuditModalOpen(false);
+                        navigate(`/audit-interni/${data.id}`);
+                      }}
+                    >
+                      Crea Audit
+                    </Button>
+                  </div>
                 </div>
               </DialogContent>
             </Dialog>

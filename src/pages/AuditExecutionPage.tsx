@@ -11,10 +11,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ClipboardCheck, Save, FileDown, Plus, AlertTriangle } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ClipboardCheck, Save, FileDown, Plus, AlertTriangle, Link2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { updateLinkedModules } from '@/utils/auditLinkage';
 
 // ISO 27001:2022 Annex A Controls
 const ISO_CONTROLS = [
@@ -243,9 +245,16 @@ export default function AuditExecutionPage() {
   };
 
   const handleCompleteAudit = async () => {
-    if (!confirm('Completare l\'audit?')) return;
+    if (!confirm('Completare l\'audit e aggiornare i moduli collegati (SoA, Risks, NC)?')) return;
 
     try {
+      setLoading(true);
+
+      // Call updateLinkedModules to update SoA, risks, controls, NC
+      console.log('🔍 [Audit Complete] Starting linked modules update...');
+      await updateLinkedModules(id!, audit, checklist);
+
+      // Update audit status
       const { error } = await supabase
         .from('internal_audits')
         .update({ status: 'completed' })
@@ -255,16 +264,19 @@ export default function AuditExecutionPage() {
 
       toast({
         title: 'Successo',
-        description: 'Audit completato'
+        description: 'Audit completato e moduli aggiornati'
       });
 
       navigate('/audit-interni');
     } catch (error: any) {
+      console.error('Error completing audit:', error);
       toast({
         title: 'Errore',
         description: 'Errore nel completamento',
         variant: 'destructive'
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -436,7 +448,13 @@ export default function AuditExecutionPage() {
         <TabsContent value="checklist" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Checklist ISO 27001:2022 Annex A</CardTitle>
+              <div className="flex justify-between items-center">
+                <CardTitle>Checklist ISO 27001:2022 Annex A</CardTitle>
+                <Button onClick={handleCompleteAudit} size="lg" className="gap-2">
+                  <Link2 className="h-4 w-4" />
+                  Completa Audit e Aggiorna Moduli
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4 max-h-[600px] overflow-y-auto">
@@ -447,26 +465,54 @@ export default function AuditExecutionPage() {
                         <p className="font-semibold">{item.control_reference} - {item.control_title}</p>
                         <p className="text-sm text-muted-foreground">{item.requirement}</p>
                       </div>
+                      
+                      {/* Status Pre-Audit and Source */}
+                      <div className="grid grid-cols-2 gap-2 p-2 bg-muted rounded">
+                        <div className="text-xs">
+                          <span className="font-medium">Status Pre-Audit:</span>{' '}
+                          <Badge variant="outline" className="text-xs">
+                            {item.pre_audit_status || 'N/A'}
+                          </Badge>
+                        </div>
+                        <div className="text-xs">
+                          <span className="font-medium">Fonte:</span>{' '}
+                          <Badge variant="secondary" className="text-xs">
+                            {item.source_type || 'Manuale'}
+                          </Badge>
+                        </div>
+                      </div>
+
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label>Evidenze Riscontrate</Label>
+                          <Label>Evidenze Richieste</Label>
                           <Textarea
-                            value={item.evidence_found || ''}
-                            onChange={e => updateChecklistItem(item.id, 'evidence_found', e.target.value)}
-                            placeholder="Descrivere le evidenze"
+                            value={item.evidence_required || ''}
+                            onChange={e => updateChecklistItem(item.id, 'evidence_required', e.target.value)}
+                            placeholder="Policy, procedure, log, screenshot..."
                             rows={2}
                           />
                         </div>
                         <div>
-                          <Label>Note Audit</Label>
+                          <Label>Evidenze Trovate</Label>
                           <Textarea
-                            value={item.audit_notes || ''}
-                            onChange={e => updateChecklistItem(item.id, 'audit_notes', e.target.value)}
-                            placeholder="Note aggiuntive"
+                            value={item.evidence_found || ''}
+                            onChange={e => updateChecklistItem(item.id, 'evidence_found', e.target.value)}
+                            placeholder="Descrivere le evidenze effettivamente riscontrate"
                             rows={2}
                           />
                         </div>
                       </div>
+                      
+                      <div>
+                        <Label>Note Audit</Label>
+                        <Textarea
+                          value={item.audit_notes || ''}
+                          onChange={e => updateChecklistItem(item.id, 'audit_notes', e.target.value)}
+                          placeholder="Note aggiuntive, osservazioni, raccomandazioni"
+                          rows={2}
+                        />
+                      </div>
+                      
                       <div>
                         <Label>Risultato</Label>
                         <Select
@@ -477,12 +523,40 @@ export default function AuditExecutionPage() {
                             <SelectValue placeholder="Seleziona risultato" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="conforming">Conforme</SelectItem>
-                            <SelectItem value="non_conforming">Non Conforme</SelectItem>
-                            <SelectItem value="partial">Parzialmente Conforme</SelectItem>
-                            <SelectItem value="not_applicable">Non Applicabile</SelectItem>
+                            <SelectItem value="conforming">✅ Conforme</SelectItem>
+                            <SelectItem value="non_conforming">❌ Non Conforme</SelectItem>
+                            <SelectItem value="partial">⚠️ Parzialmente Conforme</SelectItem>
+                            <SelectItem value="not_applicable">➖ Non Applicabile</SelectItem>
                           </SelectContent>
                         </Select>
+                      </div>
+
+                      {/* Checkboxes for automatic updates */}
+                      <div className="flex gap-4 p-2 border rounded">
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            checked={item.update_linked !== false}
+                            onCheckedChange={(checked) => 
+                              updateChecklistItem(item.id, 'update_linked', checked)
+                            }
+                          />
+                          <Label className="text-sm cursor-pointer">
+                            Aggiorna moduli collegati (SoA, Risks, Controls)
+                          </Label>
+                        </div>
+                        {item.result === 'non_conforming' && (
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              checked={item.auto_create_nc !== false}
+                              onCheckedChange={(checked) => 
+                                updateChecklistItem(item.id, 'auto_create_nc', checked)
+                              }
+                            />
+                            <Label className="text-sm cursor-pointer">
+                              Crea NC automatica
+                            </Label>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </Card>
