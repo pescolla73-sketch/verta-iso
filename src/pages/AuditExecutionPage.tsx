@@ -6,16 +6,17 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowLeft, Save, CheckCircle, FileText, AlertCircle, Download } from 'lucide-react';
+import { ArrowLeft, Save, CheckCircle, FileText, AlertCircle, Plus } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { updateLinkedModules } from '@/utils/auditLinkage';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 
 export default function AuditExecutionPage() {
   const { id } = useParams();
@@ -25,10 +26,17 @@ export default function AuditExecutionPage() {
   const [findings, setFindings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [completing, setCompleting] = useState(false);
-  const [orgId, setOrgId] = useState<string | null>(null);
+  const [orgId, setOrgId] = useState<string>('');
   const [conclusion, setConclusion] = useState('');
   const [overallResult, setOverallResult] = useState<string>('');
+  const [findingModalOpen, setFindingModalOpen] = useState(false);
+  const [newFinding, setNewFinding] = useState({
+    title: '',
+    description: '',
+    severity: 'minor',
+    control_reference: '',
+    recommended_action: ''
+  });
 
   useEffect(() => {
     loadAuditData();
@@ -38,9 +46,23 @@ export default function AuditExecutionPage() {
     try {
       setLoading(true);
 
-      // Get organization ID (demo mode - use first org)
-      const orgData = await supabase.from('organization').select('id').limit(1).single();
-      const currentOrgId = orgData.data?.id;
+      // Organization detection
+      const { data: orgData } = await supabase
+        .from('organization')
+        .select('id')
+        .limit(1)
+        .maybeSingle();
+
+      if (!orgData) {
+        toast({
+          title: 'Errore',
+          description: 'Organizzazione non trovata',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      const currentOrgId = orgData.id;
       setOrgId(currentOrgId);
 
       // Load audit
@@ -76,11 +98,12 @@ export default function AuditExecutionPage() {
         .eq('audit_id', id);
 
       setFindings(findingsData || []);
-    } catch (error) {
-      console.error('Error loading audit data:', error);
+
+    } catch (error: any) {
+      console.error('Error loading audit:', error);
       toast({
         title: 'Errore',
-        description: 'Impossibile caricare i dati dell\'audit',
+        description: 'Impossibile caricare i dati',
         variant: 'destructive'
       });
     } finally {
@@ -129,12 +152,12 @@ export default function AuditExecutionPage() {
     if (error) {
       toast({
         title: 'Errore',
-        description: 'Impossibile salvare la modifica',
+        description: 'Impossibile salvare',
         variant: 'destructive'
       });
     } else {
-      setChecklist(prev => 
-        prev.map(item => item.id === itemId ? { ...item, [field]: value } : item)
+      setChecklist(prev =>
+        prev.map(item => (item.id === itemId ? { ...item, [field]: value } : item))
       );
     }
   };
@@ -144,7 +167,7 @@ export default function AuditExecutionPage() {
     try {
       await supabase
         .from('internal_audits')
-        .update({ 
+        .update({
           status: 'in_progress',
           conclusion,
           overall_result: overallResult
@@ -158,7 +181,7 @@ export default function AuditExecutionPage() {
     } catch (error) {
       toast({
         title: 'Errore',
-        description: 'Impossibile salvare la bozza',
+        description: 'Impossibile salvare',
         variant: 'destructive'
       });
     } finally {
@@ -169,14 +192,13 @@ export default function AuditExecutionPage() {
   const handleCompleteAudit = async () => {
     if (!conclusion || !overallResult) {
       toast({
-        title: 'Campi Mancanti',
-        description: 'Compilare conclusione e risultato complessivo',
+        title: 'Campi Obbligatori',
+        description: 'Inserire conclusione e risultato',
         variant: 'destructive'
       });
       return;
     }
 
-    setCompleting(true);
     try {
       // Update audit status
       await supabase
@@ -188,7 +210,7 @@ export default function AuditExecutionPage() {
         })
         .eq('id', id);
 
-      // Execute cross-module updates
+      // Update linked modules
       await updateLinkedModules(id!, audit, checklist);
 
       toast({
@@ -201,55 +223,42 @@ export default function AuditExecutionPage() {
       console.error('Error completing audit:', error);
       toast({
         title: 'Errore',
-        description: 'Impossibile completare l\'audit',
+        description: 'Impossibile completare',
         variant: 'destructive'
       });
-    } finally {
-      setCompleting(false);
     }
   };
 
-  const exportPDF = () => {
-    const doc = new jsPDF();
+  const handleAddFinding = async () => {
+    try {
+      await supabase.from('audit_findings').insert({
+        ...newFinding,
+        audit_id: id,
+        organization_id: orgId,
+        status: 'open'
+      });
 
-    // Header
-    doc.setFontSize(18);
-    doc.text('Report Audit Interno', 14, 20);
-    doc.setFontSize(11);
-    doc.text(`Codice: ${audit.audit_code}`, 14, 30);
-    doc.text(`Data: ${format(new Date(audit.audit_date), 'dd/MM/yyyy')}`, 14, 36);
-    doc.text(`Auditor: ${audit.auditor_name}`, 14, 42);
+      toast({
+        title: 'Finding Aggiunto',
+        description: 'Nuovo finding creato'
+      });
 
-    // Checklist table
-    const checklistRows = checklist.map(item => [
-      item.control_reference,
-      item.control_title,
-      item.result || 'N/A',
-      item.audit_notes || ''
-    ]);
-
-    autoTable(doc, {
-      startY: 50,
-      head: [['Controllo', 'Titolo', 'Risultato', 'Note']],
-      body: checklistRows,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [66, 66, 66] }
-    });
-
-    // Conclusion
-    const finalY = (doc as any).lastAutoTable.finalY + 10;
-    doc.setFontSize(12);
-    doc.text('Conclusione:', 14, finalY);
-    doc.setFontSize(10);
-    const conclusionLines = doc.splitTextToSize(conclusion, 180);
-    doc.text(conclusionLines, 14, finalY + 6);
-
-    doc.save(`Audit_${audit.audit_code}.pdf`);
-
-    toast({
-      title: 'PDF Esportato',
-      description: 'Report salvato con successo'
-    });
+      setFindingModalOpen(false);
+      setNewFinding({
+        title: '',
+        description: '',
+        severity: 'minor',
+        control_reference: '',
+        recommended_action: ''
+      });
+      loadAuditData();
+    } catch (error: any) {
+      toast({
+        title: 'Errore',
+        description: error.message,
+        variant: 'destructive'
+      });
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -259,20 +268,6 @@ export default function AuditExecutionPage() {
       completed: { variant: 'default', label: 'Completato' }
     };
     const config = configs[status] || configs.planned;
-    return <Badge variant={config.variant}>{config.label}</Badge>;
-  };
-
-  const getResultBadge = (result: string | null) => {
-    if (!result) return <Badge variant="outline">Da Verificare</Badge>;
-    
-    const configs: Record<string, any> = {
-      conforming: { variant: 'default', label: 'Conforme' },
-      non_conforming: { variant: 'destructive', label: 'Non Conforme' },
-      partial: { variant: 'secondary', label: 'Parziale' },
-      not_applicable: { variant: 'outline', label: 'N/A' }
-    };
-    
-    const config = configs[result] || { variant: 'outline', label: result };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
@@ -318,28 +313,21 @@ export default function AuditExecutionPage() {
               {getStatusBadge(audit.status)}
             </div>
             <p className="text-sm text-muted-foreground">
-              Data: {format(new Date(audit.audit_date), 'dd MMMM yyyy', { locale: it })} | 
-              Auditor: {audit.auditor_name} | 
-              Auditee: {audit.auditee_name || 'N/A'}
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Ambito: {audit.audit_scope}
+              Data: {format(new Date(audit.audit_date), 'dd MMMM yyyy', { locale: it })} |
+              Auditor: {audit.auditor_name}
             </p>
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={exportPDF} disabled={audit.status === 'planned'}>
-            <Download className="h-4 w-4 mr-2" />
-            Export PDF
-          </Button>
-          <Button variant="outline" onClick={handleSaveDraft} disabled={saving || audit.status === 'completed'}>
+          <Button
+            variant="outline"
+            onClick={handleSaveDraft}
+            disabled={saving || audit.status === 'completed'}
+          >
             <Save className="h-4 w-4 mr-2" />
             Salva Bozza
           </Button>
-          <Button 
-            onClick={handleCompleteAudit} 
-            disabled={completing || audit.status === 'completed'}
-          >
+          <Button onClick={handleCompleteAudit} disabled={audit.status === 'completed'}>
             <CheckCircle className="h-4 w-4 mr-2" />
             Completa Audit
           </Button>
@@ -349,53 +337,45 @@ export default function AuditExecutionPage() {
       {/* Tabs */}
       <Tabs defaultValue="checklist" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="checklist">Checklist</TabsTrigger>
+          <TabsTrigger value="checklist">Checklist ({checklist.length})</TabsTrigger>
           <TabsTrigger value="findings">Findings ({findings.length})</TabsTrigger>
           <TabsTrigger value="conclusion">Conclusioni</TabsTrigger>
         </TabsList>
 
         {/* Checklist Tab */}
-        <TabsContent value="checklist" className="space-y-4">
+        <TabsContent value="checklist">
           <Card>
             <CardHeader>
               <CardTitle>Checklist Verifica Controlli</CardTitle>
               <CardDescription>
-                Compilare evidenze e risultati per ogni controllo verificato
+                Compilare evidenze e risultati per ogni controllo
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-24">Controllo</TableHead>
-                    <TableHead className="w-48">Titolo</TableHead>
-                    <TableHead className="w-32">Evidenze Richieste</TableHead>
-                    <TableHead className="w-32">Evidenze Trovate</TableHead>
-                    <TableHead className="w-32">Note</TableHead>
-                    <TableHead className="w-32">Risultato</TableHead>
-                    <TableHead className="w-20">Agg.</TableHead>
+                    <TableHead>Controllo</TableHead>
+                    <TableHead>Titolo</TableHead>
+                    <TableHead>Evidenze Trovate</TableHead>
+                    <TableHead>Note</TableHead>
+                    <TableHead>Risultato</TableHead>
+                    <TableHead>Aggiorna</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {checklist.map((item) => (
+                  {checklist.map(item => (
                     <TableRow key={item.id}>
                       <TableCell>
                         <Badge variant="outline">{item.control_reference}</Badge>
                       </TableCell>
-                      <TableCell className="text-sm">{item.control_title}</TableCell>
-                      <TableCell>
-                        <Textarea
-                          value={item.evidence_requested || ''}
-                          onChange={(e) => updateChecklistItem(item.id, 'evidence_requested', e.target.value)}
-                          placeholder="Evidenze da verificare..."
-                          className="min-h-16 text-xs"
-                          disabled={audit.status === 'completed'}
-                        />
-                      </TableCell>
+                      <TableCell className="max-w-xs text-sm">{item.control_title}</TableCell>
                       <TableCell>
                         <Textarea
                           value={item.evidence_found || ''}
-                          onChange={(e) => updateChecklistItem(item.id, 'evidence_found', e.target.value)}
+                          onChange={e =>
+                            updateChecklistItem(item.id, 'evidence_found', e.target.value)
+                          }
                           placeholder="Evidenze trovate..."
                           className="min-h-16 text-xs"
                           disabled={audit.status === 'completed'}
@@ -404,19 +384,21 @@ export default function AuditExecutionPage() {
                       <TableCell>
                         <Textarea
                           value={item.audit_notes || ''}
-                          onChange={(e) => updateChecklistItem(item.id, 'audit_notes', e.target.value)}
-                          placeholder="Note audit..."
+                          onChange={e =>
+                            updateChecklistItem(item.id, 'audit_notes', e.target.value)
+                          }
+                          placeholder="Note..."
                           className="min-h-16 text-xs"
                           disabled={audit.status === 'completed'}
                         />
                       </TableCell>
                       <TableCell>
-                        <Select 
-                          value={item.result || ''} 
-                          onValueChange={(v) => updateChecklistItem(item.id, 'result', v)}
+                        <Select
+                          value={item.result || ''}
+                          onValueChange={v => updateChecklistItem(item.id, 'result', v)}
                           disabled={audit.status === 'completed'}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className="w-32">
                             <SelectValue placeholder="Seleziona" />
                           </SelectTrigger>
                           <SelectContent>
@@ -429,8 +411,8 @@ export default function AuditExecutionPage() {
                       </TableCell>
                       <TableCell>
                         <Checkbox
-                          checked={item.update_linked}
-                          onCheckedChange={(checked) => 
+                          checked={item.update_linked !== false}
+                          onCheckedChange={checked =>
                             updateChecklistItem(item.id, 'update_linked', checked)
                           }
                           disabled={audit.status === 'completed'}
@@ -448,8 +430,100 @@ export default function AuditExecutionPage() {
         <TabsContent value="findings">
           <Card>
             <CardHeader>
-              <CardTitle>Findings</CardTitle>
-              <CardDescription>Rilievi identificati durante l'audit</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Findings</CardTitle>
+                  <CardDescription>Rilievi identificati durante l'audit</CardDescription>
+                </div>
+                <Dialog open={findingModalOpen} onOpenChange={setFindingModalOpen}>
+                  <DialogTrigger asChild>
+                    <Button disabled={audit.status === 'completed'}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Nuovo Finding
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Nuovo Finding</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label>Titolo</Label>
+                        <Input
+                          value={newFinding.title}
+                          onChange={e =>
+                            setNewFinding({ ...newFinding, title: e.target.value })
+                          }
+                          placeholder="Titolo del finding"
+                        />
+                      </div>
+                      <div>
+                        <Label>Descrizione</Label>
+                        <Textarea
+                          value={newFinding.description}
+                          onChange={e =>
+                            setNewFinding({ ...newFinding, description: e.target.value })
+                          }
+                          placeholder="Descrizione dettagliata"
+                        />
+                      </div>
+                      <div>
+                        <Label>Severità</Label>
+                        <Select
+                          value={newFinding.severity}
+                          onValueChange={v =>
+                            setNewFinding({ ...newFinding, severity: v })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="minor">Minor</SelectItem>
+                            <SelectItem value="major">Major</SelectItem>
+                            <SelectItem value="critical">Critical</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Controllo Correlato</Label>
+                        <Input
+                          value={newFinding.control_reference}
+                          onChange={e =>
+                            setNewFinding({
+                              ...newFinding,
+                              control_reference: e.target.value
+                            })
+                          }
+                          placeholder="Es: A.5.1"
+                        />
+                      </div>
+                      <div>
+                        <Label>Azione Raccomandata</Label>
+                        <Textarea
+                          value={newFinding.recommended_action}
+                          onChange={e =>
+                            setNewFinding({
+                              ...newFinding,
+                              recommended_action: e.target.value
+                            })
+                          }
+                          placeholder="Azione raccomandata"
+                        />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => setFindingModalOpen(false)}
+                        >
+                          Annulla
+                        </Button>
+                        <Button onClick={handleAddFinding}>Aggiungi</Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </CardHeader>
             <CardContent>
               {findings.length === 0 ? (
@@ -458,12 +532,18 @@ export default function AuditExecutionPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {findings.map((finding) => (
+                  {findings.map(finding => (
                     <Card key={finding.id}>
                       <CardHeader>
                         <div className="flex items-center justify-between">
                           <CardTitle className="text-base">{finding.title}</CardTitle>
-                          <Badge variant={finding.severity === 'major' ? 'destructive' : 'secondary'}>
+                          <Badge
+                            variant={
+                              finding.severity === 'major'
+                                ? 'destructive'
+                                : 'secondary'
+                            }
+                          >
                             {finding.severity}
                           </Badge>
                         </div>
@@ -474,11 +554,15 @@ export default function AuditExecutionPage() {
                         )}
                       </CardHeader>
                       <CardContent>
-                        <p className="text-sm text-muted-foreground">{finding.description}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {finding.description}
+                        </p>
                         {finding.recommended_action && (
                           <div className="mt-2 p-2 bg-muted rounded-md">
                             <p className="text-xs font-medium">Azione Raccomandata:</p>
-                            <p className="text-xs text-muted-foreground">{finding.recommended_action}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {finding.recommended_action}
+                            </p>
                           </div>
                         )}
                       </CardContent>
@@ -496,7 +580,7 @@ export default function AuditExecutionPage() {
           <div className="grid grid-cols-4 gap-4">
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium">Verificati</CardTitle>
+                <CardTitle className="text-sm">Verificati</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.total}</div>
@@ -504,26 +588,32 @@ export default function AuditExecutionPage() {
             </Card>
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-green-600">Conformi</CardTitle>
+                <CardTitle className="text-sm text-green-600">Conformi</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-600">{stats.conforming}</div>
+                <div className="text-2xl font-bold text-green-600">
+                  {stats.conforming}
+                </div>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-red-600">Non Conformi</CardTitle>
+                <CardTitle className="text-sm text-red-600">Non Conformi</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-red-600">{stats.nonConforming}</div>
+                <div className="text-2xl font-bold text-red-600">
+                  {stats.nonConforming}
+                </div>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-orange-600">Parziali</CardTitle>
+                <CardTitle className="text-sm text-orange-600">Parziali</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-orange-600">{stats.partial}</div>
+                <div className="text-2xl font-bold text-orange-600">
+                  {stats.partial}
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -535,9 +625,9 @@ export default function AuditExecutionPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <label className="text-sm font-medium mb-2 block">Risultato Complessivo</label>
-                <Select 
-                  value={overallResult} 
+                <Label>Risultato Complessivo</Label>
+                <Select
+                  value={overallResult}
                   onValueChange={setOverallResult}
                   disabled={audit.status === 'completed'}
                 >
@@ -553,11 +643,11 @@ export default function AuditExecutionPage() {
               </div>
 
               <div>
-                <label className="text-sm font-medium mb-2 block">Conclusione Dettagliata</label>
+                <Label>Conclusione Dettagliata</Label>
                 <Textarea
                   value={conclusion}
-                  onChange={(e) => setConclusion(e.target.value)}
-                  placeholder="Inserire conclusioni dell'audit, punti di forza, aree di miglioramento..."
+                  onChange={e => setConclusion(e.target.value)}
+                  placeholder="Inserire conclusioni dell'audit..."
                   className="min-h-32"
                   disabled={audit.status === 'completed'}
                 />
