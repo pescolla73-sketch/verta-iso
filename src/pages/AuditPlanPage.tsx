@@ -11,9 +11,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Calendar, Plus, AlertTriangle, Trash2, Edit, Target, Shield, CheckCircle2, Sparkles } from 'lucide-react';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar, Plus, AlertTriangle, Trash2, Edit, Target, Shield, CheckCircle2, Sparkles, Search, X, Filter } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { getSmartSuggestions } from '@/utils/auditLinkage';
+import { format } from 'date-fns';
+import { it } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 export default function AuditPlanPage() {
   const navigate = useNavigate();
@@ -37,6 +42,16 @@ export default function AuditPlanPage() {
     objective: '',
     audit_type: 'internal'
   });
+  
+  // Advanced Filters State
+  const [filters, setFilters] = useState({
+    searchText: '',
+    auditor: 'all',
+    auditType: 'all',
+    dateFrom: undefined as Date | undefined,
+    dateTo: undefined as Date | undefined
+  });
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -139,6 +154,60 @@ export default function AuditPlanPage() {
       });
     }
   };
+
+  // Filter audits based on all filter criteria
+  const filteredAudits = audits.filter(audit => {
+    // Search text filter (scope and code)
+    if (filters.searchText) {
+      const searchLower = filters.searchText.toLowerCase();
+      const matchesScope = audit.audit_scope?.toLowerCase().includes(searchLower);
+      const matchesCode = audit.audit_code?.toLowerCase().includes(searchLower);
+      if (!matchesScope && !matchesCode) return false;
+    }
+
+    // Auditor filter
+    if (filters.auditor !== 'all' && audit.auditor_name !== filters.auditor) {
+      return false;
+    }
+
+    // Audit type filter
+    if (filters.auditType !== 'all' && audit.audit_type !== filters.auditType) {
+      return false;
+    }
+
+    // Date range filter
+    if (filters.dateFrom && audit.planned_date) {
+      const auditDate = new Date(audit.planned_date);
+      if (auditDate < filters.dateFrom) return false;
+    }
+    if (filters.dateTo && audit.planned_date) {
+      const auditDate = new Date(audit.planned_date);
+      if (auditDate > filters.dateTo) return false;
+    }
+
+    return true;
+  });
+
+  // Get unique auditors for filter dropdown
+  const uniqueAuditors = Array.from(new Set(audits.map(a => a.auditor_name).filter(Boolean)));
+
+  // Clear all filters
+  const clearFilters = () => {
+    setFilters({
+      searchText: '',
+      auditor: 'all',
+      auditType: 'all',
+      dateFrom: undefined,
+      dateTo: undefined
+    });
+  };
+
+  const hasActiveFilters = 
+    filters.searchText || 
+    filters.auditor !== 'all' || 
+    filters.auditType !== 'all' ||
+    filters.dateFrom ||
+    filters.dateTo;
 
   if (loading) {
     return (
@@ -355,14 +424,24 @@ export default function AuditPlanPage() {
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle>Audit Pianificati</CardTitle>
-            <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Pianifica Nuovo Audit
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFilters(!showFilters)}
+                className="gap-2"
+              >
+                <Filter className="h-4 w-4" />
+                Filtri {hasActiveFilters && `(${Object.values(filters).filter(v => v && v !== 'all').length})`}
+              </Button>
+              <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Pianifica Nuovo Audit
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>Pianifica Nuovo Audit</DialogTitle>
                 </DialogHeader>
@@ -571,13 +650,217 @@ export default function AuditPlanPage() {
                 </div>
               </DialogContent>
             </Dialog>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
-          {audits.length === 0 ? (
+          {/* Advanced Filters Panel */}
+          {showFilters && (
+            <div className="mb-6 p-4 bg-muted/50 rounded-lg space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium">Filtri Avanzati</h3>
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="h-8 text-xs gap-1"
+                  >
+                    <X className="h-3 w-3" />
+                    Cancella Filtri
+                  </Button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                {/* Search Text */}
+                <div className="lg:col-span-2">
+                  <Label className="text-xs">Ricerca Ambito/Codice</Label>
+                  <div className="relative">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Cerca per ambito o codice..."
+                      value={filters.searchText}
+                      onChange={(e) => setFilters({ ...filters, searchText: e.target.value })}
+                      className="pl-8"
+                    />
+                  </div>
+                </div>
+
+                {/* Auditor Filter */}
+                <div>
+                  <Label className="text-xs">Auditor</Label>
+                  <Select
+                    value={filters.auditor}
+                    onValueChange={(value) => setFilters({ ...filters, auditor: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Tutti" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tutti gli auditor</SelectItem>
+                      {uniqueAuditors.map((auditor) => (
+                        <SelectItem key={auditor} value={auditor}>
+                          {auditor}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Audit Type Filter */}
+                <div>
+                  <Label className="text-xs">Tipo Audit</Label>
+                  <Select
+                    value={filters.auditType}
+                    onValueChange={(value) => setFilters({ ...filters, auditType: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Tutti" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tutti i tipi</SelectItem>
+                      <SelectItem value="internal">Interno</SelectItem>
+                      <SelectItem value="follow_up">Follow-up</SelectItem>
+                      <SelectItem value="special">Speciale</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Date From */}
+                <div>
+                  <Label className="text-xs">Data Da</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !filters.dateFrom && "text-muted-foreground"
+                        )}
+                      >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {filters.dateFrom ? format(filters.dateFrom, 'dd/MM/yyyy') : 'Seleziona'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={filters.dateFrom}
+                        onSelect={(date) => setFilters({ ...filters, dateFrom: date })}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                     </PopoverContent>
+                   </Popover>
+                 </div>
+
+                {/* Date To */}
+                <div>
+                  <Label className="text-xs">Data A</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !filters.dateTo && "text-muted-foreground"
+                        )}
+                      >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {filters.dateTo ? format(filters.dateTo, 'dd/MM/yyyy') : 'Seleziona'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={filters.dateTo}
+                        onSelect={(date) => setFilters({ ...filters, dateTo: date })}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+
+              {/* Active Filters Display */}
+              {hasActiveFilters && (
+                <div className="flex flex-wrap gap-2 pt-2">
+                  {filters.searchText && (
+                    <Badge variant="secondary" className="gap-1">
+                      Ricerca: {filters.searchText}
+                      <X
+                        className="h-3 w-3 cursor-pointer"
+                        onClick={() => setFilters({ ...filters, searchText: '' })}
+                      />
+                    </Badge>
+                  )}
+                  {filters.auditor !== 'all' && (
+                    <Badge variant="secondary" className="gap-1">
+                      Auditor: {filters.auditor}
+                      <X
+                        className="h-3 w-3 cursor-pointer"
+                        onClick={() => setFilters({ ...filters, auditor: 'all' })}
+                      />
+                    </Badge>
+                  )}
+                  {filters.auditType !== 'all' && (
+                    <Badge variant="secondary" className="gap-1">
+                      Tipo: {filters.auditType}
+                      <X
+                        className="h-3 w-3 cursor-pointer"
+                        onClick={() => setFilters({ ...filters, auditType: 'all' })}
+                      />
+                    </Badge>
+                  )}
+                  {filters.dateFrom && (
+                    <Badge variant="secondary" className="gap-1">
+                      Da: {format(filters.dateFrom, 'dd/MM/yyyy')}
+                      <X
+                        className="h-3 w-3 cursor-pointer"
+                        onClick={() => setFilters({ ...filters, dateFrom: undefined })}
+                      />
+                    </Badge>
+                  )}
+                  {filters.dateTo && (
+                    <Badge variant="secondary" className="gap-1">
+                      A: {format(filters.dateTo, 'dd/MM/yyyy')}
+                      <X
+                        className="h-3 w-3 cursor-pointer"
+                        onClick={() => setFilters({ ...filters, dateTo: undefined })}
+                      />
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Results Info */}
+          {hasActiveFilters && (
+            <div className="mb-4 text-sm text-muted-foreground">
+              {filteredAudits.length} {filteredAudits.length === 1 ? 'risultato trovato' : 'risultati trovati'}
+              {filteredAudits.length !== audits.length && ` di ${audits.length} totali`}
+            </div>
+          )}
+
+          {filteredAudits.length === 0 ? (
             <div className="text-center py-12">
-              <Calendar className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">Nessun audit pianificato</p>
+              {hasActiveFilters ? (
+                <>
+                  <Search className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground mb-2">Nessun audit trovato con i filtri selezionati</p>
+                  <Button variant="outline" onClick={clearFilters}>
+                    Cancella Filtri
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Calendar className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">Nessun audit pianificato</p>
+                </>
+              )}
             </div>
           ) : (
             <Table>
@@ -592,7 +875,7 @@ export default function AuditPlanPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {audits.map(audit => (
+                {filteredAudits.map(audit => (
                   <TableRow key={audit.id}>
                     <TableCell className="font-medium">{audit.audit_code}</TableCell>
                     <TableCell>
@@ -601,7 +884,11 @@ export default function AuditPlanPage() {
                         : '-'
                       }
                     </TableCell>
-                    <TableCell>{audit.audit_scope}</TableCell>
+                    <TableCell className="max-w-xs">
+                      <div className="truncate" title={audit.audit_scope}>
+                        {audit.audit_scope}
+                      </div>
+                    </TableCell>
                     <TableCell>{audit.auditor_name}</TableCell>
                     <TableCell>
                       <Badge variant={audit.status === 'planned' ? 'secondary' : 'default'}>
