@@ -6,8 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ClipboardCheck, Plus, Calendar, FileCheck, CheckCircle } from 'lucide-react';
+import { ClipboardCheck, Plus, Calendar, FileCheck, CheckCircle, TrendingUp, AlertTriangle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 
 export default function InternalAuditPage() {
   const navigate = useNavigate();
@@ -20,6 +21,11 @@ export default function InternalAuditPage() {
     planned: 0,
     completed: 0,
     conforming: 0
+  });
+  const [analytics, setAnalytics] = useState({
+    monthlyTrend: [] as any[],
+    controlHeatmap: [] as any[],
+    categoryDistribution: [] as any[]
   });
 
   useEffect(() => {
@@ -46,6 +52,9 @@ export default function InternalAuditPage() {
       const conforming = data?.filter(a => a.overall_result === 'conforming').length || 0;
       
       setStats({ total, planned, completed, conforming });
+
+      // Load analytics data
+      await loadAnalytics(data || []);
     } catch (error: any) {
       console.error('Error loading audits:', error);
       toast({
@@ -55,6 +64,84 @@ export default function InternalAuditPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAnalytics = async (auditsData: any[]) => {
+    try {
+      // 1. Monthly Trend - Conformità per mese
+      const monthlyData: Record<string, { month: string; conforming: number; nonConforming: number; partial: number }> = {};
+      
+      auditsData.forEach(audit => {
+        if (audit.status === 'completed' && audit.overall_result) {
+          const date = new Date(audit.audit_date);
+          const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          
+          if (!monthlyData[monthKey]) {
+            monthlyData[monthKey] = { month: monthKey, conforming: 0, nonConforming: 0, partial: 0 };
+          }
+          
+          if (audit.overall_result === 'conforming') monthlyData[monthKey].conforming++;
+          else if (audit.overall_result === 'non_conforming') monthlyData[monthKey].nonConforming++;
+          else if (audit.overall_result === 'partial') monthlyData[monthKey].partial++;
+        }
+      });
+
+      const monthlyTrend = Object.values(monthlyData).sort((a, b) => a.month.localeCompare(b.month));
+
+      // 2. Control Heatmap - Controlli con più findings
+      const auditIds = auditsData.map(a => a.id);
+      
+      if (auditIds.length > 0) {
+        const { data: findingsData } = await supabase
+          .from('audit_findings')
+          .select('control_reference, severity')
+          .in('audit_id', auditIds);
+
+        const controlMap: Record<string, { control: string; critical: number; major: number; minor: number; total: number }> = {};
+        
+        findingsData?.forEach(finding => {
+          const control = finding.control_reference || 'Sconosciuto';
+          if (!controlMap[control]) {
+            controlMap[control] = { control, critical: 0, major: 0, minor: 0, total: 0 };
+          }
+          controlMap[control].total++;
+          if (finding.severity === 'critical') controlMap[control].critical++;
+          else if (finding.severity === 'major') controlMap[control].major++;
+          else if (finding.severity === 'minor') controlMap[control].minor++;
+        });
+
+        const controlHeatmap = Object.values(controlMap)
+          .sort((a, b) => b.total - a.total)
+          .slice(0, 10);
+
+        // 3. Category Distribution - Findings per categoria ISO
+        const categoryMap: Record<string, number> = {
+          'A.5': 0,
+          'A.6': 0,
+          'A.7': 0,
+          'A.8': 0,
+          'Altri': 0
+        };
+
+        findingsData?.forEach(finding => {
+          const ref = finding.control_reference || '';
+          const category = ref.split('.')[0];
+          if (categoryMap[category] !== undefined) {
+            categoryMap[category]++;
+          } else {
+            categoryMap['Altri']++;
+          }
+        });
+
+        const categoryDistribution = Object.entries(categoryMap)
+          .map(([category, count]) => ({ category, count }))
+          .filter(item => item.count > 0);
+
+        setAnalytics({ monthlyTrend, controlHeatmap, categoryDistribution });
+      }
+    } catch (error) {
+      console.error('Error loading analytics:', error);
     }
   };
 
@@ -164,6 +251,98 @@ export default function InternalAuditPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Analytics Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" />
+              Trend Conformità Mensile
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {analytics.monthlyTrend.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={analytics.monthlyTrend}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="conforming" stroke="hsl(var(--primary))" name="Conforme" strokeWidth={2} />
+                  <Line type="monotone" dataKey="nonConforming" stroke="hsl(var(--destructive))" name="Non Conforme" strokeWidth={2} />
+                  <Line type="monotone" dataKey="partial" stroke="hsl(var(--warning))" name="Parziale" strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                Nessun dato disponibile
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" />
+              Distribuzione Findings per Categoria ISO
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {analytics.categoryDistribution.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={analytics.categoryDistribution}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="category" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="count" name="Findings" fill="hsl(var(--primary))">
+                    {analytics.categoryDistribution.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={`hsl(var(--chart-${(index % 5) + 1}))`} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                Nessun dato disponibile
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-orange-500" />
+            Controlli più Critici (Top 10)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {analytics.controlHeatmap.length > 0 ? (
+            <ResponsiveContainer width="100%" height={400}>
+              <BarChart data={analytics.controlHeatmap} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" />
+                <YAxis dataKey="control" type="category" width={80} />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="critical" stackId="a" fill="hsl(var(--destructive))" name="Critici" />
+                <Bar dataKey="major" stackId="a" fill="hsl(var(--warning))" name="Maggiori" />
+                <Bar dataKey="minor" stackId="a" fill="hsl(var(--muted))" name="Minori" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-[400px] text-muted-foreground">
+              Nessun dato disponibile
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
