@@ -179,23 +179,41 @@ export default function AuditPlanPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-xs text-muted-foreground mb-3">
-                  Implementati ma non ancora verificati (o &gt;1 anno)
+                  Controlli implementati da verificare in audit. Priorità alta se &gt;1 anno.
                 </p>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {smartSuggestions.toVerify.slice(0, 5).map((item: any, i: number) => (
-                    <div key={i} className="p-2 bg-muted rounded text-xs space-y-1">
-                      <div className="font-medium">{item.control_reference} - {item.control_title}</div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-xs">Implementato</Badge>
-                        {item.implementation_date && (
-                          <span className="text-muted-foreground">
-                            {Math.floor((Date.now() - new Date(item.implementation_date).getTime()) / (1000 * 60 * 60 * 24))} gg
-                          </span>
-                        )}
+                  {smartSuggestions.toVerify.slice(0, 10).map((item: any, i: number) => {
+                    const daysOld = item.implementation_date 
+                      ? Math.floor((Date.now() - new Date(item.implementation_date).getTime()) / (1000 * 60 * 60 * 24))
+                      : 0;
+                    const isUrgent = daysOld > 365;
+                    
+                    return (
+                      <div key={i} className={`p-2 rounded text-xs space-y-1 ${isUrgent ? 'bg-red-50 border border-red-200' : 'bg-muted'}`}>
+                        <div className="font-medium flex items-center justify-between">
+                          <span>{item.control_reference} - {item.control_title?.substring(0, 40)}...</span>
+                          {isUrgent && <Badge variant="destructive" className="text-xs">URGENTE</Badge>}
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant="secondary" className="text-xs">Implementato</Badge>
+                          {item.implementation_date && (
+                            <span className={`text-muted-foreground ${isUrgent ? 'font-semibold text-red-600' : ''}`}>
+                              {daysOld} giorni fa
+                            </span>
+                          )}
+                          {item.responsible_person && (
+                            <span className="text-muted-foreground">👤 {item.responsible_person}</span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
+                {smartSuggestions.toVerify.length > 10 && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    +{smartSuggestions.toVerify.length - 10} altri controlli
+                  </p>
+                )}
               </CardContent>
             </Card>
           )}
@@ -211,23 +229,41 @@ export default function AuditPlanPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-xs text-muted-foreground mb-3">
-                  Rischi con score ≥12 da verificare in audit
+                  Rischi con score ≥12 che richiedono verifica dei controlli correlati
                 </p>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {smartSuggestions.highRisks.slice(0, 5).map((risk: any, i: number) => (
+                  {smartSuggestions.highRisks.slice(0, 10).map((risk: any, i: number) => (
                     <div key={i} className="p-2 bg-muted rounded text-xs space-y-1">
-                      <div className="font-medium">{risk.name}</div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="destructive" className="text-xs">Score: {risk.inherent_risk_score}</Badge>
-                        {risk.related_controls && (
+                      <div className="font-medium flex items-center justify-between">
+                        <span>{risk.name?.substring(0, 50)}...</span>
+                        <Badge variant="destructive" className="text-xs">
+                          {risk.inherent_risk_score}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {risk.related_controls && risk.related_controls.length > 0 && (
                           <span className="text-muted-foreground">
-                            {risk.related_controls.length} controlli
+                            🛡️ {risk.related_controls.length} controlli correlati
                           </span>
                         )}
+                        {risk.status && (
+                          <Badge variant="outline" className="text-xs">{risk.status}</Badge>
+                        )}
                       </div>
+                      {risk.related_controls && (
+                        <div className="text-muted-foreground">
+                          {risk.related_controls.slice(0, 3).join(', ')}
+                          {risk.related_controls.length > 3 && '...'}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
+                {smartSuggestions.highRisks.length > 10 && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    +{smartSuggestions.highRisks.length - 10} altri rischi
+                  </p>
+                )}
               </CardContent>
             </Card>
           )}
@@ -243,21 +279,44 @@ export default function AuditPlanPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-xs text-muted-foreground mb-3">
-                  NC pronte per verifica efficacia
+                  Non-conformità in attesa di verifica efficacia delle azioni correttive
                 </p>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {smartSuggestions.ncToVerify.slice(0, 5).map((nc: any, i: number) => (
+                  {smartSuggestions.ncToVerify.slice(0, 10).map((nc: any, i: number) => (
                     <div key={i} className="p-2 bg-muted rounded text-xs space-y-1">
-                      <div className="font-medium">{nc.title}</div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">{nc.severity}</Badge>
-                        {nc.related_control && (
-                          <span className="text-muted-foreground">{nc.related_control}</span>
-                        )}
+                      <div className="font-medium flex items-center justify-between">
+                        <span>{nc.title?.substring(0, 50)}...</span>
+                        <Badge 
+                          variant={nc.severity === 'major' ? 'destructive' : 'secondary'} 
+                          className="text-xs"
+                        >
+                          {nc.severity}
+                        </Badge>
                       </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {nc.related_control && (
+                          <>
+                            <span className="text-muted-foreground">🎯 {nc.related_control}</span>
+                            <span className="text-muted-foreground">|</span>
+                          </>
+                        )}
+                        <Badge variant="outline" className="text-xs">
+                          {nc.status}
+                        </Badge>
+                      </div>
+                      {nc.nc_code && (
+                        <div className="text-muted-foreground font-mono">
+                          {nc.nc_code}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
+                {smartSuggestions.ncToVerify.length > 10 && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    +{smartSuggestions.ncToVerify.length - 10} altre NC
+                  </p>
+                )}
               </CardContent>
             </Card>
           )}
@@ -458,13 +517,29 @@ export default function AuditPlanPage() {
                     </Button>
                     <Button 
                       onClick={async () => {
+                        if (!formData.audit_code || !formData.auditor_name || !formData.planned_date) {
+                          toast({
+                            title: 'Campi Obbligatori',
+                            description: 'Compilare codice audit, auditor e data pianificata',
+                            variant: 'destructive'
+                          });
+                          return;
+                        }
+
+                        const controlsScope = selectedControls.length > 5
+                          ? `${selectedControls.slice(0, 5).join(', ')}... (+${selectedControls.length - 5} altri)`
+                          : selectedControls.join(', ');
+
                         const { data, error } = await supabase
                           .from('internal_audits')
                           .insert({
                             ...formData,
                             organization_id: '00000000-0000-0000-0000-000000000000',
-                            audit_scope: `Audit intelligente: ${selectedControls.length} controlli`,
-                            objective: 'Verifica controlli suggeriti dal sistema intelligente',
+                            audit_scope: `Audit Intelligente: ${controlsScope}`,
+                            objective: `Verifica controlli suggeriti dal sistema intelligente:
+- ${smartSuggestions.toVerify.length} controlli da verificare
+- ${smartSuggestions.highRisks.length} rischi alti
+- ${smartSuggestions.ncToVerify.length} NC da verificare efficacia`,
                             audit_type: 'internal',
                             status: 'planned'
                           })
@@ -481,15 +556,16 @@ export default function AuditPlanPage() {
                         }
 
                         toast({
-                          title: 'Successo',
-                          description: 'Audit intelligente creato'
+                          title: 'Audit Intelligente Creato',
+                          description: `${selectedControls.length} controlli selezionati per verifica`
                         });
 
                         setSmartAuditModalOpen(false);
                         navigate(`/audit-interni/${data.id}`);
                       }}
                     >
-                      Crea Audit
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Crea Audit Intelligente
                     </Button>
                   </div>
                 </div>
