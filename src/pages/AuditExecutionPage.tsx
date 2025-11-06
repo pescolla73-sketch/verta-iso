@@ -113,7 +113,9 @@ export default function AuditExecutionPage() {
 
   const autoPopulateChecklist = async (auditId: string, scope: string, orgId: string) => {
     const controlRefs = scope.match(/A\.\d+\.\d+/g) || [];
+    let itemsToInsert: any[] = [];
 
+    // Try to get items from SoA based on scope
     if (controlRefs.length > 0) {
       const { data: soaItems } = await supabase
         .from('soa_items')
@@ -122,12 +124,12 @@ export default function AuditExecutionPage() {
         .in('control_reference', controlRefs);
 
       if (soaItems && soaItems.length > 0) {
-        const items = soaItems.map(item => ({
+        itemsToInsert = soaItems.map(item => ({
           audit_id: auditId,
           control_reference: item.control_reference,
           control_title: item.control_title,
           requirement: 'Verificare implementazione controllo',
-          evidence_requested: 'Documenti, procedure, evidenze operative',
+          evidence_required: 'Documenti, procedure, evidenze operative',
           evidence_found: '',
           audit_notes: '',
           result: null,
@@ -136,8 +138,55 @@ export default function AuditExecutionPage() {
           update_linked: true,
           auto_create_nc: true
         }));
+      }
+    }
 
-        await supabase.from('audit_checklist_items').insert(items);
+    // Fallback: If no items found, use base controls
+    if (itemsToInsert.length === 0) {
+      const baseControls = [
+        { ref: 'A.5.1', title: 'Policies for information security' },
+        { ref: 'A.5.2', title: 'Information security roles and responsibilities' },
+        { ref: 'A.5.15', title: 'Access control' },
+        { ref: 'A.8.1', title: 'User endpoint devices' },
+        { ref: 'A.8.5', title: 'Secure authentication' },
+        { ref: 'A.8.7', title: 'Protection against malware' },
+        { ref: 'A.8.8', title: 'Management of technical vulnerabilities' },
+        { ref: 'A.8.15', title: 'Logging' },
+        { ref: 'A.8.16', title: 'Monitoring activities' },
+        { ref: 'A.8.23', title: 'Web filtering' }
+      ];
+
+      itemsToInsert = baseControls.map(c => ({
+        audit_id: auditId,
+        control_reference: c.ref,
+        control_title: c.title,
+        requirement: 'Verificare implementazione controllo',
+        evidence_required: 'Documenti, procedure, evidenze operative',
+        evidence_found: '',
+        audit_notes: '',
+        result: null,
+        source_type: 'base',
+        update_linked: true,
+        auto_create_nc: false
+      }));
+    }
+
+    if (itemsToInsert.length > 0) {
+      const { error } = await supabase.from('audit_checklist_items').insert(itemsToInsert);
+      
+      if (error) {
+        console.error('Error inserting checklist items:', error);
+        toast({
+          title: 'Errore',
+          description: 'Impossibile creare la checklist',
+          variant: 'destructive'
+        });
+      } else {
+        toast({
+          title: 'Checklist Creata',
+          description: `${itemsToInsert.length} controlli aggiunti alla checklist`
+        });
+        // Reload to show the new items
         loadAuditData();
       }
     }
@@ -193,15 +242,24 @@ export default function AuditExecutionPage() {
     if (!conclusion || !overallResult) {
       toast({
         title: 'Campi Obbligatori',
-        description: 'Inserire conclusione e risultato',
+        description: 'Inserire conclusione e risultato complessivo',
         variant: 'destructive'
       });
       return;
     }
 
+    // Check if all checklist items have results
+    const itemsWithoutResult = checklist.filter(item => !item.result);
+    if (itemsWithoutResult.length > 0) {
+      const proceed = confirm(
+        `Ci sono ${itemsWithoutResult.length} controlli senza risultato. Vuoi completare comunque l'audit?`
+      );
+      if (!proceed) return;
+    }
+
     try {
       // Update audit status
-      await supabase
+      const { error } = await supabase
         .from('internal_audits')
         .update({
           status: 'completed',
@@ -210,20 +268,22 @@ export default function AuditExecutionPage() {
         })
         .eq('id', id);
 
+      if (error) throw error;
+
       // Update linked modules
       await updateLinkedModules(id!, audit, checklist);
 
       toast({
         title: 'Audit Completato',
-        description: 'Moduli aggiornati automaticamente'
+        description: 'Moduli collegati aggiornati automaticamente'
       });
 
       navigate('/audit-interni');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error completing audit:', error);
       toast({
         title: 'Errore',
-        description: 'Impossibile completare',
+        description: error.message || 'Impossibile completare l\'audit',
         variant: 'destructive'
       });
     }
@@ -327,7 +387,10 @@ export default function AuditExecutionPage() {
             <Save className="h-4 w-4 mr-2" />
             Salva Bozza
           </Button>
-          <Button onClick={handleCompleteAudit} disabled={audit.status === 'completed'}>
+          <Button 
+            onClick={handleCompleteAudit} 
+            disabled={audit.status === 'completed' || !conclusion || !overallResult}
+          >
             <CheckCircle className="h-4 w-4 mr-2" />
             Completa Audit
           </Button>
