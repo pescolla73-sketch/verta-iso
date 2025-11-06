@@ -32,6 +32,7 @@ export default function AuditPlanPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [smartAuditModalOpen, setSmartAuditModalOpen] = useState(false);
   const [selectedControls, setSelectedControls] = useState<string[]>([]);
+  const [smartAuditorName, setSmartAuditorName] = useState('');
   const [formData, setFormData] = useState({
     audit_code: '',
     audit_date: '',
@@ -395,28 +396,182 @@ export default function AuditPlanPage() {
       {/* SMART AUDIT BUTTON */}
       {(smartSuggestions.toVerify.length > 0 || smartSuggestions.highRisks.length > 0 || smartSuggestions.ncToVerify.length > 0) && (
         <div className="flex justify-center">
-          <Button 
-            size="lg" 
-            onClick={() => {
-              // Pre-select all suggested controls
-              const controls = new Set<string>();
-              smartSuggestions.toVerify.forEach((item: any) => controls.add(item.control_reference));
-              smartSuggestions.highRisks.forEach((risk: any) => {
-                if (risk.related_controls) {
-                  risk.related_controls.forEach((c: string) => controls.add(c));
-                }
-              });
-              smartSuggestions.ncToVerify.forEach((nc: any) => {
-                if (nc.related_control) controls.add(nc.related_control);
-              });
-              setSelectedControls(Array.from(controls));
-              setSmartAuditModalOpen(true);
-            }}
-            className="gap-2"
-          >
-            <Sparkles className="h-5 w-5" />
-            Crea Audit Intelligente
-          </Button>
+          <Dialog open={smartAuditModalOpen} onOpenChange={setSmartAuditModalOpen}>
+            <DialogTrigger asChild>
+              <Button 
+                size="lg" 
+                onClick={() => {
+                  // Pre-select all suggested controls
+                  const controls = new Set<string>();
+                  smartSuggestions.toVerify.forEach((item: any) => controls.add(item.control_reference));
+                  smartSuggestions.highRisks.forEach((risk: any) => {
+                    if (risk.related_controls) {
+                      risk.related_controls.forEach((c: string) => controls.add(c));
+                    }
+                  });
+                  smartSuggestions.ncToVerify.forEach((nc: any) => {
+                    if (nc.related_control) controls.add(nc.related_control);
+                  });
+                  setSelectedControls(Array.from(controls));
+                }}
+                className="gap-2"
+              >
+                <Sparkles className="h-5 w-5" />
+                Crea Audit Intelligente
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5" />
+                  Crea Audit Intelligente
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label>Auditor</Label>
+                  <Input
+                    value={smartAuditorName}
+                    onChange={e => setSmartAuditorName(e.target.value)}
+                    placeholder="Nome auditor"
+                  />
+                </div>
+                
+                <div>
+                  <Label>Controlli Selezionati ({selectedControls.length})</Label>
+                  <div className="border rounded-lg p-4 max-h-96 overflow-y-auto space-y-2 mt-2">
+                    {selectedControls.map(control => {
+                      // Find the control details
+                      const item = smartSuggestions.toVerify.find((i: any) => i.control_reference === control);
+                      return (
+                        <div key={control} className="flex items-center gap-2 p-2 bg-muted rounded">
+                          <Checkbox
+                            checked={true}
+                            onCheckedChange={(checked) => {
+                              if (!checked) {
+                                setSelectedControls(prev => prev.filter(c => c !== control));
+                              }
+                            }}
+                          />
+                          <span className="font-mono text-sm">{control}</span>
+                          {item && <span className="text-xs text-muted-foreground">- {item.control_title?.substring(0, 50)}</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <Button
+                  onClick={async () => {
+                    if (!smartAuditorName) {
+                      toast({
+                        title: 'Errore',
+                        description: 'Inserire nome auditor',
+                        variant: 'destructive'
+                      });
+                      return;
+                    }
+
+                    if (selectedControls.length === 0) {
+                      toast({
+                        title: 'Errore',
+                        description: 'Selezionare almeno un controllo',
+                        variant: 'destructive'
+                      });
+                      return;
+                    }
+
+                    try {
+                      // Get org ID
+                      const { data: orgData } = await supabase
+                        .from('organization')
+                        .select('id')
+                        .limit(1)
+                        .single();
+                      const orgId = orgData?.id || '00000000-0000-0000-0000-000000000000';
+
+                      // Count existing audits
+                      const { data: existingAudits } = await supabase
+                        .from('internal_audits')
+                        .select('audit_code')
+                        .eq('organization_id', orgId);
+
+                      const auditCount = existingAudits?.length || 0;
+                      const auditCode = `AUD-${new Date().getFullYear()}-${String(auditCount + 1).padStart(3, '0')}`;
+                      const scope = selectedControls.join(', ');
+
+                      // Create audit
+                      const { data: newAudit, error: auditError } = await supabase
+                        .from('internal_audits')
+                        .insert({
+                          organization_id: orgId,
+                          audit_code: auditCode,
+                          audit_type: 'smart',
+                          audit_scope: scope,
+                          audit_date: new Date().toISOString().split('T')[0],
+                          planned_date: new Date().toISOString().split('T')[0],
+                          auditor_name: smartAuditorName,
+                          status: 'planned',
+                          objective: `Verificare implementazione controlli: ${scope}`
+                        })
+                        .select()
+                        .single();
+
+                      if (auditError) throw auditError;
+
+                      // Pre-populate checklist from SoA
+                      const { data: soaItems } = await supabase
+                        .from('soa_items')
+                        .select('*')
+                        .eq('organization_id', orgId)
+                        .in('control_reference', selectedControls);
+
+                      if (soaItems && soaItems.length > 0) {
+                        await supabase
+                          .from('audit_checklist_items')
+                          .insert(
+                            soaItems.map(item => ({
+                              audit_id: newAudit.id,
+                              control_reference: item.control_reference,
+                              control_title: item.control_title,
+                              requirement: `Verificare evidenze implementazione ${item.control_reference}`,
+                              evidence_required: 'Policy, procedure, log, configurazioni',
+                              evidence_found: '',
+                              audit_notes: '',
+                              result: null,
+                              pre_audit_status: item.implementation_status,
+                              update_linked: true,
+                              auto_create_nc: true,
+                              source_type: 'smart'
+                            }))
+                          );
+                      }
+
+                      toast({
+                        title: 'Audit Creato',
+                        description: `${selectedControls.length} controlli da verificare`
+                      });
+
+                      setSmartAuditModalOpen(false);
+                      setSmartAuditorName('');
+                      navigate(`/audit-interni/esegui/${newAudit.id}`);
+                    } catch (error: any) {
+                      console.error('Error creating smart audit:', error);
+                      toast({
+                        title: 'Errore',
+                        description: error.message,
+                        variant: 'destructive'
+                      });
+                    }
+                  }}
+                  className="w-full"
+                  size="lg"
+                >
+                  Crea Audit con {selectedControls.length} Controlli
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       )}
 

@@ -521,6 +521,7 @@ export type Database = {
           audit_type: string
           auditee_name: string | null
           auditor_name: string
+          completed_date: string | null
           conclusion: string | null
           created_at: string | null
           id: string
@@ -538,6 +539,7 @@ export type Database = {
           audit_type: string
           auditee_name?: string | null
           auditor_name: string
+          completed_date?: string | null
           conclusion?: string | null
           created_at?: string | null
           id?: string
@@ -555,6 +557,7 @@ export type Database = {
           audit_type?: string
           auditee_name?: string | null
           auditor_name?: string
+          completed_date?: string | null
           conclusion?: string | null
           created_at?: string | null
           id?: string
@@ -663,6 +666,7 @@ export type Database = {
           closure_notes: string | null
           created_at: string | null
           description: string | null
+          detected_date: string | null
           detection_method: string | null
           effectiveness_verified: boolean | null
           id: string
@@ -672,6 +676,7 @@ export type Database = {
           severity: string
           source: string | null
           source_id: string | null
+          source_type: string | null
           status: string | null
           title: string
         }
@@ -680,6 +685,7 @@ export type Database = {
           closure_notes?: string | null
           created_at?: string | null
           description?: string | null
+          detected_date?: string | null
           detection_method?: string | null
           effectiveness_verified?: boolean | null
           id?: string
@@ -689,6 +695,7 @@ export type Database = {
           severity: string
           source?: string | null
           source_id?: string | null
+          source_type?: string | null
           status?: string | null
           title: string
         }
@@ -697,6 +704,7 @@ export type Database = {
           closure_notes?: string | null
           created_at?: string | null
           description?: string | null
+          detected_date?: string | null
           detection_method?: string | null
           effectiveness_verified?: boolean | null
           id?: string
@@ -706,6 +714,7 @@ export type Database = {
           severity?: string
           source?: string | null
           source_id?: string | null
+          source_type?: string | null
           status?: string | null
           title?: string
         }

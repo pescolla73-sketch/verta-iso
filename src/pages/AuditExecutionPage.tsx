@@ -29,6 +29,8 @@ export default function AuditExecutionPage() {
   const [orgId, setOrgId] = useState<string>('');
   const [conclusion, setConclusion] = useState('');
   const [overallResult, setOverallResult] = useState<string>('');
+  const [autoUpdateModules, setAutoUpdateModules] = useState(true);
+  const [processing, setProcessing] = useState(false);
   const [findingModalOpen, setFindingModalOpen] = useState(false);
   const [newFinding, setNewFinding] = useState({
     title: '',
@@ -257,35 +259,56 @@ export default function AuditExecutionPage() {
       if (!proceed) return;
     }
 
+    setProcessing(true);
+
     try {
+      console.log('🔍 [Audit Complete] Starting...');
+
       // Update audit status
       const { error } = await supabase
         .from('internal_audits')
         .update({
           status: 'completed',
           conclusion,
-          overall_result: overallResult
+          overall_result: overallResult,
+          completed_date: new Date().toISOString().split('T')[0]
         })
         .eq('id', id);
 
       if (error) throw error;
 
-      // Update linked modules
-      await updateLinkedModules(id!, audit, checklist);
+      console.log('✅ [Audit] Status updated to completed');
 
-      toast({
-        title: 'Audit Completato',
-        description: 'Moduli collegati aggiornati automaticamente'
-      });
+      // Update linked modules if enabled
+      if (autoUpdateModules) {
+        console.log('🔗 [Linked Modules] Starting automatic updates...');
+        const stats = await updateLinkedModules(id!, audit, checklist);
+
+        toast({
+          title: 'Audit Completato con Successo',
+          description: `Aggiornati: ${stats.updatedCount} controlli SoA, ${stats.risksUpdated} rischi, ${stats.ncClosed} NC chiuse, ${stats.ncCreated} NC create`,
+        });
+
+        console.log('✨ [Complete] All updates successful');
+      } else {
+        toast({
+          title: 'Audit Completato',
+          description: 'Salvato senza aggiornamenti automatici'
+        });
+        
+        console.log('ℹ️ [Complete] No automatic updates (disabled by user)');
+      }
 
       navigate('/audit-interni');
     } catch (error: any) {
-      console.error('Error completing audit:', error);
+      console.error('❌ [Error] Completing audit:', error);
       toast({
         title: 'Errore',
         description: error.message || 'Impossibile completare l\'audit',
         variant: 'destructive'
       });
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -420,6 +443,7 @@ export default function AuditExecutionPage() {
                   <TableRow>
                     <TableHead>Controllo</TableHead>
                     <TableHead>Titolo</TableHead>
+                    <TableHead>Status Pre</TableHead>
                     <TableHead>Evidenze Trovate</TableHead>
                     <TableHead>Note</TableHead>
                     <TableHead>Risultato</TableHead>
@@ -433,6 +457,19 @@ export default function AuditExecutionPage() {
                         <Badge variant="outline">{item.control_reference}</Badge>
                       </TableCell>
                       <TableCell className="max-w-xs text-sm">{item.control_title}</TableCell>
+                      <TableCell>
+                        {item.pre_audit_status && (
+                          <Badge 
+                            variant={
+                              item.pre_audit_status === 'verified' ? 'default' : 
+                              item.pre_audit_status === 'implemented' ? 'secondary' : 
+                              'outline'
+                            }
+                          >
+                            {item.pre_audit_status}
+                          </Badge>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Textarea
                           value={item.evidence_found || ''}
@@ -688,6 +725,16 @@ export default function AuditExecutionPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
+                <Label>Conclusione</Label>
+                <Textarea
+                  value={conclusion}
+                  onChange={e => setConclusion(e.target.value)}
+                  placeholder="Conclusioni dell'audit"
+                  className="min-h-32"
+                  disabled={audit.status === 'completed'}
+                />
+              </div>
+              <div>
                 <Label>Risultato Complessivo</Label>
                 <Select
                   value={overallResult}
@@ -699,26 +746,73 @@ export default function AuditExecutionPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="conforming">Conforme</SelectItem>
-                    <SelectItem value="partial">Parzialmente Conforme</SelectItem>
                     <SelectItem value="non_conforming">Non Conforme</SelectItem>
+                    <SelectItem value="partially_conforming">Parzialmente Conforme</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-
-              <div>
-                <Label>Conclusione Dettagliata</Label>
-                <Textarea
-                  value={conclusion}
-                  onChange={e => setConclusion(e.target.value)}
-                  placeholder="Inserire conclusioni dell'audit..."
-                  className="min-h-32"
+              
+              {/* Auto-update checkbox */}
+              <div className="flex items-start space-x-2 p-4 border rounded-lg bg-muted/30">
+                <Checkbox
+                  id="auto-update"
+                  checked={autoUpdateModules}
+                  onCheckedChange={(checked) => setAutoUpdateModules(checked as boolean)}
                   disabled={audit.status === 'completed'}
                 />
+                <div className="space-y-1">
+                  <label
+                    htmlFor="auto-update"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    Aggiorna automaticamente moduli collegati
+                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    Al completamento, aggiorna SoA, Rischi e Non-Conformità basandosi sui risultati dell'audit.
+                    Controlli conformi saranno verificati, NC correlate chiuse, e rischi ricalcolati.
+                  </p>
+                </div>
               </div>
+
+              {/* Preview of what will be updated */}
+              {autoUpdateModules && checklist.length > 0 && (
+                <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-950/20">
+                  <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4" />
+                    Preview Aggiornamenti
+                  </h4>
+                  <div className="text-xs space-y-1 text-muted-foreground">
+                    <p>• {checklist.filter(i => i.result === 'conforming' && i.update_linked !== false).length} controlli verranno marcati come VERIFICATI in SoA</p>
+                    <p>• {checklist.filter(i => i.result === 'non_conforming').length} nuove NC verranno create</p>
+                    <p>• NC esistenti in stato 'verification' verranno chiuse</p>
+                    <p>• Rischi correlati ai controlli verificati verranno ricalcolati</p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Loading Overlay */}
+      {processing && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+          <Card className="w-96">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+                Aggiornamento Moduli in Corso...
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Aggiornamento di SoA, Rischi, Non-Conformità e controlli ISO 27001.
+                Questo potrebbe richiedere alcuni secondi.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
