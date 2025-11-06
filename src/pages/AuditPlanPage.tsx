@@ -117,7 +117,7 @@ export default function AuditPlanPage() {
       });
 
       setModalOpen(false);
-      navigate(`/audit-interni/${data.id}`);
+      navigate(`/audit-interni/esegui/${data.id}`);
     } catch (error: any) {
       console.error('Error saving audit:', error);
       toast({

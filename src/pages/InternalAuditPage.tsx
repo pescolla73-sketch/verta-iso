@@ -216,7 +216,7 @@ export default function InternalAuditPage() {
                   <TableRow
                     key={audit.id}
                     className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => navigate(`/audit-interni/${audit.id}`)}
+                    onClick={() => navigate(`/audit-interni/esegui/${audit.id}`)}
                   >
                     <TableCell className="font-medium">{audit.audit_code}</TableCell>
                     <TableCell>
@@ -233,7 +233,7 @@ export default function InternalAuditPage() {
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
-                          navigate(`/audit-interni/${audit.id}`);
+                          navigate(`/audit-interni/esegui/${audit.id}`);
                         }}
                       >
                         <FileText className="h-4 w-4" />

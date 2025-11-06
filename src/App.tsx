@@ -270,7 +270,7 @@ const App = () => (
             }
           />
           <Route
-            path="/audit-interni/:id"
+            path="/audit-interni/esegui/:id"
             element={
               <AppLayout>
                 <AuditExecutionPage />
