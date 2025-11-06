@@ -15,6 +15,7 @@ import {
   Shield as ShieldAlert,
   ClipboardList,
   Award,
+  History,
 } from "lucide-react";
 import {
   Sidebar,
@@ -76,6 +77,7 @@ export function AppSidebar() {
     { title: "Ruoli", url: "/roles", icon: Users },
     { title: "Setup Azienda", url: "/setup-azienda", icon: Building2 },
     { title: "Impostazioni", url: "/settings", icon: Settings },
+    { title: "Audit Trail", url: "/audit-trail", icon: History },
   ];
 
   const isActive = (path: string) => currentPath === path;

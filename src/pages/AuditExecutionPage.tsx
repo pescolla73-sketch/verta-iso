@@ -15,6 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ArrowLeft, Save, CheckCircle, FileText, AlertCircle, Plus } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { updateLinkedModules } from '@/utils/auditLinkage';
+import { logAuditTrail } from '@/lib/auditTrail';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 
@@ -278,6 +279,23 @@ export default function AuditExecutionPage() {
       if (error) throw error;
 
       console.log('✅ [Audit] Status updated to completed');
+
+      // Log audit completion
+      logAuditTrail({
+        organizationId: orgId,
+        module: 'audits',
+        action: 'close',
+        entityType: 'audit',
+        entityId: id!,
+        entityName: audit.audit_code,
+        changes: [{
+          field: 'status',
+          oldValue: audit.status,
+          newValue: 'completed'
+        }],
+        triggeredBy: 'manual',
+        description: `Audit ${audit.audit_code} completato con risultato: ${overallResult}`
+      });
 
       // Update linked modules if enabled
       if (autoUpdateModules) {

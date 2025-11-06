@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { logAuditTrail } from '@/lib/auditTrail';
 
 /**
  * Check if all controls related to a risk are verified
@@ -89,6 +90,26 @@ export const updateLinkedModules = async (
           console.log(`✅ [SoA] Updated control ${item.control_reference} → verified`);
           updatedCount++;
 
+          // Log SoA verification
+          logAuditTrail({
+            organizationId: orgId,
+            module: 'soa',
+            action: 'verify',
+            entityType: 'control',
+            entityId: soaItem.id,
+            entityName: `${item.control_reference} - ${item.control_title}`,
+            changes: [{
+              field: 'implementation_status',
+              oldValue: item.pre_audit_status || 'implemented',
+              newValue: 'verified',
+              reason: `Verificato conforme in audit ${auditData.audit_code}`
+            }],
+            triggeredBy: 'audit_verification',
+            linkedEntityType: 'audit',
+            linkedEntityId: auditId,
+            linkedEntityName: auditData.audit_code
+          });
+
           // 3. UPDATE RELATED RISKS
           if (soaItem.related_risks && soaItem.related_risks.length > 0) {
             for (const riskId of soaItem.related_risks) {
@@ -122,6 +143,26 @@ export const updateLinkedModules = async (
 
                   console.log(`✅ [Risk] Risk ${riskId} score ${risk.inherent_risk_score} → ${newScore}`);
                   risksUpdated++;
+
+                  // Log risk update
+                  logAuditTrail({
+                    organizationId: orgId,
+                    module: 'risks',
+                    action: 'update',
+                    entityType: 'risk',
+                    entityId: riskId,
+                    entityName: `Risk ${riskId}`,
+                    changes: [{
+                      field: 'residual_risk_score',
+                      oldValue: risk.inherent_risk_score,
+                      newValue: newScore,
+                      reason: 'Tutti i controlli collegati sono stati verificati'
+                    }],
+                    triggeredBy: 'audit_verification',
+                    linkedEntityType: 'audit',
+                    linkedEntityId: auditId,
+                    linkedEntityName: auditData.audit_code
+                  });
                 }
               }
             }
@@ -175,6 +216,28 @@ export const updateLinkedModules = async (
           if (closedNCs && closedNCs.length > 0) {
             ncClosed += closedNCs.length;
             console.log(`✅ [NC] Closed ${closedNCs.length} NC for control ${item.control_reference}`);
+
+            // Log each NC closure
+            for (const nc of closedNCs) {
+              logAuditTrail({
+                organizationId: orgId,
+                module: 'nc',
+                action: 'close',
+                entityType: 'nc',
+                entityId: nc.id,
+                entityName: nc.nc_code || nc.title,
+                changes: [{
+                  field: 'status',
+                  oldValue: 'verification',
+                  newValue: 'closed',
+                  reason: `Verificata risoluzione in audit ${auditData.audit_code}`
+                }],
+                triggeredBy: 'audit_verification',
+                linkedEntityType: 'audit',
+                linkedEntityId: auditId,
+                linkedEntityName: auditData.audit_code
+              });
+            }
           }
         }
       } else if (item.result === 'non_conforming' && item.auto_create_nc) {
@@ -199,6 +262,21 @@ export const updateLinkedModules = async (
 
         console.log(`⚠️ [NC] Created NC for control ${item.control_reference}`);
         ncCreated++;
+
+        // Log NC creation
+        logAuditTrail({
+          organizationId: orgId,
+          module: 'nc',
+          action: 'create',
+          entityType: 'nc',
+          entityId: 'pending', // Will be set after insert
+          entityName: `NC da Audit: ${item.control_title}`,
+          triggeredBy: 'audit_verification',
+          linkedEntityType: 'audit',
+          linkedEntityId: auditId,
+          linkedEntityName: auditData.audit_code,
+          description: `Non-conformità creata per controllo ${item.control_reference} non conforme`
+        });
 
         // Update SoA: back to "implemented" (no longer verified)
         await supabase

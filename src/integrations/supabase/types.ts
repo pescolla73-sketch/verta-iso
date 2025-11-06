@@ -274,6 +274,72 @@ export type Database = {
           },
         ]
       }
+      audit_trail: {
+        Row: {
+          action: string
+          changes: Json | null
+          description: string | null
+          entity_id: string
+          entity_name: string
+          entity_type: string
+          id: string
+          ip_address: string | null
+          linked_entity_id: string | null
+          linked_entity_name: string | null
+          linked_entity_type: string | null
+          module: string
+          organization_id: string
+          timestamp: string | null
+          triggered_by: string | null
+          user_agent: string | null
+          user_email: string | null
+          user_id: string | null
+          user_name: string | null
+        }
+        Insert: {
+          action: string
+          changes?: Json | null
+          description?: string | null
+          entity_id: string
+          entity_name: string
+          entity_type: string
+          id?: string
+          ip_address?: string | null
+          linked_entity_id?: string | null
+          linked_entity_name?: string | null
+          linked_entity_type?: string | null
+          module: string
+          organization_id: string
+          timestamp?: string | null
+          triggered_by?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          action?: string
+          changes?: Json | null
+          description?: string | null
+          entity_id?: string
+          entity_name?: string
+          entity_type?: string
+          id?: string
+          ip_address?: string | null
+          linked_entity_id?: string | null
+          linked_entity_name?: string | null
+          linked_entity_type?: string | null
+          module?: string
+          organization_id?: string
+          timestamp?: string | null
+          triggered_by?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Relationships: []
+      }
       audits: {
         Row: {
           audit_date: string

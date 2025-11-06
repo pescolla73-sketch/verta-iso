@@ -35,6 +35,7 @@ import InternalAuditPage from "./pages/InternalAuditPage";
 import AuditPlanPage from "./pages/AuditPlanPage";
 import AuditExecutionPage from "./pages/AuditExecutionPage";
 import CertificationAuditPage from "./pages/CertificationAuditPage";
+import AuditTrailPage from "./pages/AuditTrailPage";
 
 const queryClient = new QueryClient();
 
@@ -282,6 +283,14 @@ const App = () => (
             element={
               <AppLayout>
                 <CertificationAuditPage />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/audit-trail"
+            element={
+              <AppLayout>
+                <AuditTrailPage />
               </AppLayout>
             }
           />
