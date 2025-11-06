@@ -29,33 +29,45 @@ export default function InternalAuditPage() {
     try {
       setLoading(true);
 
-      // Organization detection
-      const { data: orgData } = await supabase
+      // DEMO mode: always get first organization
+      console.log('📥 Loading organization...');
+      const { data: orgs, error: orgError } = await supabase
         .from('organization')
         .select('id')
         .limit(1)
         .maybeSingle();
-
-      if (!orgData) {
+      
+      if (orgError) {
+        console.error('❌ Organization query error:', orgError);
+      }
+      
+      if (!orgs) {
+        console.log('⚠️ No organization found');
         toast({
-          title: 'Errore',
-          description: 'Nessuna organizzazione trovata',
-          variant: 'destructive'
+          title: "Info",
+          description: "Nessuna organizzazione disponibile. Configura l'organizzazione dalle Impostazioni.",
         });
+        setLoading(false);
         return;
       }
-
-      const orgId = orgData.id;
+      
+      const orgId = orgs.id;
+      console.log('✅ Using organization:', orgId);
 
       // Load audits
-      const { data: auditsData, error } = await supabase
+      console.log('📥 Loading audits for organization:', orgId);
+      const { data: auditsData, error: auditsError } = await supabase
         .from('internal_audits')
         .select('*')
         .eq('organization_id', orgId)
         .order('audit_date', { ascending: false });
 
-      if (error) throw error;
+      if (auditsError) {
+        console.error('❌ Audits query error:', auditsError);
+        throw auditsError;
+      }
 
+      console.log('✅ Audits loaded:', auditsData?.length || 0);
       setAudits(auditsData || []);
 
       // Calculate stats
@@ -69,7 +81,7 @@ export default function InternalAuditPage() {
       setStats({ total, planned, completed, conforming });
 
     } catch (error: any) {
-      console.error('Error loading audits:', error);
+      console.error('❌ Error loading audits:', error);
       toast({
         title: 'Errore',
         description: 'Impossibile caricare gli audit',
