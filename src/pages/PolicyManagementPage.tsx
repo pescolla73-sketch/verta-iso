@@ -24,13 +24,28 @@ export default function PolicyManagementPage() {
 
   const loadData = async () => {
     try {
-      // Load organization
-      const { data: orgData } = await supabase
+      // DEMO mode: always get first organization
+      console.log('📥 Loading organization...');
+      const { data: orgs, error: orgError } = await supabase
         .from('organization')
         .select('*')
-        .single();
-
-      setOrganization(orgData);
+        .limit(1)
+        .maybeSingle();
+      
+      if (orgError) {
+        console.error('❌ Organization query error:', orgError);
+      }
+      
+      if (!orgs) {
+        console.log('⚠️ No organization found');
+        toast.error('Nessuna organizzazione disponibile. Configura l\'organizzazione dalle Impostazioni.');
+        setLoading(false);
+        return;
+      }
+      
+      const orgId = orgs.id;
+      console.log('✅ Using organization:', orgId);
+      setOrganization(orgs);
 
       // Load templates
       const { data: templatesData } = await supabase
@@ -39,10 +54,11 @@ export default function PolicyManagementPage() {
         .eq('is_active', true)
         .order('order_index');
 
-      // Load existing policies
+      // Load existing policies for this organization
       const { data: policiesData } = await supabase
         .from('policies')
         .select('*')
+        .eq('organization_id', orgId)
         .order('policy_id');
 
       setTemplates(templatesData || []);

@@ -83,6 +83,23 @@ export default function PolicyEditor() {
     try {
       console.log('💾 Saving policy:', policy);
 
+      // DEMO mode: always get first organization
+      console.log('📥 Getting organization for save...');
+      const { data: orgs, error: orgError } = await supabase
+        .from('organization')
+        .select('id')
+        .limit(1)
+        .maybeSingle();
+      
+      if (orgError || !orgs) {
+        toast.error('Nessuna organizzazione trovata');
+        setIsSaving(false);
+        return;
+      }
+      
+      const orgId = orgs.id;
+      console.log('✅ Saving policy with org_id:', orgId);
+
       const policyPayload = {
         policy_name: policy.policy_name,
         policy_type: policy.policy_type || 'custom',
@@ -108,14 +125,15 @@ export default function PolicyEditor() {
       const { error } = await supabase
         .from('policies')
         .update(policyPayload)
-        .eq('id', id);
+        .eq('id', id)
+        .eq('organization_id', orgId);  // ← CRITICAL FIX
 
       if (error) throw error;
-      console.log('✅ Policy updated');
-      toast.success('Policy aggiornata!');
+      console.log('✅ Policy updated successfully');
+      toast.success('✅ Policy salvata con successo!');
     } catch (error: any) {
-      console.error('Save error:', error);
-      toast.error('Errore nel salvataggio');
+      console.error('❌ Save error:', error);
+      toast.error('Errore: ' + (error.message || 'Errore nel salvataggio'));
     } finally {
       setIsSaving(false);
     }

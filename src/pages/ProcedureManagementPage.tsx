@@ -24,14 +24,30 @@ export default function ProcedureManagementPage() {
     try {
       console.log('📋 Loading procedure templates and procedures...');
 
-      // Get organization
-      const { data: orgs } = await supabase
+      // DEMO mode: always get first organization
+      console.log('📥 Loading organization...');
+      const { data: orgs, error: orgError } = await supabase
         .from('organization')
         .select('id, name')
-        .limit(1);
+        .limit(1)
+        .maybeSingle();
+      
+      if (orgError) {
+        console.error('❌ Organization query error:', orgError);
+      }
+      
+      if (!orgs) {
+        console.log('⚠️ No organization found');
+        toast.error('Nessuna organizzazione disponibile');
+        setLoading(false);
+        return;
+      }
+      
+      const orgId = orgs.id;
+      console.log('✅ Using organization:', orgId);
+      setOrgId(orgId);
 
-      if (orgs && orgs.length > 0) {
-        setOrgId(orgs[0].id);
+      if (orgId) {
 
         const [templatesRes, proceduresRes] = await Promise.all([
           supabase
@@ -42,7 +58,7 @@ export default function ProcedureManagementPage() {
           supabase
             .from('procedures')
             .select('*')
-            .eq('organization_id', orgs[0].id)
+            .eq('organization_id', orgId)
             .order('procedure_id')
         ]);
 

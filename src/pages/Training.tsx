@@ -68,9 +68,32 @@ export default function Training() {
 
   const loadTrainings = async () => {
     try {
+      // DEMO mode: always get first organization
+      console.log('📥 Loading organization...');
+      const { data: orgs, error: orgError } = await supabase
+        .from('organization')
+        .select('id')
+        .limit(1)
+        .maybeSingle();
+      
+      if (orgError) {
+        console.error('❌ Organization query error:', orgError);
+      }
+      
+      if (!orgs) {
+        console.log('⚠️ No organization found');
+        toast.error('Nessuna organizzazione disponibile');
+        setLoading(false);
+        return;
+      }
+      
+      const orgId = orgs.id;
+      console.log('✅ Organization ID resolved:', orgId);
+
       const { data, error } = await supabase
         .from('training_records')
         .select('*')
+        .eq('organization_id', orgId)
         .order('training_date', { ascending: false });
 
       if (error) throw error;
@@ -87,13 +110,32 @@ export default function Training() {
     e.preventDefault();
     
     try {
+      // DEMO mode: always get first organization
+      console.log('📥 Getting organization for save...');
+      const { data: orgs, error: orgError } = await supabase
+        .from('organization')
+        .select('id')
+        .limit(1)
+        .maybeSingle();
+      
+      if (orgError || !orgs) {
+        toast.error('Nessuna organizzazione trovata');
+        return;
+      }
+      
+      const orgId = orgs.id;
+      console.log('✅ Saving training with org_id:', orgId);
+
       const { error } = await supabase
         .from('training_records')
-        .insert(formData as any);
+        .insert({ 
+          ...formData,
+          organization_id: orgId  // ← CRITICAL FIX
+        } as any);
 
       if (error) throw error;
 
-      toast.success('✅ Training registrato!');
+      toast.success('✅ Training registrato con successo!');
       setShowAddDialog(false);
       setFormData({
         employee_name: '',
@@ -107,9 +149,9 @@ export default function Training() {
         notes: ''
       });
       loadTrainings();
-    } catch (error) {
-      console.error('Error adding training:', error);
-      toast.error('Errore nel salvataggio');
+    } catch (error: any) {
+      console.error('❌ Error adding training:', error);
+      toast.error('Errore: ' + (error.message || 'Errore nel salvataggio'));
     }
   };
 

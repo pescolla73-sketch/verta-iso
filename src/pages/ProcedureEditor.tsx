@@ -67,6 +67,23 @@ export default function ProcedureEditor() {
     try {
       console.log('💾 Saving procedure:', procedure);
 
+      // DEMO mode: always get first organization
+      console.log('📥 Getting organization for save...');
+      const { data: orgs, error: orgError } = await supabase
+        .from('organization')
+        .select('id')
+        .limit(1)
+        .maybeSingle();
+      
+      if (orgError || !orgs) {
+        toast.error('Nessuna organizzazione trovata');
+        setSaving(false);
+        return;
+      }
+      
+      const orgId = orgs.id;
+      console.log('✅ Saving procedure with org_id:', orgId);
+
       const { error } = await supabase
         .from('procedures')
         .update({
@@ -86,15 +103,16 @@ export default function ProcedureEditor() {
           next_review_date: procedure.next_review_date,
           updated_at: new Date().toISOString()
         })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('organization_id', orgId);  // ← CRITICAL FIX
 
       if (error) throw error;
 
-      console.log('✅ Procedure saved');
-      toast.success('✅ Procedura salvata!');
+      console.log('✅ Procedure saved successfully');
+      toast.success('✅ Procedura salvata con successo!');
     } catch (error: any) {
       console.error('❌ Save error:', error);
-      toast.error('Errore nel salvataggio');
+      toast.error('Errore: ' + (error.message || 'Errore nel salvataggio'));
     } finally {
       setSaving(false);
     }
