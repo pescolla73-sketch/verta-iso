@@ -38,7 +38,7 @@ export default function Policies() {
   const statsData = {
     total: policies.length,
     approved: policies.filter(p => p.status === "approved").length,
-    inReview: policies.filter(p => p.status === "in_review").length,
+    inReview: policies.filter(p => p.status === "review").length,
     draft: policies.filter(p => p.status === "draft").length,
   };
 
@@ -46,7 +46,7 @@ export default function Policies() {
     switch (status) {
       case "approved":
         return <Badge className="bg-success text-success-foreground">Approvata</Badge>;
-      case "in_review":
+      case "review":
         return <Badge className="bg-warning text-warning-foreground">In Revisione</Badge>;
       case "draft":
         return <Badge variant="outline">Bozza</Badge>;
@@ -58,7 +58,7 @@ export default function Policies() {
   const getStatusLabel = (status: string) => {
     switch (status) {
       case "approved": return "Approvata";
-      case "in_review": return "In Revisione";
+      case "review": return "In Revisione";
       case "draft": return "Bozza";
       default: return status;
     }

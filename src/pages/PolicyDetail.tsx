@@ -135,7 +135,7 @@ export default function PolicyDetail() {
     switch (status) {
       case "approved":
         return <Badge className="bg-success text-success-foreground">Approvata</Badge>;
-      case "in_review":
+      case "review":
         return <Badge className="bg-warning text-warning-foreground">In Revisione</Badge>;
       case "draft":
         return <Badge variant="outline">Bozza</Badge>;

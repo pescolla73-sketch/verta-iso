@@ -399,11 +399,11 @@ export default function PolicyManagementPage() {
                             <Badge variant="outline">{policy.policy_id || 'POL-XXX'}</Badge>
                             <Badge variant={
                               policy.status === 'approved' ? 'default' :
-                              policy.status === 'in_review' ? 'secondary' :
+                              policy.status === 'review' ? 'secondary' :
                               'outline'
                             }>
                               {policy.status === 'approved' ? '✅ Approvata' :
-                               policy.status === 'in_review' ? '👁️ In Revisione' :
+                               policy.status === 'review' ? '👁️ In Revisione' :
                                '📝 Bozza'}
                             </Badge>
                             <span className="text-sm text-muted-foreground">v{policy.version}</span>

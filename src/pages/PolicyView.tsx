@@ -44,7 +44,7 @@ export default function PolicyView() {
   const getStatusBadge = () => {
     const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
       draft: { label: 'Bozza', variant: 'outline' },
-      in_review: { label: 'In Revisione', variant: 'secondary' },
+      review: { label: 'In Revisione', variant: 'secondary' },
       approved: { label: 'Approvata', variant: 'default' },
       archived: { label: 'Archiviata', variant: 'outline' }
     };
@@ -99,7 +99,7 @@ export default function PolicyView() {
         issueDate: policy.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
         revisionDate: policy.updated_at?.split('T')[0] || new Date().toISOString().split('T')[0],
         nextReviewDate: policy.next_review_date || new Date(Date.now() + 180*24*60*60*1000).toISOString().split('T')[0],
-        status: (policy.status === 'approved' ? 'approved' : policy.status === 'in_review' ? 'in_review' : 'draft') as 'draft' | 'approved' | 'in_review',
+        status: (policy.status === 'approved' ? 'approved' : policy.status === 'review' ? 'in_review' : 'draft') as 'draft' | 'approved' | 'in_review',
         classification: 'confidential',
         preparedBy: policy.prepared_by || 'TBD',
         approvedBy: policy.approved_by || 'TBD',

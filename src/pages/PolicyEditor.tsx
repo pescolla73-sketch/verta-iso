@@ -103,7 +103,7 @@ export default function PolicyEditor() {
       const policyPayload = {
         policy_name: policy.policy_name,
         policy_type: policy.policy_type || 'custom',
-        status: policy.status,
+        status: policy.status || 'draft', // ← Ensure valid default
         version: policy.version,
         category: policy.category,
         iso_reference: policy.iso_reference,
@@ -197,7 +197,7 @@ export default function PolicyEditor() {
         issueDate: policy.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
         revisionDate: policy.updated_at?.split('T')[0] || new Date().toISOString().split('T')[0],
         nextReviewDate: policy.next_review_date || new Date(Date.now() + 180*24*60*60*1000).toISOString().split('T')[0],
-        status: (policy.status === 'approved' ? 'approved' : policy.status === 'in_review' ? 'in_review' : 'draft') as 'draft' | 'approved' | 'in_review',
+        status: (policy.status === 'approved' ? 'approved' : policy.status === 'review' ? 'in_review' : 'draft') as 'draft' | 'approved' | 'in_review',
         classification: 'confidential',
         preparedBy: policy.prepared_by || 'TBD',
         approvedBy: policy.approved_by || 'TBD',
@@ -386,7 +386,7 @@ export default function PolicyEditor() {
   const getStatusBadge = () => {
     const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline'; icon: any }> = {
       draft: { label: 'Bozza', variant: 'secondary', icon: Edit3 },
-      in_review: { label: 'In Revisione', variant: 'default', icon: Clock },
+      review: { label: 'In Revisione', variant: 'default', icon: Clock },
       approved: { label: 'Approvata', variant: 'default', icon: CheckCircle },
       archived: { label: 'Archiviata', variant: 'outline', icon: Archive }
     };
@@ -514,7 +514,7 @@ export default function PolicyEditor() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="draft">📝 Bozza</SelectItem>
-                    <SelectItem value="in_review">👁️ In Revisione</SelectItem>
+                    <SelectItem value="review">👁️ In Revisione</SelectItem>
                     <SelectItem value="approved">✅ Approvata</SelectItem>
                     <SelectItem value="archived">📦 Archiviata</SelectItem>
                   </SelectContent>
