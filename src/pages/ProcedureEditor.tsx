@@ -84,7 +84,7 @@ export default function ProcedureEditor() {
       const orgId = orgs.id;
       console.log('✅ Saving procedure with org_id:', orgId);
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('procedures')
         .update({
           title: procedure.title,
@@ -104,11 +104,22 @@ export default function ProcedureEditor() {
           updated_at: new Date().toISOString()
         })
         .eq('id', id)
-        .eq('organization_id', orgId);  // ← CRITICAL FIX
+        .eq('organization_id', orgId)
+        .select();  // ← Verify update worked
 
-      if (error) throw error;
+      console.log('📊 UPDATE result:', { data, error, affectedRows: data?.length });
 
-      console.log('✅ Procedure saved successfully');
+      if (error) {
+        console.error('❌ UPDATE ERROR:', error);
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        console.error('❌ UPDATE returned no data - RLS might be blocking');
+        throw new Error('Aggiornamento bloccato dalle policy di sicurezza');
+      }
+
+      console.log('✅ Procedure saved successfully', data[0]);
       toast.success('✅ Procedura salvata con successo!');
     } catch (error: any) {
       console.error('❌ Save error:', error);

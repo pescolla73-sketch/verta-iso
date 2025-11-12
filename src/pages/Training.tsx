@@ -126,14 +126,27 @@ export default function Training() {
       const orgId = orgs.id;
       console.log('✅ Saving training with org_id:', orgId);
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('training_records')
         .insert({ 
           ...formData,
           organization_id: orgId  // ← CRITICAL FIX
-        } as any);
+        } as any)
+        .select();  // ← Verify insert worked
 
-      if (error) throw error;
+      console.log('📊 INSERT result:', { data, error, affectedRows: data?.length });
+
+      if (error) {
+        console.error('❌ INSERT ERROR:', error);
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        console.error('❌ INSERT returned no data - RLS might be blocking');
+        throw new Error('Inserimento bloccato dalle policy di sicurezza');
+      }
+
+      console.log('✅ Training record created successfully', data[0]);
 
       toast.success('✅ Training registrato con successo!');
       setShowAddDialog(false);

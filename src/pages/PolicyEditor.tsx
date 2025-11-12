@@ -122,14 +122,26 @@ export default function PolicyEditor() {
         updated_at: new Date().toISOString()
       };
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('policies')
         .update(policyPayload)
         .eq('id', id)
-        .eq('organization_id', orgId);  // ← CRITICAL FIX
+        .eq('organization_id', orgId)
+        .select();  // ← Verify update worked
 
-      if (error) throw error;
-      console.log('✅ Policy updated successfully');
+      console.log('📊 UPDATE result:', { data, error, affectedRows: data?.length });
+
+      if (error) {
+        console.error('❌ UPDATE ERROR:', error);
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        console.error('❌ UPDATE returned no data - RLS might be blocking');
+        throw new Error('Aggiornamento bloccato dalle policy di sicurezza');
+      }
+
+      console.log('✅ Policy updated successfully', data[0]);
       toast.success('✅ Policy salvata con successo!');
     } catch (error: any) {
       console.error('❌ Save error:', error);
