@@ -101,26 +101,28 @@ export default function PolicyEditor() {
       console.log('✅ Saving policy with org_id:', orgId);
 
       const policyPayload = {
-        policy_name: policy.policy_name,
+        policy_name: policy.policy_name || 'Untitled Policy',
         policy_type: policy.policy_type || 'custom',
-        status: policy.status || 'draft', // ← Ensure valid default
-        version: policy.version,
-        category: policy.category,
-        iso_reference: policy.iso_reference,
-        nis2_reference: policy.nis2_reference,
-        purpose: policy.purpose,
-        scope: policy.scope,
-        policy_statement: policy.policy_statement,
-        roles_responsibilities: policy.roles_responsibilities,
-        procedures: policy.procedures,
-        compliance_requirements: policy.compliance_requirements,
-        review_requirements: policy.review_requirements,
-        prepared_by: policy.prepared_by,
-        approved_by: policy.approved_by,
-        approval_date: policy.approval_date,
-        next_review_date: policy.next_review_date,
+        status: policy.status || 'draft', // ← Safe default
+        version: policy.version || '1.0',
+        category: policy.category || 'custom',
+        iso_reference: policy.iso_reference || [],
+        nis2_reference: policy.nis2_reference || [],
+        purpose: policy.purpose || '',
+        scope: policy.scope || '',
+        policy_statement: policy.policy_statement || '',
+        roles_responsibilities: policy.roles_responsibilities || '',
+        procedures: policy.procedures || '',
+        compliance_requirements: policy.compliance_requirements || '',
+        review_requirements: policy.review_requirements || '',
+        prepared_by: policy.prepared_by || '',
+        approved_by: policy.approved_by || null,
+        approval_date: policy.approval_date || null,
+        next_review_date: policy.next_review_date || null,
         updated_at: new Date().toISOString()
       };
+
+      console.log('💾 Saving policy with data:', policyPayload);
 
       const { data, error } = await supabase
         .from('policies')
@@ -143,6 +145,11 @@ export default function PolicyEditor() {
 
       console.log('✅ Policy updated successfully', data[0]);
       toast.success('✅ Policy salvata con successo!');
+      
+      // Force page refresh to ensure data is current
+      setTimeout(() => {
+        window.location.href = '/policy-management';
+      }, 500);
     } catch (error: any) {
       console.error('❌ Save error:', error);
       toast.error('Errore: ' + (error.message || 'Errore nel salvataggio'));

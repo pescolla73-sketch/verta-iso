@@ -265,18 +265,34 @@ export default function AuditExecutionPage() {
     try {
       console.log('🔍 [Audit Complete] Starting...');
 
-      // Update audit status
-      const { error } = await supabase
-        .from('internal_audits')
-        .update({
-          status: 'completed',
-          conclusion,
-          overall_result: overallResult,
-          completed_date: new Date().toISOString().split('T')[0]
-        })
-        .eq('id', id);
+      // Prepare update data with safe defaults
+      const updateData = {
+        status: 'completed', // ← Valid status value
+        conclusion: conclusion || '',
+        overall_result: overallResult || 'conforming',
+        completed_date: new Date().toISOString().split('T')[0],
+        updated_at: new Date().toISOString()
+      };
 
-      if (error) throw error;
+      console.log('💾 Completing audit with data:', updateData);
+
+      // Update audit status
+      const { data, error } = await supabase
+        .from('internal_audits')
+        .update(updateData)
+        .eq('id', id)
+        .eq('organization_id', orgId)
+        .select();
+
+      if (error) {
+        console.error('❌ UPDATE ERROR:', error);
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        console.error('❌ UPDATE returned no data');
+        throw new Error('Aggiornamento bloccato');
+      }
 
       console.log('✅ [Audit] Status updated to completed');
 
@@ -317,7 +333,10 @@ export default function AuditExecutionPage() {
         console.log('ℹ️ [Complete] No automatic updates (disabled by user)');
       }
 
-      navigate('/audit-interni');
+      // Force page refresh to ensure data is current
+      setTimeout(() => {
+        window.location.href = '/audit-interni';
+      }, 1000);
     } catch (error: any) {
       console.error('❌ [Error] Completing audit:', error);
       toast({

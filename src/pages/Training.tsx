@@ -126,12 +126,26 @@ export default function Training() {
       const orgId = orgs.id;
       console.log('✅ Saving training with org_id:', orgId);
 
+      // Prepare data with safe defaults
+      const trainingData = {
+        employee_name: formData.employee_name || 'Unknown',
+        employee_email: formData.employee_email || null,
+        role: formData.role || null,
+        training_title: formData.training_title || 'Training',
+        training_type: formData.training_type || 'security_awareness',
+        training_date: formData.training_date || new Date().toISOString().split('T')[0],
+        training_duration_hours: formData.training_duration_hours ? parseFloat(formData.training_duration_hours) : null,
+        certificate_issued: formData.certificate_issued || false,
+        notes: formData.notes || null,
+        organization_id: orgId,
+        status: 'completed' // ← Safe default for training records
+      };
+
+      console.log('💾 Saving training with data:', trainingData);
+
       const { data, error } = await supabase
         .from('training_records')
-        .insert({ 
-          ...formData,
-          organization_id: orgId  // ← CRITICAL FIX
-        } as any)
+        .insert(trainingData)
         .select();  // ← Verify insert worked
 
       console.log('📊 INSERT result:', { data, error, affectedRows: data?.length });
@@ -161,7 +175,9 @@ export default function Training() {
         certificate_issued: false,
         notes: ''
       });
-      loadTrainings();
+      
+      // Force page refresh to ensure data is current
+      window.location.reload();
     } catch (error: any) {
       console.error('❌ Error adding training:', error);
       toast.error('Errore: ' + (error.message || 'Errore nel salvataggio'));

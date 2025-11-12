@@ -84,25 +84,29 @@ export default function ProcedureEditor() {
       const orgId = orgs.id;
       console.log('✅ Saving procedure with org_id:', orgId);
 
+      const updateData = {
+        title: procedure.title || 'Untitled Procedure',
+        category: procedure.category || 'custom',
+        iso_reference: procedure.iso_reference || [],
+        purpose: procedure.purpose || '',
+        scope: procedure.scope || '',
+        responsibilities: procedure.responsibilities || '',
+        procedure_steps: procedure.procedure_steps || '',
+        records: procedure.records || '',
+        status: procedure.status || 'draft', // ← Safe default
+        version: procedure.version || '1.0',
+        prepared_by: procedure.prepared_by || '',
+        approved_by: procedure.approved_by || null,
+        approval_date: procedure.approval_date || null,
+        next_review_date: procedure.next_review_date || null,
+        updated_at: new Date().toISOString()
+      };
+
+      console.log('💾 Saving procedure with data:', updateData);
+
       const { data, error } = await supabase
         .from('procedures')
-        .update({
-          title: procedure.title,
-          category: procedure.category,
-          iso_reference: procedure.iso_reference,
-          purpose: procedure.purpose,
-          scope: procedure.scope,
-          responsibilities: procedure.responsibilities,
-          procedure_steps: procedure.procedure_steps,
-          records: procedure.records,
-          status: procedure.status,
-          version: procedure.version,
-          prepared_by: procedure.prepared_by,
-          approved_by: procedure.approved_by,
-          approval_date: procedure.approval_date,
-          next_review_date: procedure.next_review_date,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', id)
         .eq('organization_id', orgId)
         .select();  // ← Verify update worked
@@ -121,6 +125,11 @@ export default function ProcedureEditor() {
 
       console.log('✅ Procedure saved successfully', data[0]);
       toast.success('✅ Procedura salvata con successo!');
+      
+      // Force page refresh to ensure data is current
+      setTimeout(() => {
+        window.location.href = '/procedures';
+      }, 500);
     } catch (error: any) {
       console.error('❌ Save error:', error);
       toast.error('Errore: ' + (error.message || 'Errore nel salvataggio'));
