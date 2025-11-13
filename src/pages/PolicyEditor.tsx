@@ -167,9 +167,11 @@ export default function PolicyEditor() {
       console.log('✅ Policy updated successfully', data[0]);
       toast.success('✅ Policy salvata con successo!');
       
-      // ONLY navigate after successful save
-      console.log('🔙 Navigating back to /policies after successful save');
-      navigate('/policies');
+      // Force hard reload to ensure fresh data
+      console.log('🔄 Forcing page reload to get fresh data');
+      setTimeout(() => {
+        window.location.href = '/policies';
+      }, 300);
       
     } catch (error: any) {
       console.error('❌ Unexpected save error:', error);
