@@ -148,7 +148,7 @@ export default function PolicyEditor() {
       
       // Force page refresh to ensure data is current
       setTimeout(() => {
-        window.location.href = '/policy-management';
+        window.location.href = '/policies';
       }, 500);
     } catch (error: any) {
       console.error('❌ Save error:', error);
