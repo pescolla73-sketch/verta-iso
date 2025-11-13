@@ -101,7 +101,7 @@ export default function PolicyEditor() {
       // DEMO mode: always get first organization
       console.log('📥 Getting organization for save...');
       const { data: orgs, error: orgError } = await supabase
-        .from('organization')
+        .from('organizations')
         .select('id')
         .limit(1)
         .maybeSingle();

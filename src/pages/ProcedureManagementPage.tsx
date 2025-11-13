@@ -27,7 +27,7 @@ export default function ProcedureManagementPage() {
       // DEMO mode: always get first organization
       console.log('📥 Loading organization...');
       const { data: orgs, error: orgError } = await supabase
-        .from('organization')
+        .from('organizations')
         .select('id, name')
         .limit(1)
         .maybeSingle();
@@ -94,7 +94,7 @@ export default function ProcedureManagementPage() {
 
       // Get organization name for template replacement
       const { data: org } = await supabase
-        .from('organization')
+        .from('organizations')
         .select('name')
         .eq('id', orgId)
         .single();
