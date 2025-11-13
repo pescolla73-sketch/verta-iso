@@ -32,7 +32,7 @@ export default function InternalAuditPage() {
       // DEMO mode: always get first organization
       console.log('📥 Loading organization...');
       const { data: orgs, error: orgError } = await supabase
-        .from('organizations')
+        .from('organization')
         .select('id')
         .limit(1)
         .maybeSingle();

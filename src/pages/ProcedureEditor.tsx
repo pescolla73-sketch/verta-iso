@@ -70,7 +70,7 @@ export default function ProcedureEditor() {
       // DEMO mode: always get first organization
       console.log('📥 Getting organization for save...');
       const { data: orgs, error: orgError } = await supabase
-        .from('organizations')
+        .from('organization')
         .select('id')
         .limit(1)
         .maybeSingle();
