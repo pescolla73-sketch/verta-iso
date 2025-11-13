@@ -79,7 +79,9 @@ export default function PolicyEditor() {
       return;
     }
 
+    console.log('🔵 handleSave called - starting save process');
     setIsSaving(true);
+    
     try {
       console.log('💾 Saving policy:', policy);
 
@@ -92,9 +94,9 @@ export default function PolicyEditor() {
         .maybeSingle();
       
       if (orgError || !orgs) {
+        console.error('❌ No organization found:', orgError);
         toast.error('Nessuna organizzazione trovata');
-        setIsSaving(false);
-        return;
+        return; // Don't navigate on error
       }
       
       const orgId = orgs.id;
@@ -103,7 +105,7 @@ export default function PolicyEditor() {
       const policyPayload = {
         policy_name: policy.policy_name || 'Untitled Policy',
         policy_type: policy.policy_type || 'custom',
-        status: policy.status || 'draft', // ← Safe default
+        status: policy.status || 'draft',
         version: policy.version || '1.0',
         category: policy.category || 'custom',
         iso_reference: policy.iso_reference || [],
@@ -122,37 +124,40 @@ export default function PolicyEditor() {
         updated_at: new Date().toISOString()
       };
 
-      console.log('💾 Saving policy with data:', policyPayload);
+      console.log('💾 Executing UPDATE with payload:', policyPayload);
 
       const { data, error } = await supabase
         .from('policies')
         .update(policyPayload)
         .eq('id', id)
         .eq('organization_id', orgId)
-        .select();  // ← Verify update worked
+        .select();
 
       console.log('📊 UPDATE result:', { data, error, affectedRows: data?.length });
 
       if (error) {
         console.error('❌ UPDATE ERROR:', error);
-        throw error;
+        toast.error('Errore: ' + error.message);
+        return; // Don't navigate on error
       }
 
       if (!data || data.length === 0) {
         console.error('❌ UPDATE returned no data - RLS might be blocking');
-        throw new Error('Aggiornamento bloccato dalle policy di sicurezza');
+        toast.error('Aggiornamento bloccato dalle policy di sicurezza');
+        return; // Don't navigate on error
       }
 
       console.log('✅ Policy updated successfully', data[0]);
       toast.success('✅ Policy salvata con successo!');
       
-      // Force page refresh to ensure data is current
-      setTimeout(() => {
-        window.location.href = '/policies';
-      }, 500);
+      // ONLY navigate after successful save
+      console.log('🔙 Navigating back to /policies after successful save');
+      navigate('/policies');
+      
     } catch (error: any) {
-      console.error('❌ Save error:', error);
+      console.error('❌ Unexpected save error:', error);
       toast.error('Errore: ' + (error.message || 'Errore nel salvataggio'));
+      // Don't navigate on error
     } finally {
       setIsSaving(false);
     }
