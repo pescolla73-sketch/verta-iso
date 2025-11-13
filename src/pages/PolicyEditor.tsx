@@ -46,6 +46,19 @@ export default function PolicyEditor() {
     }
   }, [id]);
 
+  // Debug: Track all policy state changes
+  useEffect(() => {
+    if (policy) {
+      console.log('🔄 Policy state changed:', {
+        policy_name: policy.policy_name,
+        purpose: policy.purpose?.substring(0, 50) + '...',
+        scope: policy.scope?.substring(0, 50) + '...',
+        policy_statement: policy.policy_statement?.substring(0, 50) + '...',
+        allFieldsCount: Object.keys(policy).length
+      });
+    }
+  }, [policy]);
+
   const loadPolicy = async () => {
     try {
       console.log('📥 Loading policy:', id);
@@ -169,9 +182,21 @@ export default function PolicyEditor() {
 
   const handleChange = (field: string, value: any) => {
     console.log('✏️ Updating field:', field, 'with value:', value);
+    console.log('📋 Current policy state BEFORE update:', {
+      policy_name: policy?.policy_name,
+      purpose: policy?.purpose?.substring(0, 30),
+      scope: policy?.scope?.substring(0, 30),
+      fieldCount: Object.keys(policy || {}).length
+    });
+    
     setPolicy((prev: any) => {
       const updated = { ...prev, [field]: value };
-      console.log('📝 Updated policy state:', updated);
+      console.log('📝 Updated policy state AFTER update:', {
+        policy_name: updated.policy_name,
+        purpose: updated.purpose?.substring(0, 30),
+        scope: updated.scope?.substring(0, 30),
+        fieldCount: Object.keys(updated).length
+      });
       return updated;
     });
   };
