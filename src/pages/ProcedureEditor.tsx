@@ -129,7 +129,7 @@ export default function ProcedureEditor() {
       // Force page refresh to ensure data is current
       setTimeout(() => {
         window.location.href = '/procedures';
-      }, 500);
+      }, 300);
     } catch (error: any) {
       console.error('❌ Save error:', error);
       toast.error('Errore: ' + (error.message || 'Errore nel salvataggio'));
