@@ -102,6 +102,9 @@ export default function PolicyEditor() {
       const orgId = orgs.id;
       console.log('✅ Saving policy with org_id:', orgId);
 
+      console.log('🔍 Current policy state before payload:', policy);
+      console.log('🔍 policy.policy_name value:', policy.policy_name);
+
       const policyPayload = {
         policy_name: policy.policy_name || 'Untitled Policy',
         policy_type: policy.policy_type || 'custom',
@@ -125,6 +128,7 @@ export default function PolicyEditor() {
       };
 
       console.log('💾 Executing UPDATE with payload:', policyPayload);
+      console.log('🎯 policy_name in payload:', policyPayload.policy_name);
 
       const { data, error } = await supabase
         .from('policies')
@@ -164,8 +168,12 @@ export default function PolicyEditor() {
   };
 
   const handleChange = (field: string, value: any) => {
-    console.log('✏️ Updating field:', field);
-    setPolicy((prev: any) => ({ ...prev, [field]: value }));
+    console.log('✏️ Updating field:', field, 'with value:', value);
+    setPolicy((prev: any) => {
+      const updated = { ...prev, [field]: value };
+      console.log('📝 Updated policy state:', updated);
+      return updated;
+    });
   };
 
   const exportPDF = async () => {
