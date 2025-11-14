@@ -67,9 +67,10 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
     }
   }, [policy]);
 
-  // ============ SAVE MUTATION ============
+  // ============ SAVE MUTATION (FIXED) ============
   const saveMutation = useMutation({
     mutationFn: async () => {
+      // Save to database
       const { error } = await supabase
         .from("policies")
         .update({
@@ -87,9 +88,34 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
         .eq("id", policyId);
       
       if (error) throw error;
+      
+      // Wait a bit for database to commit (prevents race condition)
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Return the updated data we just saved
+      return {
+        policy_name: policyName,
+        policy_type: policyType,
+        version: version,
+        status: status,
+        custom_purpose: customPurpose,
+        custom_policy_statement: customPolicyStatement,
+        custom_procedures: customProcedures,
+        custom_exceptions: customExceptions,
+        custom_notes: customNotes,
+      };
     },
-    onSuccess: () => {
+    onSuccess: (savedData) => {
       toast.success("Policy salvata con successo!");
+      
+      // Update cache with the data we just saved (prevents reset)
+      queryClient.setQueryData(["policy", policyId], (oldData: any) => ({
+        ...oldData,
+        ...savedData,
+        updated_at: new Date().toISOString(),
+      }));
+      
+      // Then invalidate to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ["policy", policyId] });
       queryClient.invalidateQueries({ queryKey: ["policies"] });
       onSaved?.();
