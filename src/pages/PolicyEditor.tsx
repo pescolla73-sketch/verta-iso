@@ -39,10 +39,8 @@ export default function PolicyEditor() {
         <PolicyEditorComponent 
           policyId={id}
           onSaved={() => {
-            // Force hard reload to ensure fresh data
-            setTimeout(() => {
-              window.location.href = '/policies';
-            }, 300);
+            // Removed automatic redirect - let user stay in editor
+            // They can manually click "Torna alle Policy" if needed
           }}
         />
       </div>
