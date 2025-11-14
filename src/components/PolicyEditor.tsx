@@ -71,33 +71,11 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
     }
   }, [policy, hasUnsavedChanges]);
 
-  // ============ SAVE MUTATION (FIXED CACHE UPDATE) ============
+  // ============ SAVE MUTATION (WITH LEGACY MIGRATION) ============
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
-        .from("policies")
-        .update({
-          policy_name: policyName,
-          policy_type: policyType,
-          version: version,
-          status: status,
-          custom_purpose: customPurpose,
-          custom_policy_statement: customPolicyStatement,
-          custom_procedures: customProcedures,
-          custom_exceptions: customExceptions,
-          custom_notes: customNotes,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", policyId);
-      
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Policy salvata con successo!");
-      
-      // CRITICAL: Update query cache FIRST with new data
-      queryClient.setQueryData(["policy", policyId], (old: any) => ({
-        ...old,
+      // Prepare update object
+      const updateData: any = {
         policy_name: policyName,
         policy_type: policyType,
         version: version,
@@ -108,12 +86,45 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
         custom_exceptions: customExceptions,
         custom_notes: customNotes,
         updated_at: new Date().toISOString(),
-      }));
+      };
+
+      // CRITICO: Se stiamo migrando da legacy, marca come migrato
+      if (policy?.is_legacy) {
+        updateData.is_legacy = false;
+      }
+
+      const { error } = await supabase
+        .from("policies")
+        .update(updateData)
+        .eq("id", policyId);
       
-      // THEN mark as saved (triggers useEffect with updated cache)
+      if (error) throw error;
+      
+      // Return the data we just saved
+      return updateData;
+    },
+    onSuccess: (savedData) => {
+      toast.success("Policy salvata con successo!");
+      
+      // CRITICO: Aggiorna la cache con i dati appena salvati PRIMA
+      queryClient.setQueryData(["policy", policyId], (oldData: any) => {
+        if (!oldData) return oldData;
+        
+        return {
+          ...oldData,
+          ...savedData,
+          // Mantieni i campi che non abbiamo modificato
+          generated_scope: oldData.generated_scope,
+          generated_controls: oldData.generated_controls,
+          generated_roles: oldData.generated_roles,
+          generated_compliance: oldData.generated_compliance,
+        };
+      });
+      
+      // Reset unsaved changes flag (useEffect avrà già i dati corretti in cache)
       setHasUnsavedChanges(false);
       
-      // Invalidate list only
+      // Invalida solo la lista
       queryClient.invalidateQueries({ 
         queryKey: ["policies"],
         exact: false 
