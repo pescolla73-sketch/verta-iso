@@ -53,8 +53,10 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
   });
 
   // ============ POPULATE STATE WHEN POLICY LOADS ============
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
   useEffect(() => {
-    if (policy) {
+    if (policy && !hasUnsavedChanges) {
       setPolicyName(policy.policy_name || "");
       setPolicyType(policy.policy_type || "custom");
       setVersion(policy.version || "1.0");
@@ -65,12 +67,11 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
       setCustomExceptions(policy.custom_exceptions || "");
       setCustomNotes(policy.custom_notes || "");
     }
-  }, [policy]);
+  }, [policy, hasUnsavedChanges]);
 
-  // ============ SAVE MUTATION (FIXED) ============
+  // ============ SAVE MUTATION (NO RE-FETCH) ============
   const saveMutation = useMutation({
     mutationFn: async () => {
-      // Save to database
       const { error } = await supabase
         .from("policies")
         .update({
@@ -88,36 +89,20 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
         .eq("id", policyId);
       
       if (error) throw error;
-      
-      // Wait a bit for database to commit (prevents race condition)
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      // Return the updated data we just saved
-      return {
-        policy_name: policyName,
-        policy_type: policyType,
-        version: version,
-        status: status,
-        custom_purpose: customPurpose,
-        custom_policy_statement: customPolicyStatement,
-        custom_procedures: customProcedures,
-        custom_exceptions: customExceptions,
-        custom_notes: customNotes,
-      };
     },
-    onSuccess: (savedData) => {
+    onSuccess: () => {
       toast.success("Policy salvata con successo!");
       
-      // Update cache with the data we just saved (prevents reset)
-      queryClient.setQueryData(["policy", policyId], (oldData: any) => ({
-        ...oldData,
-        ...savedData,
-        updated_at: new Date().toISOString(),
-      }));
+      // CRITICO: Marca come salvato PRIMA di qualsiasi altra azione
+      setHasUnsavedChanges(false);
       
-      // Then invalidate to ensure fresh data
-      queryClient.invalidateQueries({ queryKey: ["policy", policyId] });
-      queryClient.invalidateQueries({ queryKey: ["policies"] });
+      // NON invalidare la query della policy corrente
+      // Invalida SOLO la lista
+      queryClient.invalidateQueries({ 
+        queryKey: ["policies"],
+        exact: false 
+      });
+      
       onSaved?.();
     },
     onError: (error: any) => {
@@ -214,6 +199,15 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
 
   return (
     <div className="space-y-6">
+      {/* Unsaved Changes Warning */}
+      {hasUnsavedChanges && (
+        <Alert variant="default" className="border-orange-500 bg-orange-50">
+          <AlertDescription className="text-orange-800">
+            Hai modifiche non salvate. Clicca "Salva Policy" per salvare le modifiche.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Legacy Warning */}
       {policy?.is_legacy && (
         <Alert variant="default" className="border-yellow-500 bg-yellow-50">
@@ -248,7 +242,10 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
                   <Input
                     id="policy_name"
                     value={policyName}
-                    onChange={(e) => setPolicyName(e.target.value)}
+                    onChange={(e) => {
+                      setPolicyName(e.target.value);
+                      setHasUnsavedChanges(true);
+                    }}
                     placeholder="es. Information Security Policy"
                   />
                 </div>
@@ -256,7 +253,10 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="policy_type">Tipo</Label>
-                    <Select value={policyType} onValueChange={setPolicyType}>
+                    <Select value={policyType} onValueChange={(value) => {
+                      setPolicyType(value);
+                      setHasUnsavedChanges(true);
+                    }}>
                       <SelectTrigger id="policy_type">
                         <SelectValue />
                       </SelectTrigger>
@@ -274,7 +274,10 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
                     <Input
                       id="version"
                       value={version}
-                      onChange={(e) => setVersion(e.target.value)}
+                      onChange={(e) => {
+                        setVersion(e.target.value);
+                        setHasUnsavedChanges(true);
+                      }}
                       placeholder="1.0"
                     />
                   </div>
@@ -282,7 +285,10 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
 
                 <div className="space-y-2">
                   <Label htmlFor="status">Stato</Label>
-                  <Select value={status} onValueChange={setStatus}>
+                  <Select value={status} onValueChange={(value) => {
+                    setStatus(value);
+                    setHasUnsavedChanges(true);
+                  }}>
                     <SelectTrigger id="status">
                       <SelectValue />
                     </SelectTrigger>
@@ -426,7 +432,10 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
                 <Textarea
                   id="custom_purpose"
                   value={customPurpose}
-                  onChange={(e) => setCustomPurpose(e.target.value)}
+                  onChange={(e) => {
+                    setCustomPurpose(e.target.value);
+                    setHasUnsavedChanges(true);
+                  }}
                   placeholder="Descrivi lo scopo e gli obiettivi di questa policy..."
                   className="min-h-[120px]"
                 />
@@ -440,7 +449,10 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
                 <Textarea
                   id="custom_policy_statement"
                   value={customPolicyStatement}
-                  onChange={(e) => setCustomPolicyStatement(e.target.value)}
+                  onChange={(e) => {
+                    setCustomPolicyStatement(e.target.value);
+                    setHasUnsavedChanges(true);
+                  }}
                   placeholder="Inserisci la dichiarazione della policy..."
                   className="min-h-[120px]"
                 />
@@ -454,7 +466,10 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
                 <Textarea
                   id="custom_procedures"
                   value={customProcedures}
-                  onChange={(e) => setCustomProcedures(e.target.value)}
+                  onChange={(e) => {
+                    setCustomProcedures(e.target.value);
+                    setHasUnsavedChanges(true);
+                  }}
                   placeholder="Descrivi le procedure specifiche per implementare questa policy..."
                   className="min-h-[150px]"
                 />
@@ -468,7 +483,10 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
                 <Textarea
                   id="custom_exceptions"
                   value={customExceptions}
-                  onChange={(e) => setCustomExceptions(e.target.value)}
+                  onChange={(e) => {
+                    setCustomExceptions(e.target.value);
+                    setHasUnsavedChanges(true);
+                  }}
                   placeholder="Documenta eventuali eccezioni o casi particolari..."
                   className="min-h-[100px]"
                 />
@@ -482,7 +500,10 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
                 <Textarea
                   id="custom_notes"
                   value={customNotes}
-                  onChange={(e) => setCustomNotes(e.target.value)}
+                  onChange={(e) => {
+                    setCustomNotes(e.target.value);
+                    setHasUnsavedChanges(true);
+                  }}
                   placeholder="Aggiungi note o informazioni aggiuntive..."
                   className="min-h-[100px]"
                 />
