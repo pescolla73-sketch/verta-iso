@@ -61,9 +61,11 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
       setPolicyType(policy.policy_type || "custom");
       setVersion(policy.version || "1.0");
       setStatus(policy.status || "draft");
-      setCustomPurpose(policy.custom_purpose || "");
-      setCustomPolicyStatement(policy.custom_policy_statement || "");
-      setCustomProcedures(policy.custom_procedures || "");
+      
+      // AUTO-MIGRATE: Se i campi custom sono vuoti ma i campi legacy hanno dati, usa i legacy
+      setCustomPurpose(policy.custom_purpose || policy.purpose || "");
+      setCustomPolicyStatement(policy.custom_policy_statement || policy.policy_statement || "");
+      setCustomProcedures(policy.custom_procedures || policy.procedures || "");
       setCustomExceptions(policy.custom_exceptions || "");
       setCustomNotes(policy.custom_notes || "");
     }
