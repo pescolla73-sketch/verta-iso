@@ -917,8 +917,20 @@ export type Database = {
           compliance_requirements: string | null
           content: string | null
           created_at: string | null
+          custom_exceptions: string | null
+          custom_notes: string | null
+          custom_policy_statement: string | null
+          custom_procedures: string | null
+          custom_purpose: string | null
+          generated_compliance: string | null
+          generated_controls: Json | null
+          generated_references: string | null
+          generated_roles: Json | null
+          generated_scope: string | null
           id: string
+          is_legacy: boolean | null
           iso_reference: string[] | null
+          last_auto_update: string | null
           next_review_date: string | null
           nis2_reference: string[] | null
           organization_id: string | null
@@ -946,8 +958,20 @@ export type Database = {
           compliance_requirements?: string | null
           content?: string | null
           created_at?: string | null
+          custom_exceptions?: string | null
+          custom_notes?: string | null
+          custom_policy_statement?: string | null
+          custom_procedures?: string | null
+          custom_purpose?: string | null
+          generated_compliance?: string | null
+          generated_controls?: Json | null
+          generated_references?: string | null
+          generated_roles?: Json | null
+          generated_scope?: string | null
           id?: string
+          is_legacy?: boolean | null
           iso_reference?: string[] | null
+          last_auto_update?: string | null
           next_review_date?: string | null
           nis2_reference?: string[] | null
           organization_id?: string | null
@@ -975,8 +999,20 @@ export type Database = {
           compliance_requirements?: string | null
           content?: string | null
           created_at?: string | null
+          custom_exceptions?: string | null
+          custom_notes?: string | null
+          custom_policy_statement?: string | null
+          custom_procedures?: string | null
+          custom_purpose?: string | null
+          generated_compliance?: string | null
+          generated_controls?: Json | null
+          generated_references?: string | null
+          generated_roles?: Json | null
+          generated_scope?: string | null
           id?: string
+          is_legacy?: boolean | null
           iso_reference?: string[] | null
+          last_auto_update?: string | null
           next_review_date?: string | null
           nis2_reference?: string[] | null
           organization_id?: string | null
