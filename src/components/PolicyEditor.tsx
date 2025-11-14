@@ -71,7 +71,7 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
     }
   }, [policy, hasUnsavedChanges]);
 
-  // ============ SAVE MUTATION (NO RE-FETCH) ============
+  // ============ SAVE MUTATION (FIXED CACHE UPDATE) ============
   const saveMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase
@@ -95,11 +95,25 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
     onSuccess: () => {
       toast.success("Policy salvata con successo!");
       
-      // CRITICO: Marca come salvato PRIMA di qualsiasi altra azione
+      // CRITICAL: Update query cache FIRST with new data
+      queryClient.setQueryData(["policy", policyId], (old: any) => ({
+        ...old,
+        policy_name: policyName,
+        policy_type: policyType,
+        version: version,
+        status: status,
+        custom_purpose: customPurpose,
+        custom_policy_statement: customPolicyStatement,
+        custom_procedures: customProcedures,
+        custom_exceptions: customExceptions,
+        custom_notes: customNotes,
+        updated_at: new Date().toISOString(),
+      }));
+      
+      // THEN mark as saved (triggers useEffect with updated cache)
       setHasUnsavedChanges(false);
       
-      // NON invalidare la query della policy corrente
-      // Invalida SOLO la lista
+      // Invalidate list only
       queryClient.invalidateQueries({ 
         queryKey: ["policies"],
         exact: false 
