@@ -50,34 +50,71 @@ export function AppSidebar() {
 
   const hasWizardProgress = wizardProgress > 0 && wizardProgress < 100;
 
-  const menuItems = [
-    { title: "Dashboard", url: "/", icon: LayoutDashboard },
-    { title: "🎯 Percorso ISO 27001", url: "/progress", icon: TrendingUp },
-    { 
-      title: "Controlli", 
-      url: "/controls", 
-      icon: Shield, 
-      badge: hasWizardProgress ? `${wizardProgress}%` : undefined,
-      subItems: [
-        { title: "🧙 Wizard Guidato", url: "/controls/wizard" },
-        { title: "📊 Vista Tabella", url: "/controls/table" }
+  // Menu sections following ISO 27001 implementation order
+  const menuSections = [
+    {
+      label: "Panoramica",
+      items: [
+        { title: "Dashboard", url: "/", icon: LayoutDashboard },
+        { title: "🎯 Percorso ISO 27001", url: "/progress", icon: TrendingUp },
       ]
     },
-    { title: "Asset", url: "/assets", icon: Box },
-    { title: "Risk Assessment", url: "/risk-assessment", icon: AlertTriangle },
-    { title: "SoA", url: "/soa", icon: FileText },
-    { title: "Registro Eventi", url: "/audit", icon: ScrollText },
-    { title: "Politiche", url: "/policies", icon: FileText },
-    { title: "Procedure", url: "/procedures", icon: ClipboardList },
-    { title: "Training", url: "/training", icon: GraduationCap },
-    { title: "Incidenti", url: "/incidents", icon: ShieldAlert },
-    { title: "Audit Interni", url: "/audit-interni", icon: ClipboardCheck },
-    { title: "Audit Certificazione", url: "/audit-certificazione", icon: Award },
-    { title: "Management Review", url: "/management-review", icon: TrendingUp },
-    { title: "Ruoli", url: "/roles", icon: Users },
-    { title: "Setup Azienda", url: "/setup-azienda", icon: Building2 },
-    { title: "Impostazioni", url: "/settings", icon: Settings },
-    { title: "Audit Trail", url: "/audit-trail", icon: History },
+    {
+      label: "Setup (Clausole 4-5)",
+      items: [
+        { title: "Setup Azienda", url: "/setup-azienda", icon: Building2 },
+        { title: "Ruoli", url: "/roles", icon: Users },
+      ]
+    },
+    {
+      label: "Pianificazione (Clausola 6)",
+      items: [
+        { title: "Risk Assessment", url: "/risk-assessment", icon: AlertTriangle },
+        { title: "Asset", url: "/assets", icon: Box },
+        { 
+          title: "Controlli", 
+          url: "/controls", 
+          icon: Shield, 
+          badge: hasWizardProgress ? `${wizardProgress}%` : undefined
+        },
+        { title: "SoA", url: "/soa", icon: FileText },
+      ]
+    },
+    {
+      label: "Supporto (Clausola 7)",
+      items: [
+        { title: "Politiche", url: "/policies", icon: FileText },
+        { title: "Procedure", url: "/procedures", icon: ClipboardList },
+        { title: "Training", url: "/training", icon: GraduationCap },
+      ]
+    },
+    {
+      label: "Operatività (Clausola 8)",
+      items: [
+        { title: "Registro Eventi", url: "/audit", icon: ScrollText },
+        { title: "Incidenti", url: "/incidents", icon: ShieldAlert },
+      ]
+    },
+    {
+      label: "Valutazione (Clausola 9)",
+      items: [
+        { title: "Audit Interni", url: "/audit-interni", icon: ClipboardCheck },
+        { title: "Management Review", url: "/management-review", icon: TrendingUp },
+      ]
+    },
+    {
+      label: "Certificazione",
+      items: [
+        { title: "Audit Certificazione", url: "/audit-certificazione", icon: Award },
+      ]
+    },
+    {
+      label: "Amministrazione",
+      items: [
+        { title: "Impostazioni", url: "/settings", icon: Settings },
+        { title: "Audit Trail", url: "/audit-trail", icon: History },
+      ]
+    }
   ];
 
   const isActive = (path: string) => currentPath === path;
@@ -100,43 +137,32 @@ export function AppSidebar() {
           )}
         </div>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Menu Principale</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink to={item.url} end className={getNavCls}>
-                      <item.icon className="h-4 w-4" />
-                      {!isCollapsed && (
-                        <div className="flex items-center justify-between flex-1">
-                          <span>{item.title}</span>
-                          {item.badge && (
-                            <Badge variant="destructive" className="ml-2 text-xs">
-                              {item.badge}
-                            </Badge>
-                          )}
-                        </div>
-                      )}
-                    </NavLink>
-                  </SidebarMenuButton>
-                  {!isCollapsed && item.subItems && (
-                    <div className="ml-6 mt-1 space-y-1">
-                      {item.subItems.map((subItem) => (
-                        <SidebarMenuButton key={subItem.url} asChild size="sm">
-                          <NavLink to={subItem.url} className={getNavCls}>
-                            <span className="text-sm">{subItem.title}</span>
-                          </NavLink>
-                        </SidebarMenuButton>
-                      ))}
-                    </div>
-                  )}
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {menuSections.map((section) => (
+          <SidebarGroup key={section.label}>
+            <SidebarGroupLabel>{section.label}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {section.items.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink to={item.url} end className={getNavCls}>
+                        <item.icon className="h-4 w-4" />
+                        {!isCollapsed && (
+                          <span className="flex-1">{item.title}</span>
+                        )}
+                        {!isCollapsed && item.badge && (
+                          <Badge variant="secondary" className="ml-auto">
+                            {item.badge}
+                          </Badge>
+                        )}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
     </Sidebar>
   );
