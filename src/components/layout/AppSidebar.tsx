@@ -63,7 +63,6 @@ export function AppSidebar() {
       label: "Setup (Clausole 4-5)",
       items: [
         { title: "Setup Azienda", url: "/setup-azienda", icon: Building2 },
-        { title: "Ruoli", url: "/roles", icon: Users },
       ]
     },
     {
@@ -111,6 +110,7 @@ export function AppSidebar() {
     {
       label: "Amministrazione",
       items: [
+        { title: "Utenti", url: "/roles", icon: Users },
         { title: "Impostazioni", url: "/settings", icon: Settings },
         { title: "Audit Trail", url: "/audit-trail", icon: History },
       ]

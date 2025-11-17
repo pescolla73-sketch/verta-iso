@@ -33,7 +33,15 @@ export default function SetupAzienda() {
     contact_email: "",
     contact_phone: "",
     contact_pec: "",
+    ciso: "",
+    dpo: "",
+    ceo: "",
+    cto: "",
+    hr_manager: "",
+    quality_manager: "",
   });
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Fetch first organization or create one
   const { data: organization, isLoading } = useQuery({
@@ -88,6 +96,12 @@ export default function SetupAzienda() {
         contact_email: organization.contact_email || "",
         contact_phone: organization.contact_phone || "",
         contact_pec: organization.contact_pec || "",
+        ciso: organization.ciso || "",
+        dpo: organization.dpo || "",
+        ceo: organization.ceo || "",
+        cto: organization.cto || "",
+        hr_manager: organization.hr_manager || "",
+        quality_manager: organization.quality_manager || "",
       });
       setLogoPreview(organization.logo_url || null);
       setOperationalAddressDifferent(
@@ -96,9 +110,31 @@ export default function SetupAzienda() {
     }
   }, [organization]);
 
+  // Validation function
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    
+    if (!orgData.name?.trim()) newErrors.name = "Nome organizzazione è obbligatorio";
+    if (!orgData.isms_scope?.trim()) newErrors.isms_scope = "Ambito ISMS è obbligatorio";
+    if (!orgData.isms_boundaries?.trim()) newErrors.isms_boundaries = "Confini ISMS è obbligatorio";
+    if (!orgData.ciso?.trim()) newErrors.ciso = "CISO (Responsabile ISMS) è obbligatorio";
+    if (!orgData.contact_email?.trim()) newErrors.contact_email = "Email è obbligatoria";
+    if (!orgData.contact_phone?.trim()) newErrors.contact_phone = "Telefono è obbligatorio";
+    
+    return newErrors;
+  };
+
   // Save organization mutation
   const saveMutation = useMutation({
     mutationFn: async () => {
+      // Validate form before saving
+      const validationErrors = validateForm();
+      if (Object.keys(validationErrors).length > 0) {
+        setErrors(validationErrors);
+        throw new Error("Compila tutti i campi obbligatori");
+      }
+      
+      setErrors({});
       console.log("[SetupAzienda] Starting save mutation...");
       console.log("[SetupAzienda] Organization ID:", organization?.id);
       console.log("[SetupAzienda] Organization data to save:", orgData);
@@ -167,6 +203,7 @@ export default function SetupAzienda() {
       console.log("[SetupAzienda] Save mutation success, data:", data);
       queryClient.invalidateQueries({ queryKey: ["setup-organization"] });
       setLogoFile(null);
+      setErrors({});
       toast({ 
         title: "Dati salvati con successo",
         description: "Le informazioni dell'organizzazione sono state aggiornate"
@@ -183,7 +220,9 @@ export default function SetupAzienda() {
       
       let errorMessage = "Si è verificato un errore durante il salvataggio dei dati";
       
-      if (error?.message) {
+      if (error?.message === "Compila tutti i campi obbligatori") {
+        errorMessage = "Compila tutti i campi obbligatori contrassegnati con *";
+      } else if (error?.message) {
         errorMessage = error.message;
       }
       
@@ -217,8 +256,21 @@ export default function SetupAzienda() {
       <div>
         <h1 className="text-3xl font-bold text-foreground">Setup Azienda</h1>
         <p className="text-muted-foreground mt-2">
-          Configura le informazioni della tua organizzazione
+          Configura le informazioni base dell'organizzazione
         </p>
+      </div>
+
+      <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+        <div className="flex gap-2">
+          <span className="text-blue-600 dark:text-blue-400 font-semibold">ℹ️</span>
+          <div>
+            <h3 className="font-semibold text-blue-900 dark:text-blue-100">Campi Obbligatori</h3>
+            <p className="text-sm text-blue-800 dark:text-blue-200 mt-1">
+              I campi contrassegnati con <span className="text-destructive font-semibold">*</span> sono 
+              obbligatori per garantire la conformità ISO 27001 e la corretta generazione di documenti.
+            </p>
+          </div>
+        </div>
       </div>
 
       <OrganizationForm
@@ -233,6 +285,7 @@ export default function SetupAzienda() {
         fileInputRef={fileInputRef}
         onSave={() => saveMutation.mutate()}
         isSaving={saveMutation.isPending}
+        errors={errors}
       />
     </div>
   );

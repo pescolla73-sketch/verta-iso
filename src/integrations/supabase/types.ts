@@ -820,6 +820,7 @@ export type Database = {
           operational_address_street: string | null
           operational_address_zip: string | null
           piva: string | null
+          quality_manager: string | null
           responsabile_paghe: string | null
           scope: string | null
           sector: string | null
@@ -860,6 +861,7 @@ export type Database = {
           operational_address_street?: string | null
           operational_address_zip?: string | null
           piva?: string | null
+          quality_manager?: string | null
           responsabile_paghe?: string | null
           scope?: string | null
           sector?: string | null
@@ -900,6 +902,7 @@ export type Database = {
           operational_address_street?: string | null
           operational_address_zip?: string | null
           piva?: string | null
+          quality_manager?: string | null
           responsabile_paghe?: string | null
           scope?: string | null
           sector?: string | null
