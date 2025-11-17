@@ -17,6 +17,7 @@ interface OrganizationFormProps {
   fileInputRef: React.RefObject<HTMLInputElement>;
   onSave: () => void;
   isSaving: boolean;
+  errors?: Record<string, string>;
 }
 
 export default function OrganizationForm({
@@ -31,6 +32,7 @@ export default function OrganizationForm({
   fileInputRef,
   onSave,
   isSaving,
+  errors = {},
 }: OrganizationFormProps) {
   return (
     <div className="space-y-4">
@@ -41,12 +43,20 @@ export default function OrganizationForm({
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="name">Nome Organizzazione</Label>
+              <Label htmlFor="name" className="flex items-center gap-2">
+                Nome Organizzazione
+                <span className="text-destructive">*</span>
+              </Label>
               <Input
                 id="name"
                 value={orgData.name}
                 onChange={(e) => setOrgData({ ...orgData, name: e.target.value })}
+                required
+                className={errors.name ? 'border-destructive' : ''}
               />
+              {errors.name && (
+                <p className="text-xs text-destructive">{errors.name}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="sector">Settore/Industry</Label>
@@ -253,23 +263,123 @@ export default function OrganizationForm({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="isms_scope">Ambito ISMS</Label>
+            <Label htmlFor="isms_scope" className="flex items-center gap-2">
+              Ambito ISMS
+              <span className="text-destructive">*</span>
+            </Label>
             <Textarea
               id="isms_scope"
               value={orgData.isms_scope}
               onChange={(e) => setOrgData({ ...orgData, isms_scope: e.target.value })}
               rows={4}
               placeholder="Descrivere l'ambito del Sistema di Gestione della Sicurezza delle Informazioni"
+              required
+              className={errors.isms_scope ? 'border-destructive' : ''}
             />
+            {errors.isms_scope && (
+              <p className="text-xs text-destructive">{errors.isms_scope}</p>
+            )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="isms_boundaries">Confini ISMS</Label>
+            <Label htmlFor="isms_boundaries" className="flex items-center gap-2">
+              Confini ISMS
+              <span className="text-destructive">*</span>
+            </Label>
             <Textarea
               id="isms_boundaries"
               value={orgData.isms_boundaries}
               onChange={(e) => setOrgData({ ...orgData, isms_boundaries: e.target.value })}
               rows={4}
               placeholder="Definire i confini del sistema ISMS (es. processi, sedi, sistemi inclusi/esclusi)"
+              required
+              className={errors.isms_boundaries ? 'border-destructive' : ''}
+            />
+            {errors.isms_boundaries && (
+              <p className="text-xs text-destructive">{errors.isms_boundaries}</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Ruoli ISMS</CardTitle>
+          <p className="text-sm text-muted-foreground mt-2">
+            Definisci i responsabili del Sistema di Gestione della Sicurezza delle Informazioni
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="ciso" className="flex items-center gap-2">
+              CISO (Responsabile ISMS)
+              <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="ciso"
+              value={orgData.ciso}
+              onChange={(e) => setOrgData({ ...orgData, ciso: e.target.value })}
+              placeholder="Nome e Cognome del Responsabile ISMS"
+              required
+              className={errors.ciso ? 'border-destructive' : ''}
+            />
+            <p className="text-xs text-muted-foreground">
+              Responsabile del Sistema di Gestione della Sicurezza delle Informazioni (obbligatorio per ISO 27001)
+            </p>
+            {errors.ciso && (
+              <p className="text-xs text-destructive">{errors.ciso}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="dpo">DPO (Responsabile Protezione Dati)</Label>
+            <Input
+              id="dpo"
+              value={orgData.dpo}
+              onChange={(e) => setOrgData({ ...orgData, dpo: e.target.value })}
+              placeholder="Nome e Cognome del DPO"
+            />
+            <p className="text-xs text-muted-foreground">
+              Obbligatorio solo per enti pubblici e organizzazioni che trattano dati sensibili su larga scala (GDPR Art. 37)
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="ceo">CEO / Amministratore Delegato</Label>
+            <Input
+              id="ceo"
+              value={orgData.ceo}
+              onChange={(e) => setOrgData({ ...orgData, ceo: e.target.value })}
+              placeholder="Nome e Cognome del CEO"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="cto">CTO / Responsabile IT</Label>
+            <Input
+              id="cto"
+              value={orgData.cto}
+              onChange={(e) => setOrgData({ ...orgData, cto: e.target.value })}
+              placeholder="Nome e Cognome del CTO"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="hr_manager">Responsabile Risorse Umane</Label>
+            <Input
+              id="hr_manager"
+              value={orgData.hr_manager}
+              onChange={(e) => setOrgData({ ...orgData, hr_manager: e.target.value })}
+              placeholder="Nome e Cognome del Responsabile HR"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="quality_manager">Responsabile Qualità</Label>
+            <Input
+              id="quality_manager"
+              value={orgData.quality_manager}
+              onChange={(e) => setOrgData({ ...orgData, quality_manager: e.target.value })}
+              placeholder="Nome e Cognome del Responsabile Qualità"
             />
           </div>
         </CardContent>
@@ -282,24 +392,40 @@ export default function OrganizationForm({
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="contact_email">Email</Label>
+              <Label htmlFor="contact_email" className="flex items-center gap-2">
+                Email
+                <span className="text-destructive">*</span>
+              </Label>
               <Input
                 id="contact_email"
                 type="email"
                 placeholder="info@esempio.it"
                 value={orgData.contact_email}
                 onChange={(e) => setOrgData({ ...orgData, contact_email: e.target.value })}
+                required
+                className={errors.contact_email ? 'border-destructive' : ''}
               />
+              {errors.contact_email && (
+                <p className="text-xs text-destructive">{errors.contact_email}</p>
+              )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="contact_phone">Telefono</Label>
+              <Label htmlFor="contact_phone" className="flex items-center gap-2">
+                Telefono
+                <span className="text-destructive">*</span>
+              </Label>
               <Input
                 id="contact_phone"
                 type="tel"
                 placeholder="+39 02 1234567"
                 value={orgData.contact_phone}
                 onChange={(e) => setOrgData({ ...orgData, contact_phone: e.target.value })}
+                required
+                className={errors.contact_phone ? 'border-destructive' : ''}
               />
+              {errors.contact_phone && (
+                <p className="text-xs text-destructive">{errors.contact_phone}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="contact_pec">PEC (opzionale)</Label>
