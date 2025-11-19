@@ -36,6 +36,7 @@ import AuditPlanPage from "./pages/AuditPlanPage";
 import AuditExecutionPage from "./pages/AuditExecutionPage";
 import CertificationAuditPage from "./pages/CertificationAuditPage";
 import AuditTrailPage from "./pages/AuditTrailPage";
+import NonConformityPage from "./pages/NonConformityPage";
 
 const queryClient = new QueryClient();
 
@@ -291,6 +292,30 @@ const App = () => (
             element={
               <AppLayout>
                 <AuditTrailPage />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/non-conformity"
+            element={
+              <AppLayout>
+                <NonConformityPage />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/non-conformity/new"
+            element={
+              <AppLayout>
+                <NonConformityPage />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/non-conformity/:id"
+            element={
+              <AppLayout>
+                <NonConformityPage />
               </AppLayout>
             }
           />
