@@ -112,10 +112,10 @@ export default function ProcedureView() {
       pdf.addPage();
       let yPos = pdf.getContentStartY();
 
-      // 1. PURPOSE
+      // 1. SCOPO
       pdf.setFontSize(14);
       pdf.setFont('helvetica', 'bold');
-      pdf.addText('1. PURPOSE', yPos);
+      pdf.addText('1. SCOPO', yPos);
       yPos += 10;
       
       pdf.setFontSize(11);
@@ -124,11 +124,11 @@ export default function ProcedureView() {
       pdf.addText(purposeLines, yPos);
       yPos += purposeLines.length * 6 + 10;
 
-      // 2. SCOPE
+      // 2. AMBITO
       if (yPos > 250) { pdf.addPage(); yPos = pdf.getContentStartY(); }
       pdf.setFontSize(14);
       pdf.setFont('helvetica', 'bold');
-      pdf.addText('2. SCOPE', yPos);
+      pdf.addText('2. AMBITO', yPos);
       yPos += 10;
       
       pdf.setFontSize(11);
@@ -137,12 +137,12 @@ export default function ProcedureView() {
       pdf.addText(scopeLines, yPos);
       yPos += scopeLines.length * 6 + 10;
 
-      // 3. RESPONSIBILITIES
+      // 3. RESPONSABILITÀ
       if (procedure.responsibilities) {
         if (yPos > 250) { pdf.addPage(); yPos = pdf.getContentStartY(); }
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
-        pdf.addText('3. RESPONSIBILITIES', yPos);
+        pdf.addText('3. RESPONSABILITÀ', yPos);
         yPos += 10;
         
         pdf.setFontSize(11);
@@ -152,12 +152,12 @@ export default function ProcedureView() {
         yPos += respLines.length * 6 + 10;
       }
 
-      // 4. PROCEDURE STEPS
+      // 4. PASSI DELLA PROCEDURA
       if (yPos > 250) { pdf.addPage(); yPos = pdf.getContentStartY(); }
       pdf.setFontSize(14);
       pdf.setFont('helvetica', 'bold');
       const stepsNum = procedure.responsibilities ? '4' : '3';
-      pdf.addText(`${stepsNum}. PROCEDURE STEPS`, yPos);
+      pdf.addText(`${stepsNum}. PASSI DELLA PROCEDURA`, yPos);
       yPos += 10;
       
       pdf.setFontSize(11);
@@ -179,13 +179,13 @@ export default function ProcedureView() {
         yPos += 10;
       }
 
-      // 5. RECORDS
+      // 5. REGISTRAZIONI
       if (procedure.records) {
         if (yPos > 250) { pdf.addPage(); yPos = pdf.getContentStartY(); }
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
         const recordsNum = procedure.responsibilities ? '5' : '4';
-        pdf.addText(`${recordsNum}. RECORDS`, yPos);
+        pdf.addText(`${recordsNum}. REGISTRAZIONI`, yPos);
         yPos += 10;
         
         pdf.setFontSize(11);
@@ -302,7 +302,7 @@ export default function ProcedureView() {
           <CardContent className="space-y-6 prose prose-sm max-w-none">
             {procedure.purpose && (
               <div>
-                <h3 className="text-lg font-semibold mb-2">1. Purpose (Scopo)</h3>
+                <h3 className="text-lg font-semibold mb-2">1. Scopo</h3>
                 <p className="whitespace-pre-wrap text-muted-foreground">{procedure.purpose}</p>
               </div>
             )}
@@ -311,7 +311,7 @@ export default function ProcedureView() {
               <>
                 <Separator />
                 <div>
-                  <h3 className="text-lg font-semibold mb-2">2. Scope (Ambito)</h3>
+                  <h3 className="text-lg font-semibold mb-2">2. Ambito</h3>
                   <p className="whitespace-pre-wrap text-muted-foreground">{procedure.scope}</p>
                 </div>
               </>
@@ -321,7 +321,7 @@ export default function ProcedureView() {
               <>
                 <Separator />
                 <div>
-                  <h3 className="text-lg font-semibold mb-2">3. Responsibilities (Responsabilità)</h3>
+                  <h3 className="text-lg font-semibold mb-2">3. Responsabilità</h3>
                   <p className="whitespace-pre-wrap text-muted-foreground">{procedure.responsibilities}</p>
                 </div>
               </>
@@ -331,7 +331,7 @@ export default function ProcedureView() {
               <>
                 <Separator />
                 <div>
-                  <h3 className="text-lg font-semibold mb-2">4. Procedure Steps (Passi Operativi)</h3>
+                  <h3 className="text-lg font-semibold mb-2">4. Passi della Procedura</h3>
                   <p className="whitespace-pre-wrap text-muted-foreground">{procedure.procedure_steps}</p>
                 </div>
               </>
@@ -341,7 +341,7 @@ export default function ProcedureView() {
               <>
                 <Separator />
                 <div>
-                  <h3 className="text-lg font-semibold mb-2">5. Records (Registrazioni)</h3>
+                  <h3 className="text-lg font-semibold mb-2">5. Registrazioni</h3>
                   <p className="whitespace-pre-wrap text-muted-foreground">{procedure.records}</p>
                 </div>
               </>
@@ -353,24 +353,24 @@ export default function ProcedureView() {
         {(procedure.approved_by || procedure.approval_date || procedure.next_review_date) && (
           <Card>
             <CardHeader>
-              <CardTitle>Document Control</CardTitle>
+              <CardTitle>Controllo Documento</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-3 gap-4 text-sm">
               {procedure.approved_by && (
                 <div>
-                  <p className="text-muted-foreground">Approved By</p>
+                  <p className="text-muted-foreground">Approvato da</p>
                   <p className="font-medium">{procedure.approved_by}</p>
                 </div>
               )}
               {procedure.approval_date && (
                 <div>
-                  <p className="text-muted-foreground">Approval Date</p>
+                  <p className="text-muted-foreground">Data Approvazione</p>
                   <p className="font-medium">{new Date(procedure.approval_date).toLocaleDateString()}</p>
                 </div>
               )}
               {procedure.next_review_date && (
                 <div>
-                  <p className="text-muted-foreground">Next Review</p>
+                  <p className="text-muted-foreground">Prossima Revisione</p>
                   <p className="font-medium">{new Date(procedure.next_review_date).toLocaleDateString()}</p>
                 </div>
               )}
