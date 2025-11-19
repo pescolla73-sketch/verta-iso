@@ -22,19 +22,42 @@ interface PolicyEditorProps {
 export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
   const queryClient = useQueryClient();
 
-  // ============ SEPARATE STATE FOR EACH FIELD ============
-  // Info generali
-  const [policyName, setPolicyName] = useState("");
-  const [policyType, setPolicyType] = useState("custom");
-  const [version, setVersion] = useState("1.0");
-  const [status, setStatus] = useState("draft");
+  // ============ SINGLE STATE FOR FORM DATA (CONTROLLED FORM PATTERN) ============
+  interface PolicyFormData {
+    policy_name: string;
+    policy_type: string;
+    version: string;
+    status: string;
+    custom_purpose: string;
+    custom_policy_statement: string;
+    custom_procedures: string;
+    custom_exceptions: string;
+    custom_notes: string;
+  }
 
-  // Custom sections (editabili)
-  const [customPurpose, setCustomPurpose] = useState("");
-  const [customPolicyStatement, setCustomPolicyStatement] = useState("");
-  const [customProcedures, setCustomProcedures] = useState("");
-  const [customExceptions, setCustomExceptions] = useState("");
-  const [customNotes, setCustomNotes] = useState("");
+  const [formData, setFormData] = useState<PolicyFormData>({
+    policy_name: "",
+    policy_type: "custom",
+    version: "1.0",
+    status: "draft",
+    custom_purpose: "",
+    custom_policy_statement: "",
+    custom_procedures: "",
+    custom_exceptions: "",
+    custom_notes: ""
+  });
+
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  // Helper function to update a single field
+  const updateField = (field: keyof PolicyFormData, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    setHasUnsavedChanges(true);
+  };
 
   // ============ QUERY TO LOAD POLICY ============
   const { data: policy, isLoading } = useQuery({
@@ -52,39 +75,33 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
     enabled: !!policyId,
   });
 
-  // ============ POPULATE STATE WHEN POLICY LOADS ============
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-
+  // ============ POPULATE FORM DATA WHEN POLICY LOADS ============
   useEffect(() => {
-    if (policy && !hasUnsavedChanges) {
-      setPolicyName(policy.policy_name || "");
-      setPolicyType(policy.policy_type || "custom");
-      setVersion(policy.version || "1.0");
-      setStatus(policy.status || "draft");
+    // Popola il form SOLO al primo caricamento o quando non ci sono modifiche pendenti
+    if (policy && (isInitialLoad || !hasUnsavedChanges)) {
+      setFormData({
+        policy_name: policy.policy_name || "",
+        policy_type: policy.policy_type || "custom",
+        version: policy.version || "1.0",
+        status: policy.status || "draft",
+        custom_purpose: policy.custom_purpose || policy.purpose || "",
+        custom_policy_statement: policy.custom_policy_statement || policy.policy_statement || "",
+        custom_procedures: policy.custom_procedures || policy.procedures || "",
+        custom_exceptions: policy.custom_exceptions || "",
+        custom_notes: policy.custom_notes || ""
+      });
       
-      // AUTO-MIGRATE: Se i campi custom sono vuoti ma i campi legacy hanno dati, usa i legacy
-      setCustomPurpose(policy.custom_purpose || policy.purpose || "");
-      setCustomPolicyStatement(policy.custom_policy_statement || policy.policy_statement || "");
-      setCustomProcedures(policy.custom_procedures || policy.procedures || "");
-      setCustomExceptions(policy.custom_exceptions || "");
-      setCustomNotes(policy.custom_notes || "");
+      if (isInitialLoad) {
+        setIsInitialLoad(false);
+      }
     }
-  }, [policy, hasUnsavedChanges]);
+  }, [policy, hasUnsavedChanges, isInitialLoad]);
 
-  // ============ SAVE MUTATION (WITH LEGACY MIGRATION) ============
+  // ============ SAVE MUTATION (WITH CONTROLLED FORM) ============
   const saveMutation = useMutation({
     mutationFn: async () => {
-      // Prepare update object
       const updateData: any = {
-        policy_name: policyName,
-        policy_type: policyType,
-        version: version,
-        status: status,
-        custom_purpose: customPurpose,
-        custom_policy_statement: customPolicyStatement,
-        custom_procedures: customProcedures,
-        custom_exceptions: customExceptions,
-        custom_notes: customNotes,
+        ...formData,
         updated_at: new Date().toISOString(),
       };
 
@@ -99,38 +116,26 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
         .eq("id", policyId);
       
       if (error) throw error;
-      
-      // Return the data we just saved
       return updateData;
     },
     onSuccess: (savedData) => {
-      toast.success("Policy salvata con successo!");
+      // Aggiorna la cache React Query con i dati salvati
+      queryClient.setQueryData(["policy", policyId], (old: any) => ({
+        ...old,
+        ...savedData,
+      }));
       
-      // CRITICO: Aggiorna la cache con i dati appena salvati PRIMA
-      queryClient.setQueryData(["policy", policyId], (oldData: any) => {
-        if (!oldData) return oldData;
-        
-        return {
-          ...oldData,
-          ...savedData,
-          // Mantieni i campi che non abbiamo modificato
-          generated_scope: oldData.generated_scope,
-          generated_controls: oldData.generated_controls,
-          generated_roles: oldData.generated_roles,
-          generated_compliance: oldData.generated_compliance,
-        };
-      });
-      
-      // Reset unsaved changes flag (useEffect avrà già i dati corretti in cache)
+      // Reset flag modifiche
       setHasUnsavedChanges(false);
       
-      // Invalida solo la lista
+      // Invalida la lista policy per aggiornare la vista principale
       queryClient.invalidateQueries({ 
         queryKey: ["policies"],
         exact: false 
       });
       
       onSaved?.();
+      toast.success("Policy salvata con successo");
     },
     onError: (error: any) => {
       toast.error("Errore nel salvataggio: " + error.message);
@@ -268,11 +273,8 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
                   <Label htmlFor="policy_name">Nome Policy *</Label>
                   <Input
                     id="policy_name"
-                    value={policyName}
-                    onChange={(e) => {
-                      setPolicyName(e.target.value);
-                      setHasUnsavedChanges(true);
-                    }}
+                    value={formData.policy_name}
+                    onChange={(e) => updateField("policy_name", e.target.value)}
                     placeholder="es. Information Security Policy"
                   />
                 </div>
@@ -280,10 +282,10 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="policy_type">Tipo</Label>
-                    <Select value={policyType} onValueChange={(value) => {
-                      setPolicyType(value);
-                      setHasUnsavedChanges(true);
-                    }}>
+                    <Select 
+                      value={formData.policy_type} 
+                      onValueChange={(value) => updateField("policy_type", value)}
+                    >
                       <SelectTrigger id="policy_type">
                         <SelectValue />
                       </SelectTrigger>
@@ -300,11 +302,8 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
                     <Label htmlFor="version">Versione</Label>
                     <Input
                       id="version"
-                      value={version}
-                      onChange={(e) => {
-                        setVersion(e.target.value);
-                        setHasUnsavedChanges(true);
-                      }}
+                      value={formData.version}
+                      onChange={(e) => updateField("version", e.target.value)}
                       placeholder="1.0"
                     />
                   </div>
@@ -312,10 +311,10 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
 
                 <div className="space-y-2">
                   <Label htmlFor="status">Stato</Label>
-                  <Select value={status} onValueChange={(value) => {
-                    setStatus(value);
-                    setHasUnsavedChanges(true);
-                  }}>
+                  <Select 
+                    value={formData.status} 
+                    onValueChange={(value) => updateField("status", value)}
+                  >
                     <SelectTrigger id="status">
                       <SelectValue />
                     </SelectTrigger>
@@ -458,11 +457,8 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
                 <Label htmlFor="custom_purpose">Scopo e Obiettivi</Label>
                 <Textarea
                   id="custom_purpose"
-                  value={customPurpose}
-                  onChange={(e) => {
-                    setCustomPurpose(e.target.value);
-                    setHasUnsavedChanges(true);
-                  }}
+                  value={formData.custom_purpose}
+                  onChange={(e) => updateField("custom_purpose", e.target.value)}
                   placeholder="Descrivi lo scopo e gli obiettivi di questa policy..."
                   className="min-h-[120px]"
                 />
@@ -475,11 +471,8 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
                 <Label htmlFor="custom_policy_statement">Dichiarazione Policy</Label>
                 <Textarea
                   id="custom_policy_statement"
-                  value={customPolicyStatement}
-                  onChange={(e) => {
-                    setCustomPolicyStatement(e.target.value);
-                    setHasUnsavedChanges(true);
-                  }}
+                  value={formData.custom_policy_statement}
+                  onChange={(e) => updateField("custom_policy_statement", e.target.value)}
                   placeholder="Inserisci la dichiarazione della policy..."
                   className="min-h-[120px]"
                 />
@@ -492,11 +485,8 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
                 <Label htmlFor="custom_procedures">Procedure Specifiche</Label>
                 <Textarea
                   id="custom_procedures"
-                  value={customProcedures}
-                  onChange={(e) => {
-                    setCustomProcedures(e.target.value);
-                    setHasUnsavedChanges(true);
-                  }}
+                  value={formData.custom_procedures}
+                  onChange={(e) => updateField("custom_procedures", e.target.value)}
                   placeholder="Descrivi le procedure specifiche per implementare questa policy..."
                   className="min-h-[150px]"
                 />
@@ -509,11 +499,8 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
                 <Label htmlFor="custom_exceptions">Eccezioni e Casi Particolari</Label>
                 <Textarea
                   id="custom_exceptions"
-                  value={customExceptions}
-                  onChange={(e) => {
-                    setCustomExceptions(e.target.value);
-                    setHasUnsavedChanges(true);
-                  }}
+                  value={formData.custom_exceptions}
+                  onChange={(e) => updateField("custom_exceptions", e.target.value)}
                   placeholder="Documenta eventuali eccezioni o casi particolari..."
                   className="min-h-[100px]"
                 />
@@ -526,11 +513,8 @@ export function PolicyEditor({ policyId, onSaved }: PolicyEditorProps) {
                 <Label htmlFor="custom_notes">Note Aggiuntive</Label>
                 <Textarea
                   id="custom_notes"
-                  value={customNotes}
-                  onChange={(e) => {
-                    setCustomNotes(e.target.value);
-                    setHasUnsavedChanges(true);
-                  }}
+                  value={formData.custom_notes}
+                  onChange={(e) => updateField("custom_notes", e.target.value)}
                   placeholder="Aggiungi note o informazioni aggiuntive..."
                   className="min-h-[100px]"
                 />
