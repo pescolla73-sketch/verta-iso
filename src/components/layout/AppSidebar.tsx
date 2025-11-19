@@ -102,6 +102,12 @@ export function AppSidebar() {
       ]
     },
     {
+      label: "Miglioramento (Clausola 10)",
+      items: [
+        { title: "Non Conformità", url: "/non-conformity", icon: AlertTriangle },
+      ]
+    },
+    {
       label: "Certificazione",
       items: [
         { title: "Audit Certificazione", url: "/audit-certificazione", icon: Award },

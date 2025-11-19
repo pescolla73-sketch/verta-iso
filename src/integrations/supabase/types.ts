@@ -728,61 +728,97 @@ export type Database = {
       }
       non_conformities: {
         Row: {
+          affected_clause: string | null
           closed_at: string | null
           closure_notes: string | null
+          corrective_action: string | null
           created_at: string | null
+          deadline: string | null
           description: string | null
           detected_date: string | null
           detection_method: string | null
           effectiveness_verified: boolean | null
+          evidence: string | null
           id: string
+          implementation_date: string | null
+          implementation_notes: string | null
           nc_code: string
+          nc_date: string | null
           organization_id: string
           related_control: string | null
+          responsible_person: string | null
+          root_cause_analysis: string | null
           severity: string
           source: string | null
           source_id: string | null
           source_type: string | null
           status: string | null
           title: string
+          updated_at: string | null
+          verification_date: string | null
+          verified_by: string | null
         }
         Insert: {
+          affected_clause?: string | null
           closed_at?: string | null
           closure_notes?: string | null
+          corrective_action?: string | null
           created_at?: string | null
+          deadline?: string | null
           description?: string | null
           detected_date?: string | null
           detection_method?: string | null
           effectiveness_verified?: boolean | null
+          evidence?: string | null
           id?: string
+          implementation_date?: string | null
+          implementation_notes?: string | null
           nc_code: string
+          nc_date?: string | null
           organization_id: string
           related_control?: string | null
+          responsible_person?: string | null
+          root_cause_analysis?: string | null
           severity: string
           source?: string | null
           source_id?: string | null
           source_type?: string | null
           status?: string | null
           title: string
+          updated_at?: string | null
+          verification_date?: string | null
+          verified_by?: string | null
         }
         Update: {
+          affected_clause?: string | null
           closed_at?: string | null
           closure_notes?: string | null
+          corrective_action?: string | null
           created_at?: string | null
+          deadline?: string | null
           description?: string | null
           detected_date?: string | null
           detection_method?: string | null
           effectiveness_verified?: boolean | null
+          evidence?: string | null
           id?: string
+          implementation_date?: string | null
+          implementation_notes?: string | null
           nc_code?: string
+          nc_date?: string | null
           organization_id?: string
           related_control?: string | null
+          responsible_person?: string | null
+          root_cause_analysis?: string | null
           severity?: string
           source?: string | null
           source_id?: string | null
           source_type?: string | null
           status?: string | null
           title?: string
+          updated_at?: string | null
+          verification_date?: string | null
+          verified_by?: string | null
         }
         Relationships: []
       }
@@ -2043,6 +2079,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_nc_code: { Args: { org_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
