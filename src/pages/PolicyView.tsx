@@ -120,7 +120,7 @@ export default function PolicyView() {
       
       pdf.setFontSize(11);
       pdf.setFont('helvetica', 'normal');
-      const purposeLines = pdf.getDoc().splitTextToSize(policy.purpose || 'N/A', 170);
+      const purposeLines = pdf.getDoc().splitTextToSize(policy.custom_purpose || policy.purpose || 'N/A', 170);
       pdf.addText(purposeLines, yPos);
       yPos += purposeLines.length * 6 + 10;
 
@@ -146,7 +146,7 @@ export default function PolicyView() {
       
       pdf.setFontSize(11);
       pdf.setFont('helvetica', 'normal');
-      const statementLines = pdf.getDoc().splitTextToSize(policy.policy_statement || 'N/A', 170);
+      const statementLines = pdf.getDoc().splitTextToSize(policy.custom_policy_statement || policy.policy_statement || 'N/A', 170);
       pdf.addText(statementLines, yPos);
       yPos += statementLines.length * 6 + 10;
 
@@ -166,7 +166,8 @@ export default function PolicyView() {
       }
 
       // 5. Procedures
-      if (policy.procedures) {
+      const procedures = policy.custom_procedures || policy.procedures;
+      if (procedures) {
         if (yPos > 250) { pdf.addPage(); yPos = pdf.getContentStartY(); }
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
@@ -175,7 +176,7 @@ export default function PolicyView() {
         
         pdf.setFontSize(11);
         pdf.setFont('helvetica', 'normal');
-        const procLines = pdf.getDoc().splitTextToSize(policy.procedures, 170);
+        const procLines = pdf.getDoc().splitTextToSize(procedures, 170);
         pdf.addText(procLines, yPos);
         yPos += procLines.length * 6 + 10;
       }
@@ -195,11 +196,43 @@ export default function PolicyView() {
         yPos += complianceLines.length * 6 + 10;
       }
 
-      // 7. Review Requirements
+      // 7. Exceptions
+      const exceptions = policy.custom_exceptions;
+      if (exceptions) {
+        if (yPos > 250) { pdf.addPage(); yPos = pdf.getContentStartY(); }
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.addText('7. EXCEPTIONS', yPos);
+        yPos += 10;
+        
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'normal');
+        const exceptionsLines = pdf.getDoc().splitTextToSize(exceptions, 170);
+        pdf.addText(exceptionsLines, yPos);
+        yPos += exceptionsLines.length * 6 + 10;
+      }
+
+      // 8. Additional Notes
+      const notes = policy.custom_notes;
+      if (notes) {
+        if (yPos > 250) { pdf.addPage(); yPos = pdf.getContentStartY(); }
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.addText('8. ADDITIONAL NOTES', yPos);
+        yPos += 10;
+        
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'normal');
+        const notesLines = pdf.getDoc().splitTextToSize(notes, 170);
+        pdf.addText(notesLines, yPos);
+        yPos += notesLines.length * 6 + 10;
+      }
+
+      // 9. Policy Review
       if (yPos > 250) { pdf.addPage(); yPos = pdf.getContentStartY(); }
       pdf.setFontSize(14);
       pdf.setFont('helvetica', 'bold');
-      pdf.addText('7. POLICY REVIEW', yPos);
+      pdf.addText('9. POLICY REVIEW', yPos);
       yPos += 10;
       
       pdf.setFontSize(11);
@@ -209,6 +242,7 @@ export default function PolicyView() {
         170
       );
       pdf.addText(reviewLines, yPos);
+
 
       // Finalize and save
       const filename = `${policy.policy_id || 'Policy'}_${(policy.policy_name || 'Document').replace(/\s+/g, '_')}.pdf`;
@@ -299,10 +333,10 @@ export default function PolicyView() {
             <CardTitle>Contenuto Policy</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6 prose prose-sm max-w-none">
-            {policy.purpose && (
+            {(policy.custom_purpose || policy.purpose) && (
               <div>
                 <h3 className="text-lg font-semibold mb-2">1. Purpose (Scopo)</h3>
-                <p className="whitespace-pre-wrap text-muted-foreground">{policy.purpose}</p>
+                <p className="whitespace-pre-wrap text-muted-foreground">{policy.custom_purpose || policy.purpose}</p>
               </div>
             )}
 
@@ -316,12 +350,12 @@ export default function PolicyView() {
               </>
             )}
 
-            {policy.policy_statement && (
+            {(policy.custom_policy_statement || policy.policy_statement) && (
               <>
                 <Separator />
                 <div>
                   <h3 className="text-lg font-semibold mb-2">3. Policy Statement (Dichiarazione)</h3>
-                  <p className="whitespace-pre-wrap text-muted-foreground">{policy.policy_statement}</p>
+                  <p className="whitespace-pre-wrap text-muted-foreground">{policy.custom_policy_statement || policy.policy_statement}</p>
                 </div>
               </>
             )}
@@ -336,12 +370,42 @@ export default function PolicyView() {
               </>
             )}
 
+            {(policy.custom_procedures || policy.procedures) && (
+              <>
+                <Separator />
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">5. Procedures (Procedure)</h3>
+                  <p className="whitespace-pre-wrap text-muted-foreground">{policy.custom_procedures || policy.procedures}</p>
+                </div>
+              </>
+            )}
+
             {policy.compliance_requirements && (
               <>
                 <Separator />
                 <div>
-                  <h3 className="text-lg font-semibold mb-2">5. Compliance Requirements</h3>
+                  <h3 className="text-lg font-semibold mb-2">6. Compliance Requirements</h3>
                   <p className="whitespace-pre-wrap text-muted-foreground">{policy.compliance_requirements}</p>
+                </div>
+              </>
+            )}
+
+            {policy.custom_exceptions && (
+              <>
+                <Separator />
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">7. Exceptions (Eccezioni)</h3>
+                  <p className="whitespace-pre-wrap text-muted-foreground">{policy.custom_exceptions}</p>
+                </div>
+              </>
+            )}
+
+            {policy.custom_notes && (
+              <>
+                <Separator />
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">8. Additional Notes (Note Aggiuntive)</h3>
+                  <p className="whitespace-pre-wrap text-muted-foreground">{policy.custom_notes}</p>
                 </div>
               </>
             )}
@@ -350,7 +414,7 @@ export default function PolicyView() {
               <>
                 <Separator />
                 <div>
-                  <h3 className="text-lg font-semibold mb-2">6. Policy Review</h3>
+                  <h3 className="text-lg font-semibold mb-2">9. Policy Review</h3>
                   <p className="whitespace-pre-wrap text-muted-foreground">{policy.review_requirements}</p>
                 </div>
               </>
