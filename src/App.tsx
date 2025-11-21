@@ -37,6 +37,7 @@ import AuditExecutionPage from "./pages/AuditExecutionPage";
 import CertificationAuditPage from "./pages/CertificationAuditPage";
 import AuditTrailPage from "./pages/AuditTrailPage";
 import NonConformityPage from "./pages/NonConformityPage";
+import NonConformityEditor from "./pages/NonConformityEditor";
 
 const queryClient = new QueryClient();
 
@@ -307,7 +308,7 @@ const App = () => (
             path="/non-conformity/new"
             element={
               <AppLayout>
-                <NonConformityPage />
+                <NonConformityEditor />
               </AppLayout>
             }
           />
@@ -315,7 +316,7 @@ const App = () => (
             path="/non-conformity/:id"
             element={
               <AppLayout>
-                <NonConformityPage />
+                <NonConformityEditor />
               </AppLayout>
             }
           />
