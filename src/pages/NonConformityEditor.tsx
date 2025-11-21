@@ -175,27 +175,51 @@ export default function NonConformityEditor() {
     mutationFn: async () => {
       if (!organizationId) throw new Error('Organization not found');
 
-      // Helper per convertire date in formato ISO o null se vuote
-      const formatDate = (dateStr: string) => {
-        if (!dateStr) return null;
-        // Se è già in formato YYYY-MM-DD, restituiscila così
-        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
-        // Altrimenti prova a parsarla e convertirla
-        const date = new Date(dateStr);
-        return !isNaN(date.getTime()) ? format(date, 'yyyy-MM-dd') : null;
+      // Prepara SOLO i campi base che sappiamo esistere nella tabella
+      const saveData: any = {
+        organization_id: organizationId,
+        nc_code: formData.nc_code,
+        title: formData.title,
+        description: formData.description,
+        severity: formData.severity,
+        status: formData.status,
+        source: formData.source,
       };
 
-      const saveData = {
-        ...formData,
-        // Converti tutte le date in formato ISO o null
-        detected_date: formatDate(formData.detected_date),
-        deadline: formatDate(formData.deadline) || null,
-        implementation_date: formatDate(formData.implementation_date) || null,
-        verification_date: formatDate(formData.verification_date) || null,
-        nc_date: formatDate(formData.detected_date), // Alias se esiste nel DB
-        organization_id: organizationId,
-        updated_at: new Date().toISOString(),
-      };
+      // Aggiungi detected_date SOLO se presente e valido
+      if (formData.detected_date && formData.detected_date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        saveData.detected_date = formData.detected_date;
+      }
+
+      // Aggiungi altri campi SOLO se non vuoti
+      if (formData.related_control) saveData.related_control = formData.related_control;
+      if (formData.affected_clause) saveData.affected_clause = formData.affected_clause;
+      if (formData.detection_method) saveData.detection_method = formData.detection_method;
+      if (formData.evidence) saveData.evidence = formData.evidence;
+      if (formData.root_cause_analysis) saveData.root_cause_analysis = formData.root_cause_analysis;
+      if (formData.corrective_action) saveData.corrective_action = formData.corrective_action;
+      if (formData.responsible_person) saveData.responsible_person = formData.responsible_person;
+      if (formData.implementation_notes) saveData.implementation_notes = formData.implementation_notes;
+      if (formData.verified_by) saveData.verified_by = formData.verified_by;
+      if (formData.closure_notes) saveData.closure_notes = formData.closure_notes;
+      
+      // Boolean field
+      if (formData.effectiveness_verified !== undefined) {
+        saveData.effectiveness_verified = formData.effectiveness_verified;
+      }
+      
+      // Date opzionali - aggiungi solo se valide
+      if (formData.deadline && formData.deadline.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        saveData.deadline = formData.deadline;
+      }
+      if (formData.implementation_date && formData.implementation_date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        saveData.implementation_date = formData.implementation_date;
+      }
+      if (formData.verification_date && formData.verification_date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        saveData.verification_date = formData.verification_date;
+      }
+
+      console.log('Saving data:', saveData); // Debug
 
       if (isNewNC) {
         const { data, error } = await supabase
@@ -204,7 +228,10 @@ export default function NonConformityEditor() {
           .select()
           .single();
         
-        if (error) throw error;
+        if (error) {
+          console.error('Insert error:', error);
+          throw error;
+        }
         return data;
       } else {
         const { data, error } = await supabase
@@ -214,7 +241,10 @@ export default function NonConformityEditor() {
           .select()
           .single();
         
-        if (error) throw error;
+        if (error) {
+          console.error('Update error:', error);
+          throw error;
+        }
         return data;
       }
     },
@@ -231,10 +261,10 @@ export default function NonConformityEditor() {
       setHasUnsavedChanges(false);
     },
     onError: (error: any) => {
-      console.error('Save error:', error);
+      console.error('Save error details:', error);
       toast({
-        title: 'Errore',
-        description: error.message || 'Errore nel salvataggio',
+        title: 'Errore nel salvataggio',
+        description: error.message || 'Errore sconosciuto',
         variant: 'destructive'
       });
     },
