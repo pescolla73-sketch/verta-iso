@@ -1,4 +1,4 @@
-import { Shield, CheckCircle, AlertCircle, TrendingUp, Download, Settings, Bell, FileDown, Wand2, FileText } from "lucide-react";
+import { Shield, CheckCircle, AlertCircle, TrendingUp, Download, Settings, Bell, FileDown, Wand2, FileText, AlertTriangle } from "lucide-react";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,12 +10,42 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recha
 import { useControls } from "@/hooks/useControls";
 import { CriticalAssetsWidget } from "@/components/dashboard/CriticalAssetsWidget";
 import { TopRisksWidget } from "@/components/dashboard/TopRisksWidget";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 export default function Dashboard() {
   const navigate = useNavigate();
 
   // Fetch real controls data
   const { data: controls, isLoading } = useControls();
+
+  // Fetch NC statistics
+  const { data: ncStats } = useQuery({
+    queryKey: ['nc_stats'],
+    queryFn: async () => {
+      const { data: org } = await supabase
+        .from('organization')
+        .select('id')
+        .limit(1)
+        .maybeSingle();
+      
+      if (!org) return { open: 0, overdue: 0 };
+
+      const { data: ncs } = await supabase
+        .from('non_conformities')
+        .select('*')
+        .eq('organization_id', org.id);
+
+      const open = ncs?.filter(nc => nc.status !== 'closed').length || 0;
+      const overdue = ncs?.filter(nc => 
+        nc.deadline && 
+        new Date(nc.deadline) < new Date() && 
+        nc.status !== 'closed'
+      ).length || 0;
+
+      return { open, overdue };
+    }
+  });
 
   // Calculate statistics
   const stats = {
@@ -148,8 +178,8 @@ export default function Dashboard() {
         </Card>
       )}
 
-      {/* 4 Key Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 5 Key Metrics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
           title="Controlli Totali"
           value={stats.totalControls}
@@ -174,6 +204,33 @@ export default function Dashboard() {
           icon={AlertCircle}
           variant="danger"
         />
+        
+        {/* NC Widget */}
+        <Card 
+          className={`cursor-pointer hover:shadow-lg transition-shadow ${
+            (ncStats?.overdue || 0) > 0 ? 'border-destructive bg-destructive/5' : ''
+          }`}
+          onClick={() => navigate('/non-conformity')}
+        >
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
+              Non Conformità
+              {(ncStats?.overdue || 0) > 0 && (
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {ncStats?.open || 0} aperte
+            </div>
+            {(ncStats?.overdue || 0) > 0 && (
+              <p className="text-xs text-destructive font-semibold mt-1">
+                {ncStats.overdue} scadute!
+              </p>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Implementation Status Pie Chart */}
