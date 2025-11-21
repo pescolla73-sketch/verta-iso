@@ -175,8 +175,24 @@ export default function NonConformityEditor() {
     mutationFn: async () => {
       if (!organizationId) throw new Error('Organization not found');
 
+      // Helper per convertire date in formato ISO o null se vuote
+      const formatDate = (dateStr: string) => {
+        if (!dateStr) return null;
+        // Se è già in formato YYYY-MM-DD, restituiscila così
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+        // Altrimenti prova a parsarla e convertirla
+        const date = new Date(dateStr);
+        return !isNaN(date.getTime()) ? format(date, 'yyyy-MM-dd') : null;
+      };
+
       const saveData = {
         ...formData,
+        // Converti tutte le date in formato ISO o null
+        detected_date: formatDate(formData.detected_date),
+        deadline: formatDate(formData.deadline) || null,
+        implementation_date: formatDate(formData.implementation_date) || null,
+        verification_date: formatDate(formData.verification_date) || null,
+        nc_date: formatDate(formData.detected_date), // Alias se esiste nel DB
         organization_id: organizationId,
         updated_at: new Date().toISOString(),
       };
@@ -215,9 +231,10 @@ export default function NonConformityEditor() {
       setHasUnsavedChanges(false);
     },
     onError: (error: any) => {
+      console.error('Save error:', error);
       toast({
         title: 'Errore',
-        description: error.message,
+        description: error.message || 'Errore nel salvataggio',
         variant: 'destructive'
       });
     },
