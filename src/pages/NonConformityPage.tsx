@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, AlertTriangle, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format, isPast } from 'date-fns';
@@ -15,6 +16,9 @@ export default function NonConformityPage() {
   const { toast } = useToast();
   const [ncs, setNcs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterSeverity, setFilterSeverity] = useState<string>('all');
+  const [showOverdueOnly, setShowOverdueOnly] = useState(false);
   const [stats, setStats] = useState({
     open: 0,
     inProgress: 0,
@@ -117,6 +121,17 @@ export default function NonConformityPage() {
     return isPast(new Date(deadline));
   };
 
+  // Filter NCs
+  const filteredNcs = ncs.filter(nc => {
+    if (filterStatus !== 'all' && nc.status !== filterStatus) return false;
+    if (filterSeverity !== 'all' && nc.severity !== filterSeverity) return false;
+    if (showOverdueOnly) {
+      if (!nc.deadline || nc.status === 'closed') return false;
+      if (new Date(nc.deadline) >= new Date()) return false;
+    }
+    return true;
+  });
+
   if (loading) {
     return <div className="flex items-center justify-center p-8">Caricamento...</div>;
   }
@@ -218,10 +233,52 @@ export default function NonConformityPage() {
       {/* NC Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Registro Non Conformità</CardTitle>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <CardTitle>Registro Non Conformità</CardTitle>
+            <div className="flex flex-wrap gap-2">
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Stato" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tutti gli stati</SelectItem>
+                  <SelectItem value="open">Aperte</SelectItem>
+                  <SelectItem value="in_progress">In Lavorazione</SelectItem>
+                  <SelectItem value="resolved">Risolte</SelectItem>
+                  <SelectItem value="closed">Chiuse</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={filterSeverity} onValueChange={setFilterSeverity}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Gravità" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tutte</SelectItem>
+                  <SelectItem value="major">NC Maggiori</SelectItem>
+                  <SelectItem value="minor">NC Minori</SelectItem>
+                  <SelectItem value="observation">Osservazioni</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Button
+                variant={showOverdueOnly ? "destructive" : "outline"}
+                size="sm"
+                onClick={() => setShowOverdueOnly(!showOverdueOnly)}
+              >
+                <Clock className="h-4 w-4 mr-1" />
+                Scadute
+              </Button>
+            </div>
+          </div>
+          {filteredNcs.length !== ncs.length && (
+            <p className="text-sm text-muted-foreground mt-2">
+              Mostrate {filteredNcs.length} di {ncs.length} NC
+            </p>
+          )}
         </CardHeader>
         <CardContent>
-          {ncs.length === 0 ? (
+          {filteredNcs.length === 0 && ncs.length === 0 ? (
             <div className="text-center py-12">
               <CheckCircle className="h-12 w-12 mx-auto text-green-500 mb-4" />
               <h3 className="text-lg font-medium mb-2">Nessuna Non Conformità</h3>
@@ -232,6 +289,12 @@ export default function NonConformityPage() {
                 <Plus className="h-4 w-4 mr-2" />
                 Registra Prima NC
               </Button>
+            </div>
+          ) : filteredNcs.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">
+                Nessuna NC trovata con i filtri selezionati
+              </p>
             </div>
           ) : (
             <Table>
@@ -248,7 +311,7 @@ export default function NonConformityPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {ncs.map((nc) => (
+                {filteredNcs.map((nc) => (
                   <TableRow
                     key={nc.id}
                     className="cursor-pointer hover:bg-muted/50"
