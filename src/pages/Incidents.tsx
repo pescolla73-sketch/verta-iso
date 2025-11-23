@@ -29,12 +29,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Plus, Eye, CheckCircle, Clock } from 'lucide-react';
+import { AlertTriangle, Plus, Eye, CheckCircle, Clock, FileText } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { toast } from 'sonner';
 
 export default function Incidents() {
+  const navigate = useNavigate();
   const [incidents, setIncidents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -715,6 +717,16 @@ Assigned to: ${incident.assigned_to || 'N/A'}
                   onClick={() => selectedIncident && exportIncidentReport(selectedIncident)}
                 >
                   📥 Export
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => selectedIncident && navigate(
+                    `/non-conformity/new?source=incident&sourceId=${selectedIncident.id}&title=${encodeURIComponent('NC da Incident: ' + (selectedIncident.title || ''))}&description=${encodeURIComponent(selectedIncident.description || '')}&severity=${selectedIncident.severity === 'critical' || selectedIncident.severity === 'high' ? 'major' : 'minor'}`
+                  )}
+                >
+                  <AlertTriangle className="h-4 w-4 mr-1" />
+                  Crea NC
                 </Button>
                 {!isEditing && selectedIncident?.status !== 'closed' && (
                   <Button size="sm" variant="outline" onClick={() => {

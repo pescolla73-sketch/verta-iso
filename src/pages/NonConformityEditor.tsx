@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -45,6 +45,7 @@ export default function NonConformityEditor() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
   const isNewNC = !id;
 
   const [formData, setFormData] = useState<NCFormData>({
@@ -108,6 +109,31 @@ export default function NonConformityEditor() {
     };
     generateCode();
   }, [isNewNC, organizationId]);
+
+  // Pre-fill from URL parameters for new NC
+  useEffect(() => {
+    if (isNewNC) {
+      const source = searchParams.get('source');
+      const sourceId = searchParams.get('sourceId');
+      const control = searchParams.get('control');
+      const title = searchParams.get('title');
+      const description = searchParams.get('description');
+      const severity = searchParams.get('severity');
+
+      if (source || sourceId || control || title || description || severity) {
+        setFormData(prev => ({
+          ...prev,
+          source: source || prev.source,
+          source_id: sourceId || prev.source_id,
+          source_type: source || prev.source_type,
+          related_control: control ? decodeURIComponent(control) : prev.related_control,
+          title: title ? decodeURIComponent(title) : prev.title,
+          description: description ? decodeURIComponent(description) : prev.description,
+          severity: severity || prev.severity,
+        }));
+      }
+    }
+  }, [isNewNC, searchParams]);
 
   // Load existing NC
   const { data: nc, isLoading } = useQuery({

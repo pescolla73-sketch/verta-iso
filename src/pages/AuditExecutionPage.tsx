@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowLeft, Save, CheckCircle, FileText, AlertCircle, Plus } from 'lucide-react';
+import { ArrowLeft, Save, CheckCircle, FileText, AlertCircle, Plus, AlertTriangle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { updateLinkedModules } from '@/utils/auditLinkage';
 import { logAuditTrail } from '@/lib/auditTrail';
@@ -702,6 +702,18 @@ export default function AuditExecutionPage() {
                             </p>
                           </div>
                         )}
+                        <div className="mt-4 flex justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(
+                              `/non-conformity/new?source=audit_internal&sourceId=${audit.id}&control=${encodeURIComponent(finding.control_reference || '')}&title=${encodeURIComponent(finding.title || '')}&description=${encodeURIComponent(finding.description || '')}`
+                            )}
+                          >
+                            <AlertTriangle className="h-4 w-4 mr-1" />
+                            Crea NC
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
