@@ -34,7 +34,7 @@ export default function CertificationAuditPage() {
     severity: 'minor',
     required_action: '',
     status: 'open',
-    linked_nc_id: ''
+    linked_nc_id: 'none'
   });
 
   useEffect(() => {
@@ -123,7 +123,7 @@ export default function CertificationAuditPage() {
         .insert({
           ...findingForm,
           organization_id: '00000000-0000-0000-0000-000000000000',
-          linked_nc_id: findingForm.linked_nc_id || null
+          linked_nc_id: findingForm.linked_nc_id === 'none' ? null : findingForm.linked_nc_id
         });
 
       if (error) throw error;
@@ -141,7 +141,7 @@ export default function CertificationAuditPage() {
         severity: 'minor',
         required_action: '',
         status: 'open',
-        linked_nc_id: ''
+        linked_nc_id: 'none'
       });
 
       loadData();
@@ -479,7 +479,7 @@ export default function CertificationAuditPage() {
                         <SelectValue placeholder="Nessuna" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Nessuna</SelectItem>
+                        <SelectItem value="none">Nessuna</SelectItem>
                         {nonConformities.map(nc => (
                           <SelectItem key={nc.id} value={nc.id}>
                             {nc.nc_code} - {nc.title}
