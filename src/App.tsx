@@ -289,6 +289,36 @@ const App = () => (
             }
           />
           <Route
+            path="/certification-audit"
+            element={
+              <AppLayout>
+                <CertificationAuditPage />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/certification-audit/new"
+            element={
+              <AppLayout>
+                <div className="container mx-auto p-6">
+                  <h1 className="text-2xl font-bold mb-4">Editor Audit Certificazione</h1>
+                  <p className="text-muted-foreground">Pagina in costruzione - Editor verrà creato nel prossimo step</p>
+                </div>
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/certification-audit/:id"
+            element={
+              <AppLayout>
+                <div className="container mx-auto p-6">
+                  <h1 className="text-2xl font-bold mb-4">Dettaglio Audit Certificazione</h1>
+                  <p className="text-muted-foreground">Pagina in costruzione - Editor verrà creato nel prossimo step</p>
+                </div>
+              </AppLayout>
+            }
+          />
+          <Route
             path="/audit-trail"
             element={
               <AppLayout>
