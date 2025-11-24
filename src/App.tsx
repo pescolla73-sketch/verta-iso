@@ -35,6 +35,7 @@ import InternalAuditPage from "./pages/InternalAuditPage";
 import AuditPlanPage from "./pages/AuditPlanPage";
 import AuditExecutionPage from "./pages/AuditExecutionPage";
 import CertificationAuditPage from "./pages/CertificationAuditPage";
+import CertificationAuditEditor from "./pages/CertificationAuditEditor";
 import AuditTrailPage from "./pages/AuditTrailPage";
 import NonConformityPage from "./pages/NonConformityPage";
 import NonConformityEditor from "./pages/NonConformityEditor";
@@ -300,10 +301,7 @@ const App = () => (
             path="/certification-audit/new"
             element={
               <AppLayout>
-                <div className="container mx-auto p-6">
-                  <h1 className="text-2xl font-bold mb-4">Editor Audit Certificazione</h1>
-                  <p className="text-muted-foreground">Pagina in costruzione - Editor verrà creato nel prossimo step</p>
-                </div>
+                <CertificationAuditEditor />
               </AppLayout>
             }
           />
@@ -311,10 +309,7 @@ const App = () => (
             path="/certification-audit/:id"
             element={
               <AppLayout>
-                <div className="container mx-auto p-6">
-                  <h1 className="text-2xl font-bold mb-4">Dettaglio Audit Certificazione</h1>
-                  <p className="text-muted-foreground">Pagina in costruzione - Editor verrà creato nel prossimo step</p>
-                </div>
+                <CertificationAuditEditor />
               </AppLayout>
             }
           />
