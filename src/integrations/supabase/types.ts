@@ -390,7 +390,7 @@ export type Database = {
           certificate_issue_date: string | null
           certificate_number: string | null
           certification_body: string | null
-          certifier_name: string
+          certifier_name: string | null
           created_at: string | null
           created_by: string | null
           id: string
@@ -419,7 +419,7 @@ export type Database = {
           certificate_issue_date?: string | null
           certificate_number?: string | null
           certification_body?: string | null
-          certifier_name: string
+          certifier_name?: string | null
           created_at?: string | null
           created_by?: string | null
           id?: string
@@ -448,7 +448,7 @@ export type Database = {
           certificate_issue_date?: string | null
           certificate_number?: string | null
           certification_body?: string | null
-          certifier_name?: string
+          certifier_name?: string | null
           created_at?: string | null
           created_by?: string | null
           id?: string
