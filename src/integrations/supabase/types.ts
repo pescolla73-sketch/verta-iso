@@ -378,78 +378,169 @@ export type Database = {
       }
       certification_audits: {
         Row: {
+          audit_code: string | null
           audit_date: string
+          audit_end_date: string | null
+          audit_report_url: string | null
+          audit_result: string | null
+          audit_scope: string | null
+          audit_team: string | null
           audit_type: string
+          certificate_expiry_date: string | null
+          certificate_issue_date: string | null
+          certificate_number: string | null
+          certification_body: string | null
           certifier_name: string
           created_at: string | null
+          created_by: string | null
           id: string
+          lead_auditor: string | null
+          major_findings_count: number | null
+          minor_findings_count: number | null
           notes: string | null
+          observations_count: number | null
           organization_id: string
           outcome: string | null
           report_url: string | null
+          standards: string | null
+          status: string | null
+          updated_at: string | null
         }
         Insert: {
+          audit_code?: string | null
           audit_date: string
+          audit_end_date?: string | null
+          audit_report_url?: string | null
+          audit_result?: string | null
+          audit_scope?: string | null
+          audit_team?: string | null
           audit_type: string
+          certificate_expiry_date?: string | null
+          certificate_issue_date?: string | null
+          certificate_number?: string | null
+          certification_body?: string | null
           certifier_name: string
           created_at?: string | null
+          created_by?: string | null
           id?: string
+          lead_auditor?: string | null
+          major_findings_count?: number | null
+          minor_findings_count?: number | null
           notes?: string | null
+          observations_count?: number | null
           organization_id: string
           outcome?: string | null
           report_url?: string | null
+          standards?: string | null
+          status?: string | null
+          updated_at?: string | null
         }
         Update: {
+          audit_code?: string | null
           audit_date?: string
+          audit_end_date?: string | null
+          audit_report_url?: string | null
+          audit_result?: string | null
+          audit_scope?: string | null
+          audit_team?: string | null
           audit_type?: string
+          certificate_expiry_date?: string | null
+          certificate_issue_date?: string | null
+          certificate_number?: string | null
+          certification_body?: string | null
           certifier_name?: string
           created_at?: string | null
+          created_by?: string | null
           id?: string
+          lead_auditor?: string | null
+          major_findings_count?: number | null
+          minor_findings_count?: number | null
           notes?: string | null
+          observations_count?: number | null
           organization_id?: string
           outcome?: string | null
           report_url?: string | null
+          standards?: string | null
+          status?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
       certifier_findings: {
         Row: {
+          audit_id: string | null
           certification_audit_id: string | null
+          closed_date: string | null
           created_at: string | null
           description: string | null
+          evidence_provided: string | null
+          finding_code: string | null
+          finding_type: string | null
           id: string
+          iso_clause: string | null
+          iso_control: string | null
           linked_nc_id: string | null
           organization_id: string
+          organization_response: string | null
           required_action: string | null
+          response_deadline: string | null
           severity: string
           status: string | null
           title: string
+          updated_at: string | null
         }
         Insert: {
+          audit_id?: string | null
           certification_audit_id?: string | null
+          closed_date?: string | null
           created_at?: string | null
           description?: string | null
+          evidence_provided?: string | null
+          finding_code?: string | null
+          finding_type?: string | null
           id?: string
+          iso_clause?: string | null
+          iso_control?: string | null
           linked_nc_id?: string | null
           organization_id: string
+          organization_response?: string | null
           required_action?: string | null
+          response_deadline?: string | null
           severity: string
           status?: string | null
           title: string
+          updated_at?: string | null
         }
         Update: {
+          audit_id?: string | null
           certification_audit_id?: string | null
+          closed_date?: string | null
           created_at?: string | null
           description?: string | null
+          evidence_provided?: string | null
+          finding_code?: string | null
+          finding_type?: string | null
           id?: string
+          iso_clause?: string | null
+          iso_control?: string | null
           linked_nc_id?: string | null
           organization_id?: string
+          organization_response?: string | null
           required_action?: string | null
+          response_deadline?: string | null
           severity?: string
           status?: string | null
           title?: string
+          updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "certifier_findings_audit_id_fkey"
+            columns: ["audit_id"]
+            isOneToOne: false
+            referencedRelation: "certification_audits"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "certifier_findings_certification_audit_id_fkey"
             columns: ["certification_audit_id"]
@@ -2079,6 +2170,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_audit_code: { Args: { org_id: string }; Returns: string }
       generate_nc_code: { Args: { org_id: string }; Returns: string }
       has_role: {
         Args: {
