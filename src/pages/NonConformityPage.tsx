@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, AlertTriangle, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, AlertTriangle, Clock, CheckCircle, XCircle, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format, isPast } from 'date-fns';
 import { it } from 'date-fns/locale';
+import * as XLSX from 'xlsx';
 
 export default function NonConformityPage() {
   const navigate = useNavigate();
@@ -89,6 +90,82 @@ export default function NonConformityPage() {
     }
   };
 
+  const exportToExcel = () => {
+    if (ncs.length === 0) {
+      toast({
+        title: 'Nessun dato',
+        description: 'Non ci sono NC da esportare',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Prepare data for Excel
+    const excelData = ncs.map(nc => ({
+      'Codice NC': nc.nc_code,
+      'Data Rilevazione': nc.detected_date ? format(new Date(nc.detected_date), 'dd/MM/yyyy') : '',
+      'Titolo': nc.title,
+      'Descrizione': nc.description || '',
+      'Gravità': nc.severity === 'major' ? 'NC Maggiore' : nc.severity === 'minor' ? 'NC Minore' : 'Osservazione',
+      'Stato': nc.status === 'open' ? 'Aperta' : nc.status === 'in_progress' ? 'In Lavorazione' : nc.status === 'resolved' ? 'Risolta' : 'Chiusa',
+      'Origine': nc.source === 'audit_internal' ? 'Audit Interno' : nc.source === 'audit_external' ? 'Audit Esterno' : nc.source === 'incident' ? 'Incident' : nc.source === 'management_review' ? 'Management Review' : 'Altro',
+      'Controllo ISO': nc.related_control || '',
+      'Clausola ISO': nc.affected_clause || '',
+      'Root Cause Analysis': nc.root_cause_analysis || '',
+      'Azione Correttiva': nc.corrective_action || '',
+      'Responsabile': nc.responsible_person || '',
+      'Scadenza': nc.deadline ? format(new Date(nc.deadline), 'dd/MM/yyyy') : '',
+      'Data Implementazione': nc.implementation_date ? format(new Date(nc.implementation_date), 'dd/MM/yyyy') : '',
+      'Efficacia Verificata': nc.effectiveness_verified ? 'Sì' : 'No',
+      'Verificato da': nc.verified_by || '',
+      'Data Verifica': nc.verification_date ? format(new Date(nc.verification_date), 'dd/MM/yyyy') : '',
+      'Data Chiusura': nc.closed_at ? format(new Date(nc.closed_at), 'dd/MM/yyyy HH:mm') : '',
+      'Note Chiusura': nc.closure_notes || ''
+    }));
+
+    // Create workbook
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(excelData);
+
+    // Set column widths
+    const colWidths = [
+      { wch: 15 }, // Codice NC
+      { wch: 12 }, // Data Rilevazione
+      { wch: 30 }, // Titolo
+      { wch: 40 }, // Descrizione
+      { wch: 15 }, // Gravità
+      { wch: 15 }, // Stato
+      { wch: 15 }, // Origine
+      { wch: 15 }, // Controllo ISO
+      { wch: 15 }, // Clausola ISO
+      { wch: 40 }, // Root Cause
+      { wch: 40 }, // Azione Correttiva
+      { wch: 20 }, // Responsabile
+      { wch: 12 }, // Scadenza
+      { wch: 15 }, // Data Implementazione
+      { wch: 15 }, // Efficacia Verificata
+      { wch: 20 }, // Verificato da
+      { wch: 12 }, // Data Verifica
+      { wch: 15 }, // Data Chiusura
+      { wch: 40 }  // Note Chiusura
+    ];
+    ws['!cols'] = colWidths;
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(wb, ws, 'Registro NC');
+
+    // Generate filename with date
+    const filename = `Registro_NC_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+
+    // Export file
+    XLSX.writeFile(wb, filename);
+
+    toast({
+      title: 'Export completato',
+      description: `File ${filename} scaricato con successo`
+    });
+  };
+
   const getSeverityBadge = (severity: string) => {
     const configs: Record<string, { variant: any; label: string; icon: any }> = {
       major: { variant: 'destructive', label: 'NC Maggiore', icon: XCircle },
@@ -144,10 +221,21 @@ export default function NonConformityPage() {
           <h1 className="text-3xl font-bold">Gestione Non Conformità</h1>
           <p className="text-muted-foreground">ISO 27001:2022 - Clausola 10.1</p>
         </div>
-        <Button onClick={() => navigate('/non-conformity/new')}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nuova Non Conformità
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={exportToExcel}
+            disabled={ncs.length === 0}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Esporta Excel
+          </Button>
+          
+          <Button onClick={() => navigate('/non-conformity/new')}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nuova Non Conformità
+          </Button>
+        </div>
       </div>
 
       {/* KPI Dashboard */}
