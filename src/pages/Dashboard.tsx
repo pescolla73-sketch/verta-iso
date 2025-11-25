@@ -1,4 +1,4 @@
-import { Shield, CheckCircle, AlertCircle, TrendingUp, Download, Settings, Bell, FileDown, Wand2, FileText, AlertTriangle } from "lucide-react";
+import { Shield, CheckCircle, AlertCircle, TrendingUp, Download, Settings, Bell, FileDown, Wand2, FileText, AlertTriangle, Award, Clock } from "lucide-react";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,47 @@ export default function Dashboard() {
       ).length || 0;
 
       return { open, overdue };
+    }
+  });
+
+  // Fetch certification status
+  const { data: certStatus } = useQuery({
+    queryKey: ['certification_status'],
+    queryFn: async () => {
+      const { data: org } = await supabase
+        .from('organization')
+        .select('id')
+        .limit(1)
+        .maybeSingle();
+      
+      if (!org) return null;
+
+      // Find active or most recent certificate
+      const { data: audits } = await supabase
+        .from('certification_audits')
+        .select('*')
+        .eq('organization_id', org.id)
+        .not('certificate_expiry_date', 'is', null)
+        .order('certificate_expiry_date', { ascending: false })
+        .limit(1);
+
+      if (!audits || audits.length === 0) return null;
+
+      const cert = audits[0];
+      const expiryDate = new Date(cert.certificate_expiry_date);
+      const today = new Date();
+      const daysUntilExpiry = Math.floor((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      const isValid = expiryDate > today;
+      const isExpiringSoon = daysUntilExpiry <= 90 && daysUntilExpiry > 0;
+
+      return {
+        isValid,
+        isExpiringSoon,
+        daysUntilExpiry,
+        expiryDate,
+        certificateNumber: cert.certificate_number,
+        certificationBody: cert.certification_body
+      };
     }
   });
 
@@ -178,8 +219,8 @@ export default function Dashboard() {
         </Card>
       )}
 
-      {/* 5 Key Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* 6 Key Metrics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         <StatCard
           title="Controlli Totali"
           value={stats.totalControls}
@@ -228,6 +269,80 @@ export default function Dashboard() {
               <p className="text-xs text-destructive font-semibold mt-1">
                 {ncStats.overdue} scadute!
               </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Certification Widget */}
+        <Card 
+          className={`cursor-pointer hover:shadow-lg transition-shadow ${
+            !certStatus?.isValid 
+              ? 'border-destructive bg-destructive/5' 
+              : certStatus?.isExpiringSoon 
+                ? 'border-warning bg-warning/5' 
+                : 'border-success bg-success/5'
+          }`}
+          onClick={() => navigate('/certification-audit')}
+        >
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <Award className="h-4 w-4" />
+                ISO 27001
+              </span>
+              {!certStatus?.isValid && certStatus && (
+                <AlertCircle className="h-4 w-4 text-destructive" />
+              )}
+              {certStatus?.isExpiringSoon && (
+                <Clock className="h-4 w-4 text-warning" />
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!certStatus ? (
+              <>
+                <div className="text-2xl font-bold text-muted-foreground">
+                  Non Certificato
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Nessun certificato
+                </p>
+              </>
+            ) : !certStatus.isValid ? (
+              <>
+                <div className="text-2xl font-bold text-destructive">
+                  SCADUTO
+                </div>
+                <p className="text-xs text-destructive font-semibold mt-1">
+                  Da {Math.abs(certStatus.daysUntilExpiry)} giorni
+                </p>
+              </>
+            ) : certStatus.isExpiringSoon ? (
+              <>
+                <div className="text-2xl font-bold text-warning">
+                  SCADENZA
+                </div>
+                <p className="text-xs text-warning font-semibold mt-1">
+                  Tra {certStatus.daysUntilExpiry} giorni
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {format(certStatus.expiryDate, 'dd/MM/yyyy')}
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-success">
+                  VALIDO
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Scade: {format(certStatus.expiryDate, 'dd/MM/yyyy')}
+                </p>
+                {certStatus.certificateNumber && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {certStatus.certificateNumber}
+                  </p>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
