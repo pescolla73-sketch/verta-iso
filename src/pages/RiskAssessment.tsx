@@ -50,6 +50,7 @@ export default function RiskAssessment() {
   const [levelFilter, setLevelFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [treatmentFilter, setTreatmentFilter] = useState<string>("all");
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [wizardMode, setWizardMode] = useState<'asset' | 'scenario'>('asset');
   const [selectedAssetId, setSelectedAssetId] = useState<string | undefined>();
@@ -100,11 +101,14 @@ export default function RiskAssessment() {
   const filteredRisks = risks?.filter((risk) => {
     const matchesSearch =
       risk.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      risk.risk_id.toLowerCase().includes(searchQuery.toLowerCase());
+      risk.risk_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      risk.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      risk.scope?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesLevel = levelFilter === "all" || risk.inherent_risk_level === levelFilter;
     const matchesStatus = statusFilter === "all" || risk.status === statusFilter;
     const matchesType = typeFilter === "all" || risk.risk_type === typeFilter;
-    return matchesSearch && matchesLevel && matchesStatus && matchesType;
+    const matchesTreatment = treatmentFilter === "all" || risk.treatment_strategy === treatmentFilter;
+    return matchesSearch && matchesLevel && matchesStatus && matchesType && matchesTreatment;
   });
 
   const riskStats = {
@@ -338,19 +342,24 @@ export default function RiskAssessment() {
 
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-4">
               <div>
                 <CardTitle>Registro Rischi</CardTitle>
                 <CardDescription>
-                  {filteredRisks?.length || 0} rischi registrati
+                  {risks?.length || 0} rischi totali
                 </CardDescription>
               </div>
+              {filteredRisks && risks && filteredRisks.length !== risks.length && (
+                <p className="text-sm text-muted-foreground">
+                  Mostrati {filteredRisks.length} di {risks.length} rischi
+                </p>
+              )}
             </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex gap-4">
-                <div className="relative flex-1">
+              <div className="flex flex-wrap gap-2">
+                <div className="relative w-full md:w-[200px]">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Cerca rischi..."
@@ -361,7 +370,7 @@ export default function RiskAssessment() {
                 </div>
 
                 <Select value={levelFilter} onValueChange={setLevelFilter}>
-                  <SelectTrigger className="w-48">
+                  <SelectTrigger className="w-full md:w-[140px]">
                     <SelectValue placeholder="Livello" />
                   </SelectTrigger>
                   <SelectContent>
@@ -374,7 +383,7 @@ export default function RiskAssessment() {
                 </Select>
 
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-48">
+                  <SelectTrigger className="w-full md:w-[140px]">
                     <SelectValue placeholder="Stato" />
                   </SelectTrigger>
                   <SelectContent>
@@ -387,7 +396,7 @@ export default function RiskAssessment() {
                 </Select>
 
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger className="w-48">
+                  <SelectTrigger className="w-full md:w-[150px]">
                     <SelectValue placeholder="Tipo" />
                   </SelectTrigger>
                   <SelectContent>
@@ -396,6 +405,44 @@ export default function RiskAssessment() {
                     <SelectItem value="scenario">Scenario</SelectItem>
                   </SelectContent>
                 </Select>
+
+                <Select value={treatmentFilter} onValueChange={setTreatmentFilter}>
+                  <SelectTrigger className="w-full md:w-[150px]">
+                    <SelectValue placeholder="Trattamento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tutti</SelectItem>
+                    <SelectItem value="Mitigate">Mitigare</SelectItem>
+                    <SelectItem value="Accept">Accettare</SelectItem>
+                    <SelectItem value="Avoid">Evitare</SelectItem>
+                    <SelectItem value="Transfer">Trasferire</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Button
+                  variant={statusFilter === "Identificato" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setStatusFilter(statusFilter === "Identificato" ? "all" : "Identificato")}
+                >
+                  <AlertTriangle className="h-4 w-4 mr-1" />
+                  Da Trattare
+                </Button>
+
+                {(levelFilter !== "all" || statusFilter !== "all" || typeFilter !== "all" || treatmentFilter !== "all" || searchQuery) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setLevelFilter("all");
+                      setStatusFilter("all");
+                      setTypeFilter("all");
+                      setTreatmentFilter("all");
+                      setSearchQuery("");
+                    }}
+                  >
+                    Reset
+                  </Button>
+                )}
               </div>
 
               <div className="rounded-md border">

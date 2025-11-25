@@ -47,6 +47,7 @@ export default function Assets() {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [criticalityFilter, setCriticalityFilter] = useState<string>("all");
+  const [ownerFilter, setOwnerFilter] = useState<string>("all");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<any>(null);
@@ -67,12 +68,18 @@ export default function Assets() {
   });
 
   const filteredAssets = assets?.filter((asset) => {
-    const matchesSearch = asset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      asset.asset_id.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = 
+      asset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      asset.asset_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      asset.description?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = typeFilter === "all" || asset.asset_type === typeFilter;
     const matchesCriticality = criticalityFilter === "all" || asset.criticality === criticalityFilter;
-    return matchesSearch && matchesType && matchesCriticality;
+    const matchesOwner = ownerFilter === "all" || asset.owner === ownerFilter;
+    return matchesSearch && matchesType && matchesCriticality && matchesOwner;
   });
+
+  // Get unique owners for filter dropdown
+  const uniqueOwners = [...new Set(assets?.map(a => a.owner).filter(Boolean))] as string[];
 
   const assetStats = {
     Hardware: assets?.filter((a) => a.asset_type === "Hardware").length || 0,
@@ -220,10 +227,17 @@ export default function Assets() {
       {/* Filters */}
       <Card className="shadow-card">
         <CardHeader>
-          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-            <CardTitle>Lista Asset</CardTitle>
-            <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
-              <div className="relative w-full md:w-64">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <CardTitle>Lista Asset</CardTitle>
+              {filteredAssets && assets && filteredAssets.length !== assets.length && (
+                <p className="text-sm text-muted-foreground">
+                  Mostrati {filteredAssets.length} di {assets.length} asset
+                </p>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <div className="relative w-full md:w-[200px]">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Cerca asset..."
@@ -233,7 +247,7 @@ export default function Assets() {
                 />
               </div>
               <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-full md:w-40">
+                <SelectTrigger className="w-full md:w-[150px]">
                   <SelectValue placeholder="Tipo" />
                 </SelectTrigger>
                 <SelectContent>
@@ -243,10 +257,11 @@ export default function Assets() {
                   <SelectItem value="Data">Data</SelectItem>
                   <SelectItem value="Service">Service</SelectItem>
                   <SelectItem value="People">People</SelectItem>
+                  <SelectItem value="Facility">Strutture</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={criticalityFilter} onValueChange={setCriticalityFilter}>
-                <SelectTrigger className="w-full md:w-40">
+                <SelectTrigger className="w-full md:w-[140px]">
                   <SelectValue placeholder="Criticità" />
                 </SelectTrigger>
                 <SelectContent>
@@ -257,6 +272,35 @@ export default function Assets() {
                   <SelectItem value="Basso">Basso</SelectItem>
                 </SelectContent>
               </Select>
+              {uniqueOwners.length > 0 && (
+                <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+                  <SelectTrigger className="w-full md:w-[150px]">
+                    <SelectValue placeholder="Owner" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tutti gli owner</SelectItem>
+                    {uniqueOwners.map(owner => (
+                      <SelectItem key={owner} value={owner}>
+                        {owner}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {(typeFilter !== "all" || criticalityFilter !== "all" || ownerFilter !== "all" || searchQuery) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setTypeFilter("all");
+                    setCriticalityFilter("all");
+                    setOwnerFilter("all");
+                    setSearchQuery("");
+                  }}
+                >
+                  Reset
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -337,11 +381,11 @@ export default function Assets() {
             <div className="text-center py-12">
               <Server className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground">
-                {searchQuery || typeFilter !== "all" || criticalityFilter !== "all"
+                {searchQuery || typeFilter !== "all" || criticalityFilter !== "all" || ownerFilter !== "all"
                   ? "Nessun asset trovato con i filtri selezionati"
                   : "Nessun asset registrato. Inizia aggiungendo il primo asset."}
               </p>
-              {!searchQuery && typeFilter === "all" && criticalityFilter === "all" && (
+              {!searchQuery && typeFilter === "all" && criticalityFilter === "all" && ownerFilter === "all" && (
                 <Button
                   className="mt-4"
                   onClick={() => {
