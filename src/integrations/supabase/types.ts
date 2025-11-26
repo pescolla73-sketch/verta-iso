@@ -670,6 +670,128 @@ export type Database = {
           },
         ]
       }
+      improvement_actions: {
+        Row: {
+          action_code: string
+          action_plan: string
+          action_type: string
+          closure_date: string | null
+          closure_notes: string | null
+          completion_date: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string
+          effectiveness_check_date: string | null
+          effectiveness_notes: string | null
+          effectiveness_verified: boolean | null
+          estimated_cost: number | null
+          estimated_effort: string | null
+          expected_benefit: string | null
+          id: string
+          implementation_notes: string | null
+          implementation_status: string | null
+          opportunity_statement: string | null
+          organization_id: string
+          priority: string
+          problem_statement: string | null
+          resources_required: string | null
+          responsible_person: string
+          root_cause_analysis: string | null
+          source: string
+          source_id: string | null
+          start_date: string | null
+          status: string
+          success_criteria: string | null
+          support_team: string | null
+          target_date: string
+          title: string
+          updated_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          action_code: string
+          action_plan: string
+          action_type: string
+          closure_date?: string | null
+          closure_notes?: string | null
+          completion_date?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description: string
+          effectiveness_check_date?: string | null
+          effectiveness_notes?: string | null
+          effectiveness_verified?: boolean | null
+          estimated_cost?: number | null
+          estimated_effort?: string | null
+          expected_benefit?: string | null
+          id?: string
+          implementation_notes?: string | null
+          implementation_status?: string | null
+          opportunity_statement?: string | null
+          organization_id: string
+          priority?: string
+          problem_statement?: string | null
+          resources_required?: string | null
+          responsible_person: string
+          root_cause_analysis?: string | null
+          source: string
+          source_id?: string | null
+          start_date?: string | null
+          status?: string
+          success_criteria?: string | null
+          support_team?: string | null
+          target_date: string
+          title: string
+          updated_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          action_code?: string
+          action_plan?: string
+          action_type?: string
+          closure_date?: string | null
+          closure_notes?: string | null
+          completion_date?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string
+          effectiveness_check_date?: string | null
+          effectiveness_notes?: string | null
+          effectiveness_verified?: boolean | null
+          estimated_cost?: number | null
+          estimated_effort?: string | null
+          expected_benefit?: string | null
+          id?: string
+          implementation_notes?: string | null
+          implementation_status?: string | null
+          opportunity_statement?: string | null
+          organization_id?: string
+          priority?: string
+          problem_statement?: string | null
+          resources_required?: string | null
+          responsible_person?: string
+          root_cause_analysis?: string | null
+          source?: string
+          source_id?: string | null
+          start_date?: string | null
+          status?: string
+          success_criteria?: string | null
+          support_team?: string | null
+          target_date?: string
+          title?: string
+          updated_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "improvement_actions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       internal_audits: {
         Row: {
           audit_code: string
@@ -2171,6 +2293,10 @@ export type Database = {
     }
     Functions: {
       generate_audit_code: { Args: { org_id: string }; Returns: string }
+      generate_improvement_code: {
+        Args: { action_type_param: string; org_id: string }
+        Returns: string
+      }
       generate_nc_code: { Args: { org_id: string }; Returns: string }
       has_role: {
         Args: {
