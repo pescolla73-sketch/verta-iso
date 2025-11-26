@@ -39,6 +39,7 @@ import CertificationAuditEditor from "./pages/CertificationAuditEditor";
 import AuditTrailPage from "./pages/AuditTrailPage";
 import NonConformityPage from "./pages/NonConformityPage";
 import NonConformityEditor from "./pages/NonConformityEditor";
+import ContinuousImprovementPage from "./pages/ContinuousImprovementPage";
 
 const queryClient = new QueryClient();
 
@@ -342,6 +343,30 @@ const App = () => (
             element={
               <AppLayout>
                 <NonConformityEditor />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/improvement"
+            element={
+              <AppLayout>
+                <ContinuousImprovementPage />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/improvement/new"
+            element={
+              <AppLayout>
+                <div className="p-6 text-center">Editor in sviluppo</div>
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/improvement/:id"
+            element={
+              <AppLayout>
+                <div className="p-6 text-center">Editor in sviluppo</div>
               </AppLayout>
             }
           />

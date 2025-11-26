@@ -105,6 +105,7 @@ export function AppSidebar() {
       label: "Miglioramento (Clausola 10)",
       items: [
         { title: "Non Conformità", url: "/non-conformity", icon: AlertTriangle },
+        { title: "Miglioramento Continuo", url: "/improvement", icon: TrendingUp },
       ]
     },
     {
