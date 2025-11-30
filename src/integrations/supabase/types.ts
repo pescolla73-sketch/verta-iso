@@ -557,6 +557,121 @@ export type Database = {
           },
         ]
       }
+      controlled_documents: {
+        Row: {
+          access_level: string | null
+          approval_date: string | null
+          approval_notes: string | null
+          approver: string | null
+          created_at: string | null
+          created_by: string | null
+          current_version: string
+          description: string | null
+          document_category: string | null
+          document_code: string
+          document_location: string | null
+          document_owner: string
+          document_title: string
+          document_type: string
+          id: string
+          last_review_date: string | null
+          next_review_date: string | null
+          notes: string | null
+          organization_id: string
+          purpose: string | null
+          related_policy_id: string | null
+          related_procedure_id: string | null
+          review_frequency_months: number | null
+          reviewer: string | null
+          scope: string | null
+          status: string
+          updated_at: string | null
+          version_date: string
+        }
+        Insert: {
+          access_level?: string | null
+          approval_date?: string | null
+          approval_notes?: string | null
+          approver?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          current_version?: string
+          description?: string | null
+          document_category?: string | null
+          document_code: string
+          document_location?: string | null
+          document_owner: string
+          document_title: string
+          document_type: string
+          id?: string
+          last_review_date?: string | null
+          next_review_date?: string | null
+          notes?: string | null
+          organization_id: string
+          purpose?: string | null
+          related_policy_id?: string | null
+          related_procedure_id?: string | null
+          review_frequency_months?: number | null
+          reviewer?: string | null
+          scope?: string | null
+          status?: string
+          updated_at?: string | null
+          version_date?: string
+        }
+        Update: {
+          access_level?: string | null
+          approval_date?: string | null
+          approval_notes?: string | null
+          approver?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          current_version?: string
+          description?: string | null
+          document_category?: string | null
+          document_code?: string
+          document_location?: string | null
+          document_owner?: string
+          document_title?: string
+          document_type?: string
+          id?: string
+          last_review_date?: string | null
+          next_review_date?: string | null
+          notes?: string | null
+          organization_id?: string
+          purpose?: string | null
+          related_policy_id?: string | null
+          related_procedure_id?: string | null
+          review_frequency_months?: number | null
+          reviewer?: string | null
+          scope?: string | null
+          status?: string
+          updated_at?: string | null
+          version_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "controlled_documents_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "controlled_documents_related_policy_id_fkey"
+            columns: ["related_policy_id"]
+            isOneToOne: false
+            referencedRelation: "policies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "controlled_documents_related_procedure_id_fkey"
+            columns: ["related_procedure_id"]
+            isOneToOne: false
+            referencedRelation: "procedures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       controls: {
         Row: {
           audit_history: Json | null
@@ -622,6 +737,163 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      document_change_requests: {
+        Row: {
+          change_description: string
+          change_justification: string
+          created_at: string | null
+          decision: string | null
+          decision_date: string | null
+          document_id: string
+          id: string
+          implementation_date: string | null
+          new_version_id: string | null
+          organization_id: string
+          request_code: string
+          request_date: string
+          requested_by: string
+          review_date: string | null
+          review_notes: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string | null
+          urgency: string | null
+        }
+        Insert: {
+          change_description: string
+          change_justification: string
+          created_at?: string | null
+          decision?: string | null
+          decision_date?: string | null
+          document_id: string
+          id?: string
+          implementation_date?: string | null
+          new_version_id?: string | null
+          organization_id: string
+          request_code: string
+          request_date?: string
+          requested_by: string
+          review_date?: string | null
+          review_notes?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string | null
+          urgency?: string | null
+        }
+        Update: {
+          change_description?: string
+          change_justification?: string
+          created_at?: string | null
+          decision?: string | null
+          decision_date?: string | null
+          document_id?: string
+          id?: string
+          implementation_date?: string | null
+          new_version_id?: string | null
+          organization_id?: string
+          request_code?: string
+          request_date?: string
+          requested_by?: string
+          review_date?: string | null
+          review_notes?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string | null
+          urgency?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_change_requests_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "controlled_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_change_requests_new_version_id_fkey"
+            columns: ["new_version_id"]
+            isOneToOne: false
+            referencedRelation: "document_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_change_requests_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_versions: {
+        Row: {
+          approval_date: string | null
+          approved_by: string | null
+          change_reason: string | null
+          change_summary: string
+          change_type: string
+          created_at: string | null
+          created_by: string | null
+          document_id: string
+          file_hash: string | null
+          file_size: number | null
+          file_url: string | null
+          id: string
+          organization_id: string
+          version_date: string
+          version_number: string
+        }
+        Insert: {
+          approval_date?: string | null
+          approved_by?: string | null
+          change_reason?: string | null
+          change_summary: string
+          change_type: string
+          created_at?: string | null
+          created_by?: string | null
+          document_id: string
+          file_hash?: string | null
+          file_size?: number | null
+          file_url?: string | null
+          id?: string
+          organization_id: string
+          version_date?: string
+          version_number: string
+        }
+        Update: {
+          approval_date?: string | null
+          approved_by?: string | null
+          change_reason?: string | null
+          change_summary?: string
+          change_type?: string
+          created_at?: string | null
+          created_by?: string | null
+          document_id?: string
+          file_hash?: string | null
+          file_size?: number | null
+          file_url?: string | null
+          id?: string
+          organization_id?: string
+          version_date?: string
+          version_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_versions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "controlled_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_versions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       evidences: {
         Row: {
@@ -2293,6 +2565,14 @@ export type Database = {
     }
     Functions: {
       generate_audit_code: { Args: { org_id: string }; Returns: string }
+      generate_change_request_code: {
+        Args: { org_id: string }
+        Returns: string
+      }
+      generate_document_code: {
+        Args: { doc_type: string; org_id: string }
+        Returns: string
+      }
       generate_improvement_code: {
         Args: { action_type_param: string; org_id: string }
         Returns: string
