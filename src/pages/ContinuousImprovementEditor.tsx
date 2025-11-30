@@ -129,8 +129,16 @@ export default function ContinuousImprovementEditor() {
     try {
       setLoading(true);
 
-      // Validation
-      if (!formData.title || !formData.description || !formData.action_plan || !formData.responsible_person || !formData.target_date) {
+      // Helper per validare e formattare date
+      const formatDate = (dateStr: string) => {
+        if (!dateStr) return null;
+        // Verifica formato YYYY-MM-DD
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return null;
+        return dateStr;
+      };
+
+      // Validation campi obbligatori
+      if (!formData.title || !formData.description || !formData.action_plan || !formData.responsible_person) {
         toast({
           title: 'Campi obbligatori mancanti',
           description: 'Compila tutti i campi obbligatori',
@@ -138,6 +146,65 @@ export default function ContinuousImprovementEditor() {
         });
         return;
       }
+
+      // Prepara dati base OBBLIGATORI
+      const saveData: any = {
+        action_type: formData.action_type,
+        source: formData.source,
+        title: formData.title,
+        description: formData.description,
+        action_plan: formData.action_plan,
+        responsible_person: formData.responsible_person,
+        status: formData.status,
+        priority: formData.priority,
+        implementation_status: formData.implementation_status,
+        effectiveness_verified: formData.effectiveness_verified,
+      };
+
+      // IMPORTANTE: Aggiungi target_date SOLO se valida, altrimenti metti data futura default
+      const targetDate = formatDate(formData.target_date);
+      if (targetDate) {
+        saveData.target_date = targetDate;
+      } else {
+        // Se non specificata, metti tra 30 giorni come default
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + 30);
+        saveData.target_date = futureDate.toISOString().split('T')[0];
+      }
+
+      // Aggiungi date opzionali SOLO se valide e NON vuote
+      const startDate = formatDate(formData.start_date);
+      if (startDate) saveData.start_date = startDate;
+
+      const completionDate = formatDate(formData.completion_date);
+      if (completionDate) saveData.completion_date = completionDate;
+
+      const effectivenessDate = formatDate(formData.effectiveness_check_date);
+      if (effectivenessDate) saveData.effectiveness_check_date = effectivenessDate;
+
+      const closureDate = formatDate(formData.closure_date);
+      if (closureDate) saveData.closure_date = closureDate;
+
+      // Campi testuali opzionali
+      if (formData.source_id) saveData.source_id = formData.source_id;
+      if (formData.problem_statement) saveData.problem_statement = formData.problem_statement;
+      if (formData.opportunity_statement) saveData.opportunity_statement = formData.opportunity_statement;
+      if (formData.root_cause_analysis) saveData.root_cause_analysis = formData.root_cause_analysis;
+      if (formData.expected_benefit) saveData.expected_benefit = formData.expected_benefit;
+      if (formData.success_criteria) saveData.success_criteria = formData.success_criteria;
+      if (formData.support_team) saveData.support_team = formData.support_team;
+      if (formData.estimated_effort) saveData.estimated_effort = formData.estimated_effort;
+      if (formData.estimated_cost) {
+        const cost = parseFloat(formData.estimated_cost);
+        if (!isNaN(cost)) saveData.estimated_cost = cost;
+      }
+      if (formData.resources_required) saveData.resources_required = formData.resources_required;
+      if (formData.implementation_notes) saveData.implementation_notes = formData.implementation_notes;
+      if (formData.effectiveness_notes) saveData.effectiveness_notes = formData.effectiveness_notes;
+      if (formData.verified_by) saveData.verified_by = formData.verified_by;
+      if (formData.closure_notes) saveData.closure_notes = formData.closure_notes;
+
+      console.log('Saving data:', saveData); // Debug
 
       if (isNew) {
         // Generate action code
@@ -147,18 +214,18 @@ export default function ContinuousImprovementEditor() {
         });
 
         const action_code = codeData;
+        saveData.organization_id = orgId;
+        saveData.action_code = action_code;
 
         // Create new action
         const { error: insertError } = await supabase
           .from('improvement_actions')
-          .insert({
-            organization_id: orgId,
-            action_code,
-            ...formData,
-            estimated_cost: formData.estimated_cost ? parseFloat(formData.estimated_cost) : null
-          });
+          .insert([saveData]);
 
-        if (insertError) throw insertError;
+        if (insertError) {
+          console.error('Insert error:', insertError);
+          throw insertError;
+        }
 
         toast({
           title: 'Azione creata',
@@ -168,13 +235,13 @@ export default function ContinuousImprovementEditor() {
         // Update existing action
         const { error: updateError } = await supabase
           .from('improvement_actions')
-          .update({
-            ...formData,
-            estimated_cost: formData.estimated_cost ? parseFloat(formData.estimated_cost) : null
-          })
+          .update(saveData)
           .eq('id', id);
 
-        if (updateError) throw updateError;
+        if (updateError) {
+          console.error('Update error:', updateError);
+          throw updateError;
+        }
 
         toast({
           title: 'Azione aggiornata',
@@ -184,7 +251,7 @@ export default function ContinuousImprovementEditor() {
 
       navigate('/improvement');
     } catch (error: any) {
-      console.error('Error saving action:', error);
+      console.error('Save error:', error);
       toast({
         title: 'Errore',
         description: error.message || 'Impossibile salvare l\'azione',
