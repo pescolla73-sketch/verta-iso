@@ -41,6 +41,7 @@ import NonConformityPage from "./pages/NonConformityPage";
 import NonConformityEditor from "./pages/NonConformityEditor";
 import ContinuousImprovementPage from "./pages/ContinuousImprovementPage";
 import ContinuousImprovementEditor from "./pages/ContinuousImprovementEditor";
+import DocumentControlPage from "./pages/DocumentControlPage";
 
 const queryClient = new QueryClient();
 
@@ -368,6 +369,36 @@ const App = () => (
             element={
               <AppLayout>
                 <ContinuousImprovementEditor />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/documents"
+            element={
+              <AppLayout>
+                <DocumentControlPage />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/documents/new"
+            element={
+              <AppLayout>
+                <div className="container mx-auto p-6">
+                  <h1 className="text-2xl font-bold">Editor Documento</h1>
+                  <p className="text-muted-foreground">In costruzione...</p>
+                </div>
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/documents/:id"
+            element={
+              <AppLayout>
+                <div className="container mx-auto p-6">
+                  <h1 className="text-2xl font-bold">Dettaglio Documento</h1>
+                  <p className="text-muted-foreground">In costruzione...</p>
+                </div>
               </AppLayout>
             }
           />
