@@ -16,6 +16,7 @@ import {
   ClipboardList,
   Award,
   History,
+  FileCheck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -84,6 +85,7 @@ export function AppSidebar() {
       items: [
         { title: "Politiche", url: "/policies", icon: FileText },
         { title: "Procedure", url: "/procedures", icon: ClipboardList },
+        { title: "Controllo Documenti", url: "/documents", icon: FileCheck },
         { title: "Training", url: "/training", icon: GraduationCap },
       ]
     },
