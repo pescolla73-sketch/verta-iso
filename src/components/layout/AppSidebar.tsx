@@ -119,6 +119,7 @@ export function AppSidebar() {
     {
       label: "Amministrazione",
       items: [
+        { title: "🔒 Security Check", url: "/security-check", icon: ShieldAlert },
         { title: "Utenti", url: "/roles", icon: Users },
         { title: "Impostazioni", url: "/settings", icon: Settings },
         { title: "Audit Trail", url: "/audit-trail", icon: History },
