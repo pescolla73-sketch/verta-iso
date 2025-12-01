@@ -43,6 +43,7 @@ import ContinuousImprovementPage from "./pages/ContinuousImprovementPage";
 import ContinuousImprovementEditor from "./pages/ContinuousImprovementEditor";
 import DocumentControlPage from "./pages/DocumentControlPage";
 import DocumentControlEditor from "./pages/DocumentControlEditor";
+import SecurityCheckPage from "./pages/SecurityCheckPage";
 
 const queryClient = new QueryClient();
 
@@ -394,6 +395,14 @@ const App = () => (
             element={
               <AppLayout>
                 <DocumentControlEditor />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/security-check"
+            element={
+              <AppLayout>
+                <SecurityCheckPage />
               </AppLayout>
             }
           />
