@@ -44,6 +44,7 @@ import ContinuousImprovementEditor from "./pages/ContinuousImprovementEditor";
 import DocumentControlPage from "./pages/DocumentControlPage";
 import DocumentControlEditor from "./pages/DocumentControlEditor";
 import SecurityCheckPage from "./pages/SecurityCheckPage";
+import SetupRBACSimplePage from "./pages/SetupRBACSimplePage";
 
 const queryClient = new QueryClient();
 
@@ -403,6 +404,14 @@ const App = () => (
             element={
               <AppLayout>
                 <SecurityCheckPage />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/setup-rbac"
+            element={
+              <AppLayout>
+                <SetupRBACSimplePage />
               </AppLayout>
             }
           />
