@@ -1433,6 +1433,59 @@ export type Database = {
         }
         Relationships: []
       }
+      organization_users: {
+        Row: {
+          activated_at: string | null
+          auth_user_id: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          invited_at: string | null
+          is_active: boolean | null
+          last_login_at: string | null
+          organization_id: string
+          updated_at: string | null
+          user_email: string
+          user_name: string
+        }
+        Insert: {
+          activated_at?: string | null
+          auth_user_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          invited_at?: string | null
+          is_active?: boolean | null
+          last_login_at?: string | null
+          organization_id: string
+          updated_at?: string | null
+          user_email: string
+          user_name: string
+        }
+        Update: {
+          activated_at?: string | null
+          auth_user_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          invited_at?: string | null
+          is_active?: boolean | null
+          last_login_at?: string | null
+          organization_id?: string
+          updated_at?: string | null
+          user_email?: string
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_users_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       policies: {
         Row: {
           approval_date: string | null
@@ -2041,6 +2094,33 @@ export type Database = {
           },
         ]
       }
+      roles: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_system_role: boolean | null
+          role_code: string
+          role_name: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_system_role?: boolean | null
+          role_code: string
+          role_name: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_system_role?: boolean | null
+          role_code?: string
+          role_name?: string
+        }
+        Relationships: []
+      }
       security_incidents: {
         Row: {
           affected_assets: string[] | null
@@ -2499,24 +2579,64 @@ export type Database = {
       }
       user_roles: {
         Row: {
-          created_at: string | null
+          assigned_at: string | null
+          assigned_by: string | null
           id: string
-          role: Database["public"]["Enums"]["app_role"]
+          organization_id: string
+          role_id: string
+          scope_type: string | null
+          scope_value: string | null
           user_id: string
+          valid_from: string | null
+          valid_until: string | null
         }
         Insert: {
-          created_at?: string | null
+          assigned_at?: string | null
+          assigned_by?: string | null
           id?: string
-          role: Database["public"]["Enums"]["app_role"]
+          organization_id: string
+          role_id: string
+          scope_type?: string | null
+          scope_value?: string | null
           user_id: string
+          valid_from?: string | null
+          valid_until?: string | null
         }
         Update: {
-          created_at?: string | null
+          assigned_at?: string | null
+          assigned_by?: string | null
           id?: string
-          role?: Database["public"]["Enums"]["app_role"]
+          organization_id?: string
+          role_id?: string
+          scope_type?: string | null
+          scope_value?: string | null
           user_id?: string
+          valid_from?: string | null
+          valid_until?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_roles_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "organization_users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vulnerabilities: {
         Row: {
@@ -2578,16 +2698,9 @@ export type Database = {
         Returns: string
       }
       generate_nc_code: { Args: { org_id: string }; Returns: string }
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
     }
     Enums: {
-      app_role: "admin" | "auditor" | "viewer"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2714,8 +2827,6 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {
-      app_role: ["admin", "auditor", "viewer"],
-    },
+    Enums: {},
   },
 } as const
