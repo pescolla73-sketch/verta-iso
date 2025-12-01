@@ -18,6 +18,7 @@ import {
   History,
   FileCheck,
   Wrench,
+  Search,
 } from "lucide-react";
 import {
   Sidebar,
@@ -122,6 +123,7 @@ export function AppSidebar() {
       items: [
         { title: "🔒 Security Check", url: "/security-check", icon: ShieldAlert },
         { title: "Setup RBAC", url: "/setup-rbac", icon: Wrench },
+        { title: "Analizza RBAC", url: "/analyze-rbac", icon: Search },
         { title: "Utenti", url: "/roles", icon: Users },
         { title: "Impostazioni", url: "/settings", icon: Settings },
         { title: "Audit Trail", url: "/audit-trail", icon: History },

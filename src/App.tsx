@@ -45,6 +45,7 @@ import DocumentControlPage from "./pages/DocumentControlPage";
 import DocumentControlEditor from "./pages/DocumentControlEditor";
 import SecurityCheckPage from "./pages/SecurityCheckPage";
 import SetupRBACSimplePage from "./pages/SetupRBACSimplePage";
+import AnalyzeExistingRolesPage from "./pages/AnalyzeExistingRolesPage";
 
 const queryClient = new QueryClient();
 
@@ -412,6 +413,14 @@ const App = () => (
             element={
               <AppLayout>
                 <SetupRBACSimplePage />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/analyze-rbac"
+            element={
+              <AppLayout>
+                <AnalyzeExistingRolesPage />
               </AppLayout>
             }
           />
