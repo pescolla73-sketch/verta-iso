@@ -1,4 +1,5 @@
-import { Shield, CheckCircle, AlertCircle, TrendingUp, Download, Settings, Bell, FileDown, Wand2, FileText, AlertTriangle, Award, Clock } from "lucide-react";
+import { Shield, CheckCircle, AlertCircle, TrendingUp, Download, Settings, Bell, FileDown, Wand2, FileText, AlertTriangle, Award, Clock, Lock } from "lucide-react";
+import { runSecurityAudit } from "@/utils/securityAudit";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -493,6 +494,18 @@ export default function Dashboard() {
         <Button onClick={() => navigate("/settings")} variant="outline" size="lg" className="gap-2">
           <Settings className="h-4 w-4" />
           Impostazioni
+        </Button>
+        <Button 
+          onClick={async () => {
+            await runSecurityAudit();
+            alert('Audit completato! Controlla la console del browser (F12)');
+          }}
+          variant="outline"
+          size="lg"
+          className="gap-2"
+        >
+          <Lock className="h-4 w-4" />
+          🔒 Run Security Audit
         </Button>
       </div>
     </div>
