@@ -211,10 +211,12 @@ export default function ProcedureManagementPage() {
               Gestisci procedure operative ISO 27001:2022
             </p>
           </div>
-          <Button onClick={createCustomProcedure}>
-            <Plus className="h-4 w-4 mr-2" />
-            Procedura Personalizzata
-          </Button>
+          <PermissionGuard resource="procedures" action="create">
+            <Button onClick={createCustomProcedure}>
+              <Plus className="h-4 w-4 mr-2" />
+              Procedura Personalizzata
+            </Button>
+          </PermissionGuard>
         </div>
 
         {/* Progress */}

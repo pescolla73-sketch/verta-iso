@@ -591,10 +591,12 @@ export default function AuditPlanPage() {
               </Button>
               <Dialog open={modalOpen} onOpenChange={setModalOpen}>
                 <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Pianifica Nuovo Audit
-                  </Button>
+                  <PermissionGuard resource="audits" action="create">
+                    <Button>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Pianifica Nuovo Audit
+                    </Button>
+                  </PermissionGuard>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl">
                 <DialogHeader>

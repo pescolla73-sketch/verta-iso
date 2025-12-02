@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useNavigate } from 'react-router-dom';
 import { PolicyNavigation } from '@/components/PolicyNavigation';
+import { PermissionGuard } from '@/components/PermissionGuard';
 
 export default function PolicyManagementPage() {
   const [templates, setTemplates] = useState<any[]>([]);
@@ -170,10 +171,12 @@ export default function PolicyManagementPage() {
               Gestisci policy ISO 27001:2022 + NIS2
             </p>
           </div>
-          <Button onClick={() => navigate('/policy-editor/new')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Policy Personalizzata
-          </Button>
+          <PermissionGuard resource="policies" action="create">
+            <Button onClick={() => navigate('/policy-editor/new')}>
+              <Plus className="h-4 w-4 mr-2" />
+              Policy Personalizzata
+            </Button>
+          </PermissionGuard>
         </div>
 
         {/* Progress */}

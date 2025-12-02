@@ -147,10 +147,12 @@ export default function CertificationAuditPage() {
           <h1 className="text-3xl font-bold">Audit Certificazione</h1>
           <p className="text-muted-foreground">Gestione audit ente certificatore</p>
         </div>
-        <Button onClick={() => navigate('/certification-audit/new')}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nuovo Audit
-        </Button>
+        <PermissionGuard resource="certification_audits" action="create">
+          <Button onClick={() => navigate('/certification-audit/new')}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nuovo Audit
+          </Button>
+        </PermissionGuard>
       </div>
 
       {/* KPI Dashboard */}

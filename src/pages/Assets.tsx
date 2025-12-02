@@ -179,16 +179,18 @@ export default function Assets() {
             Gestisci tutti gli asset dell'organizzazione per ISO 27001
           </p>
         </div>
-        <Button
-          className="gap-2"
-          onClick={() => {
-            setSelectedAsset(null);
-            setIsFormOpen(true);
-          }}
-        >
-          <Plus className="h-4 w-4" />
-          Nuovo Asset
-        </Button>
+        <PermissionGuard resource="assets" action="create">
+          <Button
+            className="gap-2"
+            onClick={() => {
+              setSelectedAsset(null);
+              setIsFormOpen(true);
+            }}
+          >
+            <Plus className="h-4 w-4" />
+            Nuovo Asset
+          </Button>
+        </PermissionGuard>
       </div>
 
       {/* Stats Cards */}
@@ -362,13 +364,15 @@ export default function Assets() {
                               <Edit className="h-4 w-4 mr-2" />
                               Modifica
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => setAssetToDelete(asset)}
-                              className="text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Elimina
-                            </DropdownMenuItem>
+                            <PermissionGuard resource="assets" action="delete">
+                              <DropdownMenuItem
+                                onClick={() => setAssetToDelete(asset)}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Elimina
+                              </DropdownMenuItem>
+                            </PermissionGuard>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -386,16 +390,18 @@ export default function Assets() {
                   : "Nessun asset registrato. Inizia aggiungendo il primo asset."}
               </p>
               {!searchQuery && typeFilter === "all" && criticalityFilter === "all" && ownerFilter === "all" && (
-                <Button
-                  className="mt-4"
-                  onClick={() => {
-                    setSelectedAsset(null);
-                    setIsFormOpen(true);
-                  }}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Aggiungi Primo Asset
-                </Button>
+                <PermissionGuard resource="assets" action="create">
+                  <Button
+                    className="mt-4"
+                    onClick={() => {
+                      setSelectedAsset(null);
+                      setIsFormOpen(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Aggiungi Primo Asset
+                  </Button>
+                </PermissionGuard>
               )}
             </div>
           )}
