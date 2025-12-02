@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { useControls } from "@/hooks/useControls";
+import { ProtectedMenuItem } from "@/components/ProtectedMenuItem";
 
 export function AppSidebar() {
   const { state } = useSidebar();
@@ -60,76 +61,201 @@ export function AppSidebar() {
       items: [
         { title: "Dashboard", url: "/", icon: LayoutDashboard },
         { title: "🎯 Percorso ISO 27001", url: "/progress", icon: TrendingUp },
-      ]
+      ],
     },
     {
       label: "Setup (Clausole 4-5)",
       items: [
-        { title: "Setup Azienda", url: "/setup-azienda", icon: Building2 },
-      ]
+        {
+          title: "Setup Azienda",
+          url: "/setup-azienda",
+          icon: Building2,
+          requiredRoles: ["SUPER_ADMIN", "ORG_ADMIN", "CISO"],
+        },
+      ],
     },
     {
       label: "Pianificazione (Clausola 6)",
       items: [
-        { title: "Risk Assessment", url: "/risk-assessment", icon: AlertTriangle },
-        { title: "Asset", url: "/assets", icon: Box },
-        { 
-          title: "Controlli", 
-          url: "/controls", 
-          icon: Shield, 
-          badge: hasWizardProgress ? `${wizardProgress}%` : undefined
+        {
+          title: "Risk Assessment",
+          url: "/risk-assessment",
+          icon: AlertTriangle,
+          resource: "risks",
+          action: "read",
         },
-        { title: "SoA", url: "/soa", icon: FileText },
-      ]
+        {
+          title: "Asset",
+          url: "/assets",
+          icon: Box,
+          resource: "assets",
+          action: "read",
+        },
+        {
+          title: "Controlli",
+          url: "/controls",
+          icon: Shield,
+          resource: "controls",
+          action: "read",
+          badge: hasWizardProgress ? `${wizardProgress}%` : undefined,
+        },
+        {
+          title: "SoA",
+          url: "/soa",
+          icon: FileText,
+          resource: "soa",
+          action: "read",
+        },
+      ],
     },
     {
       label: "Supporto (Clausola 7)",
       items: [
-        { title: "Politiche", url: "/policies", icon: FileText },
-        { title: "Procedure", url: "/procedures", icon: ClipboardList },
-        { title: "Controllo Documenti", url: "/documents", icon: FileCheck },
-        { title: "Training", url: "/training", icon: GraduationCap },
-      ]
+        {
+          title: "Politiche",
+          url: "/policies",
+          icon: FileText,
+          resource: "policies",
+          action: "read",
+        },
+        {
+          title: "Procedure",
+          url: "/procedures",
+          icon: ClipboardList,
+          resource: "procedures",
+          action: "read",
+        },
+        {
+          title: "Controllo Documenti",
+          url: "/documents",
+          icon: FileCheck,
+          resource: "documents",
+          action: "read",
+        },
+        {
+          title: "Training",
+          url: "/training",
+          icon: GraduationCap,
+          resource: "trainings",
+          action: "read",
+        },
+      ],
     },
     {
       label: "Operatività (Clausola 8)",
       items: [
-        { title: "Registro Eventi", url: "/audit", icon: ScrollText },
-        { title: "Incidenti", url: "/incidents", icon: ShieldAlert },
-      ]
+        {
+          title: "Registro Eventi",
+          url: "/audit",
+          icon: ScrollText,
+          resource: "audits",
+          action: "read",
+        },
+        {
+          title: "Incidenti",
+          url: "/incidents",
+          icon: ShieldAlert,
+          resource: "incidents",
+          action: "read",
+        },
+      ],
     },
     {
       label: "Valutazione (Clausola 9)",
       items: [
-        { title: "Audit Interni", url: "/audit-interni", icon: ClipboardCheck },
-        { title: "Management Review", url: "/management-review", icon: TrendingUp },
-      ]
+        {
+          title: "Audit Interni",
+          url: "/audit-interni",
+          icon: ClipboardCheck,
+          resource: "audits",
+          action: "read",
+        },
+        {
+          title: "Management Review",
+          url: "/management-review",
+          icon: TrendingUp,
+          requiredRoles: ["SUPER_ADMIN", "ORG_ADMIN", "CISO"],
+        },
+      ],
     },
     {
       label: "Miglioramento (Clausola 10)",
       items: [
-        { title: "Non Conformità", url: "/non-conformity", icon: AlertTriangle },
-        { title: "Miglioramento Continuo", url: "/improvement", icon: TrendingUp },
-      ]
+        {
+          title: "Non Conformità",
+          url: "/non-conformity",
+          icon: AlertTriangle,
+          resource: "non_conformities",
+          action: "read",
+        },
+        {
+          title: "Miglioramento Continuo",
+          url: "/improvement",
+          icon: TrendingUp,
+          resource: "improvements",
+          action: "read",
+        },
+      ],
     },
     {
       label: "Certificazione",
       items: [
-        { title: "Audit Certificazione", url: "/audit-certificazione", icon: Award },
-      ]
+        {
+          title: "Audit Certificazione",
+          url: "/audit-certificazione",
+          icon: Award,
+          resource: "certification_audits",
+          action: "read",
+        },
+      ],
     },
     {
       label: "Amministrazione",
       items: [
-        { title: "🔒 Security Check", url: "/security-check", icon: ShieldAlert },
-        { title: "Setup RBAC", url: "/setup-rbac", icon: Wrench },
-        { title: "Analizza RBAC", url: "/analyze-rbac", icon: Search },
-        { title: "Gestione Utenti", url: "/users", icon: Users },
-        { title: "Utenti", url: "/roles", icon: Users },
-        { title: "Impostazioni", url: "/settings", icon: Settings },
-        { title: "Audit Trail", url: "/audit-trail", icon: History },
-      ]
-    }
+        {
+          title: "🔒 Security Check",
+          url: "/security-check",
+          icon: ShieldAlert,
+          requiredRoles: ["SUPER_ADMIN", "ORG_ADMIN"],
+        },
+        {
+          title: "Setup RBAC",
+          url: "/setup-rbac",
+          icon: Wrench,
+          requiredRoles: ["SUPER_ADMIN", "ORG_ADMIN"],
+        },
+        {
+          title: "Analizza RBAC",
+          url: "/analyze-rbac",
+          icon: Search,
+          requiredRoles: ["SUPER_ADMIN", "ORG_ADMIN"],
+        },
+        {
+          title: "Gestione Utenti",
+          url: "/users",
+          icon: Users,
+          requiredRoles: ["SUPER_ADMIN", "ORG_ADMIN"],
+        },
+        {
+          title: "Utenti",
+          url: "/roles",
+          icon: Users,
+          requiredRoles: ["SUPER_ADMIN", "ORG_ADMIN"],
+        },
+        {
+          title: "Impostazioni",
+          url: "/settings",
+          icon: Settings,
+          requiredRoles: ["SUPER_ADMIN", "ORG_ADMIN"],
+        },
+        {
+          title: "Audit Trail",
+          url: "/audit-trail",
+          icon: History,
+          requiredRoles: ["SUPER_ADMIN", "ORG_ADMIN", "AUDITOR"],
+        },
+      ],
+    },
   ];
 
   const isActive = (path: string) => currentPath === path;
@@ -159,19 +285,39 @@ export function AppSidebar() {
               <SidebarMenu>
                 {section.items.map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <NavLink to={item.url} end className={getNavCls}>
-                        <item.icon className="h-4 w-4" />
-                        {!isCollapsed && (
-                          <span className="flex-1">{item.title}</span>
-                        )}
-                        {!isCollapsed && item.badge && (
-                          <Badge variant="secondary" className="ml-auto">
-                            {item.badge}
-                          </Badge>
-                        )}
-                      </NavLink>
-                    </SidebarMenuButton>
+                    {("requiredRoles" in item) || ("resource" in item) ? (
+                      <ProtectedMenuItem
+                        label={item.title}
+                        path={item.url}
+                        icon={item.icon}
+                        requiredRoles={item.requiredRoles}
+                        resource={item.resource}
+                        action={item.action}
+                        isActive={isActive(item.url)}
+                        showLabel={!isCollapsed}
+                        badge={
+                          !isCollapsed && item.badge ? (
+                            <Badge variant="secondary" className="ml-auto">
+                              {item.badge}
+                            </Badge>
+                          ) : undefined
+                        }
+                      />
+                    ) : (
+                      <SidebarMenuButton asChild>
+                        <NavLink to={item.url} end className={getNavCls}>
+                          <item.icon className="h-4 w-4" />
+                          {!isCollapsed && (
+                            <span className="flex-1">{item.title}</span>
+                          )}
+                          {!isCollapsed && item.badge && (
+                            <Badge variant="secondary" className="ml-auto">
+                              {item.badge}
+                            </Badge>
+                          )}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    )}
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>
