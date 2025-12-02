@@ -125,8 +125,8 @@ export function usePermissions() {
       // TODO: Quando implementi auth, carica ruoli utente reale
 
       const demoRole: UserRole = {
-        role_code: 'EMPLOYEE',
-        role_name: 'Employee',
+        role_code: 'ORG_ADMIN',
+        role_name: 'Organization Admin',
       };
 
       setUserRoles([demoRole]);
