@@ -44,6 +44,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getRiskBadgeVariant, RiskCategory } from "@/utils/riskCalculation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { logAuditEvent } from "@/utils/auditLog";
+import { PermissionGuard } from "@/components/PermissionGuard";
 
 export default function RiskAssessment() {
   const [searchQuery, setSearchQuery] = useState("");
