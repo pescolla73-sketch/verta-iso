@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileText, Plus, Eye, Edit, CheckCircle, Home, ClipboardList } from 'lucide-react';
 import { toast } from 'sonner';
+import { PermissionGuard } from '@/components/PermissionGuard';
 
 export default function ProcedureManagementPage() {
   const navigate = useNavigate();

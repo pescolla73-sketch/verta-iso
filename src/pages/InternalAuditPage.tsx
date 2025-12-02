@@ -9,6 +9,7 @@ import { Calendar, FileText, CheckCircle, Plus, ClipboardList } from 'lucide-rea
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { PermissionGuard } from '@/components/PermissionGuard';
 
 export default function InternalAuditPage() {
   const navigate = useNavigate();

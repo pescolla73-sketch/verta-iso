@@ -42,6 +42,7 @@ import { AssetDetailDialog } from "@/components/assets/AssetDetailDialog";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { logAuditEvent } from "@/utils/auditLog";
+import { PermissionGuard } from "@/components/PermissionGuard";
 
 export default function Assets() {
   const [searchQuery, setSearchQuery] = useState("");

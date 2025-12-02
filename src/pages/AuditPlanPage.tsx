@@ -19,6 +19,7 @@ import { getSmartSuggestions } from '@/utils/auditLinkage';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { PermissionGuard } from '@/components/PermissionGuard';
 
 export default function AuditPlanPage() {
   const navigate = useNavigate();
