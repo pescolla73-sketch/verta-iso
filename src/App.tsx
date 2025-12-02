@@ -77,9 +77,11 @@ const App = () => (
           <Route
             path="/risk-assessment"
             element={
-              <AppLayout>
-                <RiskAssessment />
-              </AppLayout>
+              <ProtectedRoute resource="risks" action="read">
+                <AppLayout>
+                  <RiskAssessment />
+                </AppLayout>
+              </ProtectedRoute>
             }
           />
           <Route
@@ -141,33 +143,41 @@ const App = () => (
           <Route
             path="/policies"
             element={
-              <AppLayout>
-                <PolicyManagementPage />
-              </AppLayout>
+              <ProtectedRoute resource="policies" action="read">
+                <AppLayout>
+                  <PolicyManagementPage />
+                </AppLayout>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/policies/:id"
             element={
-              <AppLayout>
-                <PolicyView />
-              </AppLayout>
+              <ProtectedRoute resource="policies" action="read">
+                <AppLayout>
+                  <PolicyView />
+                </AppLayout>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/policy-editor"
             element={
-              <AppLayout>
-                <PolicyEditor />
-              </AppLayout>
+              <ProtectedRoute resource="policies" action="create">
+                <AppLayout>
+                  <PolicyEditor />
+                </AppLayout>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/policy-editor/:id"
             element={
-              <AppLayout>
-                <PolicyEditor />
-              </AppLayout>
+              <ProtectedRoute resource="policies" action="create">
+                <AppLayout>
+                  <PolicyEditor />
+                </AppLayout>
+              </ProtectedRoute>
             }
           />
           <Route
@@ -205,9 +215,11 @@ const App = () => (
           <Route
             path="/setup-azienda"
             element={
-              <AppLayout>
-                <SetupAzienda />
-              </AppLayout>
+              <ProtectedRoute requiredRoles={["SUPER_ADMIN", "ORG_ADMIN", "CISO"]}>
+                <AppLayout>
+                  <SetupAzienda />
+                </AppLayout>
+              </ProtectedRoute>
             }
           />
           <Route
@@ -245,49 +257,61 @@ const App = () => (
           <Route
             path="/management-review"
             element={
-              <AppLayout>
-                <ManagementReview />
-              </AppLayout>
+              <ProtectedRoute requiredRoles={["SUPER_ADMIN", "ORG_ADMIN", "CISO"]}>
+                <AppLayout>
+                  <ManagementReview />
+                </AppLayout>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/management-review/:id"
             element={
-              <AppLayout>
-                <ManagementReviewEditor />
-              </AppLayout>
+              <ProtectedRoute requiredRoles={["SUPER_ADMIN", "ORG_ADMIN", "CISO"]}>
+                <AppLayout>
+                  <ManagementReviewEditor />
+                </AppLayout>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/management-review/:id/edit"
             element={
-              <AppLayout>
-                <ManagementReviewEditor />
-              </AppLayout>
+              <ProtectedRoute requiredRoles={["SUPER_ADMIN", "ORG_ADMIN", "CISO"]}>
+                <AppLayout>
+                  <ManagementReviewEditor />
+                </AppLayout>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/audit-interni"
             element={
-              <AppLayout>
-                <InternalAuditPage />
-              </AppLayout>
+              <ProtectedRoute resource="audits" action="read">
+                <AppLayout>
+                  <InternalAuditPage />
+                </AppLayout>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/audit-interni/piano"
             element={
-              <AppLayout>
-                <AuditPlanPage />
-              </AppLayout>
+              <ProtectedRoute resource="audits" action="create">
+                <AppLayout>
+                  <AuditPlanPage />
+                </AppLayout>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/audit-interni/esegui/:id"
             element={
-              <AppLayout>
-                <AuditExecutionPage />
-              </AppLayout>
+              <ProtectedRoute resource="audits" action="update">
+                <AppLayout>
+                  <AuditExecutionPage />
+                </AppLayout>
+              </ProtectedRoute>
             }
           />
           <Route
@@ -333,25 +357,31 @@ const App = () => (
           <Route
             path="/non-conformity"
             element={
-              <AppLayout>
-                <NonConformityPage />
-              </AppLayout>
+              <ProtectedRoute resource="non_conformities" action="read">
+                <AppLayout>
+                  <NonConformityPage />
+                </AppLayout>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/non-conformity/new"
             element={
-              <AppLayout>
-                <NonConformityEditor />
-              </AppLayout>
+              <ProtectedRoute resource="non_conformities" action="create">
+                <AppLayout>
+                  <NonConformityEditor />
+                </AppLayout>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/non-conformity/:id"
             element={
-              <AppLayout>
-                <NonConformityEditor />
-              </AppLayout>
+              <ProtectedRoute resource="non_conformities" action="create">
+                <AppLayout>
+                  <NonConformityEditor />
+                </AppLayout>
+              </ProtectedRoute>
             }
           />
           <Route
@@ -413,9 +443,11 @@ const App = () => (
           <Route
             path="/setup-rbac"
             element={
-              <AppLayout>
-                <SetupRBACSimplePage />
-              </AppLayout>
+              <ProtectedRoute requiredRoles={["SUPER_ADMIN", "ORG_ADMIN"]}>
+                <AppLayout>
+                  <SetupRBACSimplePage />
+                </AppLayout>
+              </ProtectedRoute>
             }
           />
           <Route

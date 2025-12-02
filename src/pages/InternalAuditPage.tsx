@@ -137,10 +137,12 @@ export default function InternalAuditPage() {
             <Calendar className="h-4 w-4 mr-2" />
             Vai al Piano
           </Button>
-          <Button onClick={() => navigate('/audit-interni/piano')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nuovo Audit
-          </Button>
+          <PermissionGuard resource="audits" action="create">
+            <Button onClick={() => navigate('/audit-interni/piano')}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nuovo Audit
+            </Button>
+          </PermissionGuard>
         </div>
       </div>
 

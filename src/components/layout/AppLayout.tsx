@@ -2,6 +2,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { Bell, User, Building2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { RoleBadge } from "@/components/RoleBadge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -239,6 +240,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               </DropdownMenu>
             </div>
             <div className="flex items-center gap-3">
+              <RoleBadge />
               <Button variant="ghost" size="icon">
                 <Bell className="h-5 w-5" />
               </Button>

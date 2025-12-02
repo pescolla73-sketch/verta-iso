@@ -56,10 +56,12 @@ export default function Audits() {
             Pianifica e traccia gli audit di conformità
           </p>
         </div>
-        <Button className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nuovo Audit
-        </Button>
+        <PermissionGuard resource="audits" action="create">
+          <Button className="gap-2">
+            <Plus className="h-4 w-4" />
+            Nuovo Audit
+          </Button>
+        </PermissionGuard>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

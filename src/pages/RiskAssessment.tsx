@@ -523,14 +523,16 @@ export default function RiskAssessment() {
                               >
                                 <Pencil className="h-4 w-4" />
                               </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleDeleteRisk(risk)}
-                                title="Elimina rischio"
-                              >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
+                              <PermissionGuard resource="risks" action="delete">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleDeleteRisk(risk)}
+                                  title="Elimina rischio"
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </PermissionGuard>
                             </div>
                           </TableCell>
                         </TableRow>
