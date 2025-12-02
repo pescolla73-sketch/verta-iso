@@ -64,14 +64,20 @@ export default function AnalyzeExistingRolesPage() {
         // Get users with their roles
         const { data: usersWithRoles, error: usersError } = await supabase
           .from('user_roles')
-          .select('user_id, role');
+          .select(`
+            user_id,
+            roles (
+              role_code
+            )
+          `);
 
         if (!usersError && usersWithRoles) {
           // Group roles by user
           const userRolesMap = new Map<string, string[]>();
           usersWithRoles.forEach((ur: any) => {
             const roles = userRolesMap.get(ur.user_id) || [];
-            roles.push(ur.role);
+            const roleCode = ur.roles?.role_code || 'unknown';
+            roles.push(roleCode);
             userRolesMap.set(ur.user_id, roles);
           });
 
@@ -96,31 +102,30 @@ export default function AnalyzeExistingRolesPage() {
         addLog('❌ Tabella user_roles non trovata');
       }
 
-      // Check for enum (we can't directly query it, so we check if insert would work)
-      addLog('🔍 Verifica esistenza enum app_role...');
+      // Check for roles table (modern RBAC setup)
+      addLog('🔍 Verifica esistenza tabella roles...');
       try {
-        // This will fail if enum doesn't exist
-        const { error: enumError } = await supabase
-          .from('user_roles')
-          .select('role')
+        const { error: rolesTableError } = await supabase
+          .from('roles')
+          .select('id')
           .limit(1);
         
-        if (!enumError) {
+        if (!rolesTableError) {
           analysis.hasRoleEnum = true;
-          addLog('✅ Enum app_role configurato correttamente');
+          addLog('✅ Tabella roles configurata correttamente');
         }
       } catch (e) {
         analysis.hasRoleEnum = false;
-        analysis.errors.push('Enum app_role non trovato');
-        addLog('❌ Enum app_role non trovato');
+        analysis.errors.push('Tabella roles non trovata');
+        addLog('❌ Tabella roles non trovata');
       }
 
       // Check for has_role function (indirect check)
       addLog('🔍 Verifica funzione has_role...');
       try {
-        const { data: functionData, error: functionError } = await supabase.rpc('has_role', {
+        const { data: functionData, error: functionError } = await (supabase as any).rpc('has_role', {
           _user_id: '00000000-0000-0000-0000-000000000000',
-          _role: 'admin'
+          _role: 'admin',
         });
 
         if (!functionError || functionError.message.includes('permission denied')) {
