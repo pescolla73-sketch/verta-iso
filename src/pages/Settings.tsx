@@ -34,16 +34,28 @@ export default function Settings() {
   const { data: userRole } = useQuery({
     queryKey: ["userRole"],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return null;
-      
-      const { data } = await supabase
+
+      const { data, error } = await supabase
         .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .single();
-      
-      return data?.role;
+        .select(`
+          roles (
+            role_code
+          )
+        `)
+        .eq("user_id", user.id);
+
+      if (error || !data) return null;
+
+      const roleCodes = data
+        .map((r: any) => r.roles?.role_code)
+        .filter(Boolean);
+
+      const isAdmin = roleCodes.includes("SUPER_ADMIN") || roleCodes.includes("ORG_ADMIN");
+      return isAdmin ? "admin" : "user";
     },
   });
 

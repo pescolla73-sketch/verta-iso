@@ -46,6 +46,7 @@ import DocumentControlEditor from "./pages/DocumentControlEditor";
 import SecurityCheckPage from "./pages/SecurityCheckPage";
 import SetupRBACSimplePage from "./pages/SetupRBACSimplePage";
 import AnalyzeExistingRolesPage from "./pages/AnalyzeExistingRolesPage";
+import UserManagementPage from "./pages/UserManagementPage";
 
 const queryClient = new QueryClient();
 
@@ -421,6 +422,14 @@ const App = () => (
             element={
               <AppLayout>
                 <AnalyzeExistingRolesPage />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/users"
+            element={
+              <AppLayout>
+                <UserManagementPage />
               </AppLayout>
             }
           />
