@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "./components/layout/AppLayout";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import Assets from "./pages/Assets";
 import RiskAssessment from "./pages/RiskAssessment";
@@ -428,9 +429,11 @@ const App = () => (
           <Route
             path="/users"
             element={
-              <AppLayout>
-                <UserManagementPage />
-              </AppLayout>
+              <ProtectedRoute requiredRoles={["SUPER_ADMIN", "ORG_ADMIN"]}>
+                <AppLayout>
+                  <UserManagementPage />
+                </AppLayout>
+              </ProtectedRoute>
             }
           />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
