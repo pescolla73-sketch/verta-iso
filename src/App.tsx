@@ -52,6 +52,7 @@ import UserManagementPage from "./pages/UserManagementPage";
 import LoginPage from "./pages/LoginPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import SetupPasswordPage from "./pages/SetupPasswordPage";
+import FinalSecurityAuditPage from "./pages/FinalSecurityAuditPage";
 
 const queryClient = new QueryClient();
 
@@ -472,6 +473,16 @@ const App = () => (
               <ProtectedRoute requiredRoles={["SUPER_ADMIN", "ORG_ADMIN"]}>
                 <AppLayout>
                   <UserManagementPage />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/final-security-audit"
+            element={
+              <ProtectedRoute requiredRoles={["SUPER_ADMIN", "ORG_ADMIN"]}>
+                <AppLayout>
+                  <FinalSecurityAuditPage />
                 </AppLayout>
               </ProtectedRoute>
             }
