@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Users, Trash2 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Plus, Users, Trash2, Mail, CheckCircle, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function UserManagementPage() {
@@ -120,26 +121,40 @@ export default function UserManagementPage() {
         return;
       }
 
-      // Create organization user
-      const { data: userData, error: userError } = await supabase
-        .from("organization_users")
-        .insert([
-          {
-            organization_id: organizationId,
-            user_name: newUser.user_name,
-            user_email: newUser.user_email,
-            is_active: true,
+      setLoading(true);
+
+      // 1. Crea utente in Auth con invito email automatico
+      const { data: authData, error: authError } = await supabase.auth.admin.inviteUserByEmail(
+        newUser.user_email,
+        {
+          data: {
+            full_name: newUser.user_name,
           },
-        ])
-        .select()
-        .single();
+          redirectTo: `${window.location.origin}/setup-password`,
+        },
+      );
 
-      if (userError) throw userError;
+      if (authError) {
+        // Se l'invito automatico fallisce (manca Service Role Key), fallback manuale
+        console.warn("Auth invite failed, using manual approach:", authError);
 
-      // Assign role
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .insert([
+        const { data: userData, error: userError } = await supabase
+          .from("organization_users")
+          .insert([
+            {
+              organization_id: organizationId,
+              user_name: newUser.user_name,
+              user_email: newUser.user_email,
+              is_active: false,
+              auth_user_id: null,
+            },
+          ])
+          .select()
+          .single();
+
+        if (userError) throw userError;
+
+        const { error: roleError } = await supabase.from("user_roles").insert([
           {
             user_id: userData.id,
             role_id: newUser.role_id,
@@ -147,11 +162,52 @@ export default function UserManagementPage() {
           },
         ]);
 
+        if (roleError) throw roleError;
+
+        toast({
+          title: "Utente Creato",
+          description: `Invia manualmente l'invito a ${newUser.user_email}`,
+          variant: "default",
+        });
+
+        setDialogOpen(false);
+        setNewUser({ user_name: "", user_email: "", role_id: "" });
+        loadData();
+        return;
+      }
+
+      // 2. Invito email riuscito: crea record organization_users collegato all'utente Auth
+      const { data: userData, error: userError } = await supabase
+        .from("organization_users")
+        .insert([
+          {
+            organization_id: organizationId,
+            user_name: newUser.user_name,
+            user_email: newUser.user_email,
+            is_active: false,
+            auth_user_id: authData.user?.id,
+          },
+        ])
+        .select()
+        .single();
+
+      if (userError) throw userError;
+
+      // 3. Assegna ruolo
+      const { error: roleError } = await supabase.from("user_roles").insert([
+        {
+          user_id: userData.id,
+          role_id: newUser.role_id,
+          organization_id: organizationId,
+        },
+      ]);
+
       if (roleError) throw roleError;
 
       toast({
         title: "Successo",
-        description: "Utente creato con successo",
+        description: `Email di invito inviata a ${newUser.user_email}`,
+        variant: "default",
       });
 
       setDialogOpen(false);
@@ -164,6 +220,8 @@ export default function UserManagementPage() {
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -251,10 +309,22 @@ export default function UserManagementPage() {
               Nuovo Utente
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Crea Nuovo Utente</DialogTitle>
+              <DialogDescription>
+                L'utente riceverà un'email con il link per impostare la password
+              </DialogDescription>
             </DialogHeader>
+
+            <Alert>
+              <Mail className="h-4 w-4" />
+              <AlertTitle>Email Automatica</AlertTitle>
+              <AlertDescription className="text-xs">
+                Verrà inviata automaticamente un'email all'indirizzo specificato con le istruzioni per il primo accesso.
+              </AlertDescription>
+            </Alert>
+
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label>Nome Completo *</Label>
@@ -409,9 +479,22 @@ export default function UserManagementPage() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={user.is_active ? "default" : "outline"}>
-                          {user.is_active ? "Attivo" : "Disattivato"}
-                        </Badge>
+                        {user.auth_user_id && user.is_active ? (
+                          <Badge variant="default" className="gap-1">
+                            <CheckCircle className="h-3 w-3" />
+                            Attivo
+                          </Badge>
+                        ) : user.auth_user_id && !user.is_active ? (
+                          <Badge variant="secondary" className="gap-1">
+                            <Clock className="h-3 w-3" />
+                            In Attesa Setup
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="gap-1">
+                            <Mail className="h-3 w-3" />
+                            Invito da Inviare
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell>
                         {user.created_at
