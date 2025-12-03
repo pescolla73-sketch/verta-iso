@@ -51,6 +51,7 @@ import AnalyzeExistingRolesPage from "./pages/AnalyzeExistingRolesPage";
 import UserManagementPage from "./pages/UserManagementPage";
 import LoginPage from "./pages/LoginPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import SetupPasswordPage from "./pages/SetupPasswordPage";
 
 const queryClient = new QueryClient();
 
