@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "./components/layout/AppLayout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { RequireAuth } from "./components/RequireAuth";
 import Dashboard from "./pages/Dashboard";
 import Assets from "./pages/Assets";
 import RiskAssessment from "./pages/RiskAssessment";
@@ -48,6 +49,8 @@ import SecurityCheckPage from "./pages/SecurityCheckPage";
 import SetupRBACSimplePage from "./pages/SetupRBACSimplePage";
 import AnalyzeExistingRolesPage from "./pages/AnalyzeExistingRolesPage";
 import UserManagementPage from "./pages/UserManagementPage";
+import LoginPage from "./pages/LoginPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 
 const queryClient = new QueryClient();
 
@@ -61,11 +64,15 @@ const App = () => (
           <Route
             path="/"
             element={
-              <AppLayout>
-                <Dashboard />
-              </AppLayout>
+              <RequireAuth>
+                <AppLayout>
+                  <Dashboard />
+                </AppLayout>
+              </RequireAuth>
             }
           />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route
             path="/assets"
             element={
