@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -215,14 +215,14 @@ export default function UserManagementPage() {
   };
 
   const getRoleBadge = (roleCode: string) => {
-    const configs: Record<string, { variant: any; label: string }> = {
-      SUPER_ADMIN: { variant: "destructive", label: "Super Admin" },
-      ORG_ADMIN: { variant: "default", label: "Org Admin" },
-      CISO: { variant: "default", label: "CISO" },
-      AUDITOR: { variant: "secondary", label: "Auditor" },
-      PROCESS_OWNER: { variant: "outline", label: "Process Owner" },
-      EMPLOYEE: { variant: "outline", label: "Employee" },
-      EXTERNAL_AUDITOR: { variant: "outline", label: "External Auditor" },
+    const configs: Record<string, { variant: BadgeProps["variant"]; label: string }> = {
+      SUPER_ADMIN: { variant: "destructive", label: "Super Amministratore" },
+      ORG_ADMIN: { variant: "default", label: "Amministratore Organizzazione" },
+      CISO: { variant: "default", label: "CISO / Responsabile Sicurezza" },
+      AUDITOR: { variant: "secondary", label: "Auditor Interno" },
+      PROCESS_OWNER: { variant: "outline", label: "Responsabile Processo" },
+      EMPLOYEE: { variant: "outline", label: "Dipendente" },
+      EXTERNAL_AUDITOR: { variant: "outline", label: "Auditor Esterno" },
     };
     const config = configs[roleCode] || { variant: "outline", label: roleCode };
     return <Badge variant={config.variant}>{config.label}</Badge>;
@@ -283,11 +283,23 @@ export default function UserManagementPage() {
                     <SelectValue placeholder="Seleziona ruolo" />
                   </SelectTrigger>
                   <SelectContent>
-                    {roles.map((role) => (
-                      <SelectItem key={role.id} value={role.id}>
-                        {role.role_name}
-                      </SelectItem>
-                    ))}
+                    {roles.map((role) => {
+                      const translations: Record<string, string> = {
+                        "Super Admin": "Super Amministratore",
+                        "Organization Admin": "Amministratore Organizzazione",
+                        CISO: "CISO / Responsabile Sicurezza",
+                        "Internal Auditor": "Auditor Interno",
+                        "Process Owner": "Responsabile Processo",
+                        Employee: "Dipendente",
+                        "External Auditor": "Auditor Esterno",
+                      };
+
+                      return (
+                        <SelectItem key={role.id} value={role.id}>
+                          {translations[role.role_name] || role.role_name}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>

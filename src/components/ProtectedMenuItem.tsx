@@ -85,10 +85,23 @@ export function ProtectedMenuItem({
           <TooltipTrigger asChild>{content}</TooltipTrigger>
           <TooltipContent side="right">
             <p className="text-xs">
-              Accesso negato
+              🔒 Accesso negato
               {requiredRoles && (
                 <span className="block text-xs text-muted-foreground mt-1">
-                  Ruoli richiesti: {requiredRoles.join(", ")}
+                  {requiredRoles.length === 1 ? "Ruolo richiesto" : "Ruoli richiesti"}: {requiredRoles
+                    .map((code) => {
+                      const translations: Record<string, string> = {
+                        SUPER_ADMIN: "Super Amministratore",
+                        ORG_ADMIN: "Amministratore",
+                        CISO: "CISO",
+                        AUDITOR: "Auditor",
+                        PROCESS_OWNER: "Process Owner",
+                        EMPLOYEE: "Dipendente",
+                        EXTERNAL_AUDITOR: "Auditor Esterno",
+                      };
+                      return translations[code] || code;
+                    })
+                    .join(", ")}
                 </span>
               )}
             </p>
