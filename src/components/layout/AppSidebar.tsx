@@ -219,6 +219,12 @@ export function AppSidebar() {
           requiredRoles: ["SUPER_ADMIN", "ORG_ADMIN"],
         },
         {
+          title: "Security Audit Finale",
+          url: "/final-security-audit",
+          icon: Shield,
+          requiredRoles: ["SUPER_ADMIN", "ORG_ADMIN"],
+        },
+        {
           title: "Setup RBAC",
           url: "/setup-rbac",
           icon: Wrench,
