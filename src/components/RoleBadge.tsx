@@ -2,6 +2,15 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Shield } from "lucide-react";
 
+const ROLE_TRANSLATIONS: Record<string, string> = {
+  SUPER_ADMIN: "Super Amministratore",
+  ORG_ADMIN: "Amministratore Organizzazione",
+  CISO: "CISO / Responsabile Sicurezza",
+  AUDITOR: "Auditor Interno",
+  PROCESS_OWNER: "Responsabile Processo",
+  EMPLOYEE: "Dipendente",
+  EXTERNAL_AUDITOR: "Auditor Esterno",
+};
 export function RoleBadge() {
   const { userRoles, loading } = usePermissions();
 
@@ -37,7 +46,7 @@ export function RoleBadge() {
           variant={getRoleVariant(role.role_code)}
           className="uppercase tracking-wide"
         >
-          {role.role_name}
+          {ROLE_TRANSLATIONS[role.role_code] || role.role_name}
         </Badge>
       ))}
     </div>

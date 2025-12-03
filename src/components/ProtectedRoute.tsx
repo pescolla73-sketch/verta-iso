@@ -31,10 +31,30 @@ export function ProtectedRoute({
         <div className="container mx-auto p-6">
           <Alert variant="destructive">
             <ShieldAlert className="h-4 w-4" />
-            <AlertTitle>Accesso Negato</AlertTitle>
+            <AlertTitle>🔒 Accesso Negato</AlertTitle>
             <AlertDescription>
               Non hai i permessi necessari per accedere a questa pagina.
-              Ruoli richiesti: {requiredRoles.join(', ')}
+              {requiredRoles && (
+                <div className="mt-2">
+                  {requiredRoles.length === 1 ? "Ruolo richiesto" : "Ruoli richiesti"}: {" "}
+                  <strong>
+                    {requiredRoles
+                      .map((code) => {
+                        const translations: Record<string, string> = {
+                          SUPER_ADMIN: "Super Amministratore",
+                          ORG_ADMIN: "Amministratore Organizzazione",
+                          CISO: "CISO",
+                          AUDITOR: "Auditor Interno",
+                          PROCESS_OWNER: "Responsabile Processo",
+                          EMPLOYEE: "Dipendente",
+                          EXTERNAL_AUDITOR: "Auditor Esterno",
+                        };
+                        return translations[code] || code;
+                      })
+                      .join(", ")}
+                  </strong>
+                </div>
+              )}
             </AlertDescription>
           </Alert>
         </div>
