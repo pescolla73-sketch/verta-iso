@@ -1,6 +1,6 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
-import { Bell, User, Building2, AlertTriangle } from "lucide-react";
+import { Bell, User, Building2, AlertTriangle, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RoleBadge } from "@/components/RoleBadge";
 import {
@@ -13,6 +13,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Development mode constants
 const DEV_MODE = true; // Set to false for production
@@ -30,6 +31,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const { user, signOut } = useAuth();
 
   // Get current user's profile with selected organization
   const { data: profile } = useQuery({
@@ -241,11 +243,33 @@ export function AppLayout({ children }: AppLayoutProps) {
             </div>
             <div className="flex items-center gap-3">
               <RoleBadge />
+              {user ? (
+                <>
+                  <div className="flex items-center gap-2 text-sm text-foreground">
+                    <User className="h-4 w-4" />
+                    <span>{user.email}</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => signOut()}
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Esci
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => (window.location.href = "/login")}
+                >
+                  Accedi
+                </Button>
+              )}
               <Button variant="ghost" size="icon">
                 <Bell className="h-5 w-5" />
-              </Button>
-              <Button variant="ghost" size="icon">
-                <User className="h-5 w-5" />
               </Button>
             </div>
           </header>
