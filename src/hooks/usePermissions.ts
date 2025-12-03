@@ -121,18 +121,69 @@ export function usePermissions() {
 
   const loadUserRoles = async () => {
     try {
-      // In DEMO mode, assegna ORG_ADMIN di default
-      // TODO: Quando implementi auth, carica ruoli utente reale
+      setLoading(true);
 
-      const demoRole: UserRole = {
-        role_code: 'ORG_ADMIN',
-        role_name: 'Organization Admin',
-      };
+      // 1. Ottieni utente autenticato
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-      setUserRoles([demoRole]);
-      setLoading(false);
+      if (!user) {
+        // DEMO mode - nessun utente autenticato
+        console.log("DEMO MODE: No authenticated user");
+        const demoRole: UserRole = {
+          role_code: "ORG_ADMIN",
+          role_name: "Amministratore Organizzazione",
+        };
+        setUserRoles([demoRole]);
+        setLoading(false);
+        return;
+      }
+
+      // 2. Carica ruoli utente dal database
+      const { data: orgUser, error } = await supabase
+        .from("organization_users")
+        .select(
+          `
+        user_roles (
+          roles (
+            role_code,
+            role_name
+          )
+        )
+      `
+        )
+        .eq("auth_user_id", user.id)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error loading user roles:", error);
+        setUserRoles([]);
+        setLoading(false);
+        return;
+      }
+
+      if (!orgUser || !orgUser.user_roles || orgUser.user_roles.length === 0) {
+        console.warn("User has no roles assigned");
+        setUserRoles([]);
+        setLoading(false);
+        return;
+      }
+
+      // 3. Imposta ruoli
+      const roles: UserRole[] = (orgUser.user_roles as any[])
+        .filter((ur: any) => ur.roles)
+        .map((ur: any) => ({
+          role_code: ur.roles.role_code as string,
+          role_name: ur.roles.role_name as string,
+        }));
+
+      setUserRoles(roles);
     } catch (error) {
-      console.error('Error loading user roles:', error);
+      console.error("Error in loadUserRoles:", error);
+      setUserRoles([]);
+    } finally {
       setLoading(false);
     }
   };
