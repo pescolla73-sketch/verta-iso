@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "./components/layout/AppLayout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { RequireAuth } from "./components/RequireAuth";
-import Dashboard from "./pages/Dashboard";
+import ModernDashboard from "./pages/ModernDashboard";
 import Assets from "./pages/Assets";
 import RiskAssessment from "./pages/RiskAssessment";
 import Controls from "./pages/Controls";
@@ -68,7 +68,7 @@ const App = () => (
             element={
               <RequireAuth>
                 <AppLayout>
-                  <Dashboard />
+                  <ModernDashboard />
                 </AppLayout>
               </RequireAuth>
             }
