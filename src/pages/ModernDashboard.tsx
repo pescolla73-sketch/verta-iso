@@ -413,7 +413,7 @@ export default function ModernDashboard() {
                   ⬆️ {Math.round((stats.controlsImplemented / stats.totalControls) * 100)}%
                 </span>
               </div>
-              <Button variant="link" size="sm" className="mt-2 p-0 h-auto text-indigo-600">
+              <Button variant="link" size="sm" className="mt-2 p-0 h-auto text-indigo-600 hover:text-indigo-700 hover:underline">
                 Vedi tutti →
               </Button>
             </CardContent>
@@ -443,7 +443,7 @@ export default function ModernDashboard() {
                   {stats.overdueNC} scadute
                 </p>
               )}
-              <Button variant="link" size="sm" className="mt-2 p-0 h-auto text-orange-600">
+              <Button variant="link" size="sm" className="mt-2 p-0 h-auto text-orange-600 hover:text-orange-700 hover:underline">
                 Gestisci →
               </Button>
             </CardContent>
@@ -466,7 +466,7 @@ export default function ModernDashboard() {
                   : "Da pianificare"}
               </div>
               <p className="text-sm text-muted-foreground mt-1">📅 Prossimo Audit</p>
-              <Button variant="link" size="sm" className="mt-2 p-0 h-auto text-blue-600">
+              <Button variant="link" size="sm" className="mt-2 p-0 h-auto text-blue-600 hover:text-blue-700 hover:underline">
                 Prepara →
               </Button>
             </CardContent>
@@ -485,7 +485,7 @@ export default function ModernDashboard() {
               </div>
               <p className="text-sm text-muted-foreground mt-1">🎯 Obiettivo</p>
               <p className="text-xs text-muted-foreground mt-1">Certificare entro Q2</p>
-              <Button variant="link" size="sm" className="mt-2 p-0 h-auto text-purple-600">
+              <Button variant="link" size="sm" className="mt-2 p-0 h-auto text-purple-600 hover:text-purple-700 hover:underline">
                 Piano →
               </Button>
             </CardContent>
@@ -503,7 +503,7 @@ export default function ModernDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <Button
                 variant="outline"
-                className="h-auto py-4 justify-start hover:bg-indigo-50 hover:border-indigo-300"
+                className="h-auto py-4 justify-start hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-900"
                 onClick={() => navigate("/policy-editor")}
               >
                 <FileText className="h-5 w-5 mr-3 text-indigo-600" />
@@ -515,7 +515,7 @@ export default function ModernDashboard() {
 
               <Button
                 variant="outline"
-                className="h-auto py-4 justify-start hover:bg-orange-50 hover:border-orange-300"
+                className="h-auto py-4 justify-start hover:bg-orange-50 hover:border-orange-300 hover:text-orange-900"
                 onClick={() => navigate("/risk-assessment")}
               >
                 <Target className="h-5 w-5 mr-3 text-orange-600" />
@@ -527,7 +527,7 @@ export default function ModernDashboard() {
 
               <Button
                 variant="outline"
-                className="h-auto py-4 justify-start hover:bg-green-50 hover:border-green-300"
+                className="h-auto py-4 justify-start hover:bg-green-50 hover:border-green-300 hover:text-green-900"
                 onClick={() => navigate("/assets")}
               >
                 <Package className="h-5 w-5 mr-3 text-green-600" />
