@@ -334,6 +334,20 @@ export function ModernSidebar() {
           <span>Percorso Certificazione</span>
         </button>
 
+        <button
+          onClick={() => navigate("/guida")}
+          className={cn(
+            "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm font-medium",
+            isActive("/guida")
+              ? "bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md"
+              : "hover:bg-indigo-50 text-gray-700"
+          )}
+        >
+          <BookOpen className="h-5 w-5" />
+          <span>📖 Guida</span>
+          <Badge variant="outline" className="ml-auto text-xs">NUOVO</Badge>
+        </button>
+
         <Separator className="my-3" />
 
         <div className="space-y-0.5">
