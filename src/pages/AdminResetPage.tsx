@@ -37,36 +37,58 @@ export default function AdminResetPage() {
 
     try {
       addLog('🚀 Inizio reset database...');
-      addLog('Chiamata funzione reset_database_for_testing()...');
+      addLog('📡 Chiamata funzione reset_database_for_testing()...');
+      addLog('');
 
+      // Chiama la funzione PostgreSQL
       const { data, error } = await supabase.rpc('reset_database_for_testing');
 
       if (error) {
         throw error;
       }
 
-      addLog('✅ ' + data);
-      addLog('');
-      addLog('✨ Reset completato!');
-      addLog('');
-      addLog('📊 STATO FINALE:');
-      addLog('✅ Tutte le tabelle dati svuotate');
-      addLog('✅ Struttura database mantenuta');
-      addLog('✅ Ruoli predefiniti mantenuti');
-      addLog('✅ 93 Controlli Annex A mantenuti');
-      addLog('');
-      addLog('🎯 Sistema pronto per nuovi test!');
-      addLog('🔄 Ricarica la pagina per vedere la dashboard vuota');
+      const result = data as { success: boolean; tables_cleared: number; error?: string; message: string };
 
-      toast({
-        title: 'Reset Completato',
-        description: 'Database azzerato con successo - ricarica la pagina'
-      });
+      if (result?.success) {
+        addLog('✅ Funzione eseguita con successo');
+        addLog(`📊 Tabelle svuotate: ${result.tables_cleared}`);
+        addLog('');
+        addLog('✨ Reset completato!');
+        addLog('');
+        addLog('📋 STATO FINALE:');
+        addLog('✅ Tutte le tabelle dati svuotate');
+        addLog('✅ Struttura database mantenuta');
+        addLog('✅ Ruoli predefiniti mantenuti');
+        addLog('✅ 93 Controlli Annex A mantenuti');
+        addLog('✅ RLS policies attive');
+        addLog('');
+        addLog('🎯 Sistema pronto per nuovi test!');
+        addLog('🔄 IMPORTANTE: Ricarica la pagina per vedere la dashboard vuota');
 
-      setConfirmText('');
+        toast({
+          title: '✅ Reset Completato!',
+          description: 'Database azzerato - ricarica la pagina'
+        });
+
+        setConfirmText('');
+
+        setTimeout(() => {
+          if (window.confirm('Reset completato! Vuoi ricaricare la pagina ora?')) {
+            window.location.href = '/';
+          }
+        }, 2000);
+      } else {
+        throw new Error(result?.error || 'Errore sconosciuto');
+      }
 
     } catch (error: any) {
+      addLog('');
       addLog(`❌ ERRORE: ${error.message}`);
+      
+      if (error.message?.includes('function') && error.message?.includes('does not exist')) {
+        addLog('💡 SOLUZIONE: Attendi che la migration venga applicata e riprova.');
+      }
+      
       toast({
         title: 'Errore Reset',
         description: error.message,
