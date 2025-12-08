@@ -2698,6 +2698,7 @@ export type Database = {
         Returns: string
       }
       generate_nc_code: { Args: { org_id: string }; Returns: string }
+      reset_database_for_testing: { Args: never; Returns: string }
       user_has_role: { Args: { required_roles: string[] }; Returns: boolean }
     }
     Enums: {
