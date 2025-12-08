@@ -4,6 +4,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload, X } from "lucide-react";
+import { InfoTooltip } from "@/components/InfoTooltip";
+import { getHelpContent } from "@/data/helpContent";
 
 interface OrganizationFormProps {
   orgData: any;
@@ -266,6 +268,9 @@ export default function OrganizationForm({
             <Label htmlFor="isms_scope" className="flex items-center gap-2">
               Ambito ISMS
               <span className="text-destructive">*</span>
+              {getHelpContent('setup-scope') && (
+                <InfoTooltip {...getHelpContent('setup-scope')!} type="help" />
+              )}
             </Label>
             <Textarea
               id="isms_scope"
@@ -284,6 +289,9 @@ export default function OrganizationForm({
             <Label htmlFor="isms_boundaries" className="flex items-center gap-2">
               Confini ISMS
               <span className="text-destructive">*</span>
+              {getHelpContent('setup-boundaries') && (
+                <InfoTooltip {...getHelpContent('setup-boundaries')!} type="help" />
+              )}
             </Label>
             <Textarea
               id="isms_boundaries"
