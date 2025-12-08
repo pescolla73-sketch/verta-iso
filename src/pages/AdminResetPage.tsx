@@ -37,52 +37,15 @@ export default function AdminResetPage() {
 
     try {
       addLog('🚀 Inizio reset database...');
+      addLog('Chiamata funzione reset_database_for_testing()...');
 
-      // Lista tabelle da svuotare (in ordine per rispettare FK)
-      const tablesToClear = [
-        'review_action_items',
-        'certifier_findings',
-        'audit_checklist_items',
-        'audit_findings',
-        'document_versions',
-        'document_change_requests',
-        'policy_versions',
-        'improvement_actions',
-        'non_conformities',
-        'certification_audits',
-        'internal_audits',
-        'management_reviews',
-        'controlled_documents',
-        'security_incidents',
-        'training_records',
-        'soa_items',
-        'procedures',
-        'policies',
-        'risks',
-        'assets',
-        'audit_logs',
-        'audit_trail'
-      ];
+      const { data, error } = await supabase.rpc('reset_database_for_testing');
 
-      addLog(`📋 Tabelle da svuotare: ${tablesToClear.length}`);
-
-      for (const table of tablesToClear) {
-        try {
-          const { error } = await supabase
-            .from(table as any)
-            .delete()
-            .neq('id', '00000000-0000-0000-0000-000000000000');
-
-          if (error) {
-            addLog(`⚠️ ${table}: ${error.message}`);
-          } else {
-            addLog(`✅ ${table}: svuotata`);
-          }
-        } catch (e: any) {
-          addLog(`❌ ${table}: ${e.message}`);
-        }
+      if (error) {
+        throw error;
       }
 
+      addLog('✅ ' + data);
       addLog('');
       addLog('✨ Reset completato!');
       addLog('');
@@ -90,20 +53,20 @@ export default function AdminResetPage() {
       addLog('✅ Tutte le tabelle dati svuotate');
       addLog('✅ Struttura database mantenuta');
       addLog('✅ Ruoli predefiniti mantenuti');
-      addLog('✅ Controlli Annex A mantenuti');
-      addLog('✅ RLS policies attive');
+      addLog('✅ 93 Controlli Annex A mantenuti');
       addLog('');
       addLog('🎯 Sistema pronto per nuovi test!');
+      addLog('🔄 Ricarica la pagina per vedere la dashboard vuota');
 
       toast({
         title: 'Reset Completato',
-        description: 'Database azzerato con successo'
+        description: 'Database azzerato con successo - ricarica la pagina'
       });
 
       setConfirmText('');
 
     } catch (error: any) {
-      addLog(`❌ ERRORE GENERALE: ${error.message}`);
+      addLog(`❌ ERRORE: ${error.message}`);
       toast({
         title: 'Errore Reset',
         description: error.message,
