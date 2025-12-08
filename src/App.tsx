@@ -53,6 +53,7 @@ import LoginPage from "./pages/LoginPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import SetupPasswordPage from "./pages/SetupPasswordPage";
 import FinalSecurityAuditPage from "./pages/FinalSecurityAuditPage";
+import GuidaPage from "./pages/GuidaPage";
 
 const queryClient = new QueryClient();
 
@@ -69,6 +70,16 @@ const App = () => (
               <RequireAuth>
                 <AppLayout>
                   <ModernDashboard />
+                </AppLayout>
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/guida"
+            element={
+              <RequireAuth>
+                <AppLayout>
+                  <GuidaPage />
                 </AppLayout>
               </RequireAuth>
             }
