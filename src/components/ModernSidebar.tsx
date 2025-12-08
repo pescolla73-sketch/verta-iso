@@ -31,6 +31,7 @@ import {
   Settings,
   BarChart,
   History,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -193,6 +194,12 @@ export function ModernSidebar() {
       icon: History,
       path: "/audit-trail",
       requiredRoles: ["SUPER_ADMIN", "ORG_ADMIN", "AUDITOR"],
+    },
+    {
+      title: "🔄 Reset Database",
+      icon: RefreshCw,
+      path: "/admin/reset",
+      requiredRoles: ["SUPER_ADMIN", "ORG_ADMIN"],
     },
   ];
 
