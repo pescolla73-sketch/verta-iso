@@ -76,87 +76,87 @@ export function ModernSidebar() {
 
   const operationalMenu: MenuItem[] = [
     {
-      title: "Setup & Pianificazione",
+      title: "🎯 Inizia da Qui",
       icon: Target,
       children: [
         {
-          title: "Setup Azienda",
+          title: "Parlaci della tua azienda",
           icon: Target,
           path: "/setup-azienda",
         },
         {
-          title: "Risk Assessment",
+          title: "Cosa potrebbe andare storto?",
           icon: AlertTriangle,
           path: "/risk-assessment",
         },
-        { title: "Asset Inventory", icon: Package, path: "/assets" },
+        { title: "Le tue risorse importanti", icon: Package, path: "/assets" },
       ],
     },
     {
-      title: "Documenti",
+      title: "📄 Regole e Istruzioni",
       icon: FileText,
       children: [
-        { title: "Politiche", icon: FileText, path: "/policies" },
-        { title: "Procedure", icon: BookOpen, path: "/procedures" },
+        { title: "Le tue regole di sicurezza", icon: FileText, path: "/policies" },
+        { title: "Come fare le cose", icon: BookOpen, path: "/procedures" },
         {
-          title: "Controllo Documenti",
+          title: "Archivio documenti",
           icon: FolderOpen,
           path: "/documents",
         },
-        { title: "Training", icon: GraduationCap, path: "/training" },
+        { title: "Formazione del team", icon: GraduationCap, path: "/training" },
       ],
     },
     {
-      title: "Controlli & Sicurezza",
+      title: "🛡️ Protezioni Attive",
       icon: Shield,
       badge: "12%",
       badgeVariant: "secondary",
       children: [
         {
-          title: "93 Controlli",
+          title: "Le tue protezioni",
           icon: Shield,
           path: "/controls",
-          badge: "125%",
+          badge: "12%",
         },
-        { title: "SoA", icon: CheckCircle, path: "/soa" },
+        { title: "Cosa hai implementato", icon: CheckCircle, path: "/soa" },
         {
-          title: "Registro Eventi",
+          title: "Registro eventi",
           icon: Calendar,
           path: "/audit",
         },
-        { title: "Incidenti", icon: AlertCircle, path: "/incidents" },
+        { title: "Problemi di sicurezza", icon: AlertCircle, path: "/incidents" },
       ],
     },
     {
-      title: "Audit & Review",
+      title: "✅ Verifiche",
       icon: ClipboardCheck,
       children: [
         {
-          title: "Audit Interni",
+          title: "Controlli interni",
           icon: ClipboardCheck,
           path: "/audit-interni",
         },
         {
-          title: "Management Review",
+          title: "Riunione Direzione",
           icon: TrendingUp,
           path: "/management-review",
         },
       ],
     },
     {
-      title: "Miglioramento",
+      title: "📈 Miglioramenti",
       icon: TrendingUp,
       badge: 7,
       badgeVariant: "destructive",
       children: [
         {
-          title: "Non Conformità",
+          title: "Problemi da risolvere",
           icon: XCircle,
           path: "/non-conformity",
           badge: 7,
         },
         {
-          title: "Azioni Correttive",
+          title: "Azioni di miglioramento",
           icon: Target,
           path: "/improvement",
         },

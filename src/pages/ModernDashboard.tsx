@@ -70,56 +70,56 @@ export default function ModernDashboard() {
   const certificationSteps: CertificationStep[] = [
     {
       id: 1,
-      title: "Setup Organizzazione",
-      description: "Definisci ambito e contesto",
+      title: "Parlaci di te",
+      description: "Definisci chi sei e cosa fai",
       path: "/setup-azienda",
       completed: true,
       estimatedTime: "15 min",
     },
     {
       id: 2,
-      title: "Policy e Procedure",
-      description: "Documentazione fondamentale",
+      title: "Le tue regole",
+      description: "Crea le policy di sicurezza",
       path: "/policies",
       completed: true,
       estimatedTime: "30 min",
     },
     {
       id: 3,
-      title: "Risk Assessment",
-      description: "Identifica e valuta rischi",
+      title: "Identifica i rischi",
+      description: "Cosa potrebbe andare storto?",
       path: "/risk-assessment",
       completed: false,
       estimatedTime: "30 min",
     },
     {
       id: 4,
-      title: "Implementa Controlli",
-      description: "Applica controlli Annex A",
+      title: "Attiva protezioni",
+      description: "Implementa i controlli di sicurezza",
       path: "/controls",
       completed: false,
       estimatedTime: "2 ore",
     },
     {
       id: 5,
-      title: "SoA",
-      description: "Statement of Applicability",
+      title: "Documenta tutto",
+      description: "Compila il registro protezioni (SoA)",
       path: "/soa",
       completed: false,
       estimatedTime: "45 min",
     },
     {
       id: 6,
-      title: "Audit Interno",
-      description: "Verifica efficacia ISMS",
+      title: "Verifica internamente",
+      description: "Fai un controllo prima dell'auditor",
       path: "/audit-interni",
       completed: false,
       estimatedTime: "1 ora",
     },
     {
       id: 7,
-      title: "Certificazione",
-      description: "Audit ente certificatore",
+      title: "Ottieni certificato",
+      description: "Audit finale e certificazione!",
       path: "/certification-audit",
       completed: false,
       estimatedTime: "1 giorno",
@@ -267,7 +267,7 @@ export default function ModernDashboard() {
               👋 Ciao{user ? `, ${user.email?.split("@")[0]}` : ""}! Bentornato
             </h1>
             <p className="text-muted-foreground mt-1">
-              Ecco il tuo percorso verso la certificazione ISO 27001
+              Il tuo viaggio verso la certificazione ISO 27001
             </p>
           </div>
           <div className="flex items-center gap-4">
@@ -310,10 +310,10 @@ export default function ModernDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-2xl flex items-center gap-2">
-                  🎯 IL TUO PERCORSO VERSO LA CERTIFICAZIONE
+                  🎯 IL TUO VIAGGIO VERSO LA CERTIFICAZIONE
                 </CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Segui gli step per ottenere la certificazione ISO 27001
+                  Segui questi passi per ottenere la certificazione
                 </p>
               </div>
               <div className="text-right">
@@ -403,7 +403,7 @@ export default function ModernDashboard() {
               <div className="text-3xl font-bold text-indigo-600">
                 {stats.controlsImplemented}/{stats.totalControls}
               </div>
-              <p className="text-sm text-muted-foreground mt-1">🛡️ Controlli</p>
+              <p className="text-sm text-muted-foreground mt-1">🛡️ Protezioni attive</p>
               <div className="flex items-center gap-2 mt-2">
                 <Progress
                   value={(stats.controlsImplemented / stats.totalControls) * 100}
@@ -437,7 +437,7 @@ export default function ModernDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-orange-600">{stats.openNC}</div>
-              <p className="text-sm text-muted-foreground mt-1">⚠️ NC Aperte</p>
+              <p className="text-sm text-muted-foreground mt-1">⚠️ Cose da sistemare</p>
               {stats.overdueNC > 0 && (
                 <p className="text-xs text-red-600 font-medium mt-1">
                   {stats.overdueNC} scadute
@@ -465,7 +465,7 @@ export default function ModernDashboard() {
                     })
                   : "Da pianificare"}
               </div>
-              <p className="text-sm text-muted-foreground mt-1">📅 Prossimo Audit</p>
+              <p className="text-sm text-muted-foreground mt-1">📅 Prossima verifica</p>
               <Button variant="link" size="sm" className="mt-2 p-0 h-auto text-blue-600 hover:text-blue-700 hover:underline">
                 Prepara →
               </Button>
@@ -483,8 +483,8 @@ export default function ModernDashboard() {
               <div className="text-lg font-bold text-purple-600">
                 {stats.certificationStatus === "Certificato" ? "Certificato!" : "In corso"}
               </div>
-              <p className="text-sm text-muted-foreground mt-1">🎯 Obiettivo</p>
-              <p className="text-xs text-muted-foreground mt-1">Certificare entro Q2</p>
+              <p className="text-sm text-muted-foreground mt-1">🎯 Il tuo obiettivo</p>
+              <p className="text-xs text-muted-foreground mt-1">Ottieni la certificazione</p>
               <Button variant="link" size="sm" className="mt-2 p-0 h-auto text-purple-600 hover:text-purple-700 hover:underline">
                 Piano →
               </Button>
@@ -496,7 +496,7 @@ export default function ModernDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-indigo-600" />
-              Azioni Rapide
+              🚀 Cosa vuoi fare?
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -508,8 +508,8 @@ export default function ModernDashboard() {
               >
                 <FileText className="h-5 w-5 mr-3 text-indigo-600" />
                 <div className="text-left">
-                  <div className="font-semibold">Crea Policy</div>
-                  <div className="text-xs text-muted-foreground">Nuova politica sicurezza</div>
+                  <div className="font-semibold">📝 Crea una Regola</div>
+                  <div className="text-xs text-muted-foreground">Aggiungi una policy di sicurezza</div>
                 </div>
               </Button>
 
@@ -520,8 +520,8 @@ export default function ModernDashboard() {
               >
                 <Target className="h-5 w-5 mr-3 text-orange-600" />
                 <div className="text-left">
-                  <div className="font-semibold">Nuovo Rischio</div>
-                  <div className="text-xs text-muted-foreground">Identifica minaccia</div>
+                  <div className="font-semibold">🎯 Identifica un Rischio</div>
+                  <div className="text-xs text-muted-foreground">Cosa potrebbe andare male?</div>
                 </div>
               </Button>
 
@@ -532,8 +532,8 @@ export default function ModernDashboard() {
               >
                 <Package className="h-5 w-5 mr-3 text-green-600" />
                 <div className="text-left">
-                  <div className="font-semibold">Aggiungi Asset</div>
-                  <div className="text-xs text-muted-foreground">Registra risorsa</div>
+                  <div className="font-semibold">💻 Registra una Risorsa</div>
+                  <div className="text-xs text-muted-foreground">Computer, server, dati importanti</div>
                 </div>
               </Button>
             </div>

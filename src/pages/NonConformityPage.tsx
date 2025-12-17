@@ -218,8 +218,8 @@ export default function NonConformityPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Gestione Non Conformità</h1>
-          <p className="text-muted-foreground">ISO 27001:2022 - Clausola 10.1</p>
+          <h1 className="text-3xl font-bold">⚠️ Problemi da Risolvere</h1>
+          <p className="text-muted-foreground">Cose che non vanno bene e devono essere sistemate</p>
         </div>
         <div className="flex gap-2">
           <Button 
@@ -233,7 +233,7 @@ export default function NonConformityPage() {
           
           <Button onClick={() => navigate('/non-conformity/new')}>
             <Plus className="h-4 w-4 mr-2" />
-            Nuova Non Conformità
+            Segnala un Problema
           </Button>
         </div>
       </div>
@@ -369,13 +369,13 @@ export default function NonConformityPage() {
           {filteredNcs.length === 0 && ncs.length === 0 ? (
             <div className="text-center py-12">
               <CheckCircle className="h-12 w-12 mx-auto text-green-500 mb-4" />
-              <h3 className="text-lg font-medium mb-2">Nessuna Non Conformità</h3>
+              <h3 className="text-lg font-medium mb-2">🎉 Tutto a posto!</h3>
               <p className="text-muted-foreground mb-4">
-                Ottimo! Non ci sono non conformità registrate.
+                Non ci sono problemi da risolvere. Ottimo lavoro!
               </p>
               <Button onClick={() => navigate('/non-conformity/new')}>
                 <Plus className="h-4 w-4 mr-2" />
-                Registra Prima NC
+                Segnala Primo Problema
               </Button>
             </div>
           ) : filteredNcs.length === 0 ? (
