@@ -175,9 +175,9 @@ export default function Assets() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">📦 Inventario Asset</h1>
+          <h1 className="text-3xl font-bold text-foreground">📦 Le Tue Risorse Importanti</h1>
           <p className="text-muted-foreground mt-2">
-            Gestisci tutti gli asset dell'organizzazione per ISO 27001
+            Computer, server, dati e tutto ciò che va protetto
           </p>
         </div>
         <PermissionGuard resource="assets" action="create">
@@ -385,10 +385,15 @@ export default function Assets() {
           ) : (
             <div className="text-center py-12">
               <Server className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">
+              <h3 className="text-lg font-medium mb-2">
                 {searchQuery || typeFilter !== "all" || criticalityFilter !== "all" || ownerFilter !== "all"
-                  ? "Nessun asset trovato con i filtri selezionati"
-                  : "Nessun asset registrato. Inizia aggiungendo il primo asset."}
+                  ? "Nessuna risorsa trovata"
+                  : "🎒 Non hai ancora registrato risorse"}
+              </h3>
+              <p className="text-muted-foreground mb-4">
+                {searchQuery || typeFilter !== "all" || criticalityFilter !== "all" || ownerFilter !== "all"
+                  ? "Prova a modificare i filtri di ricerca"
+                  : "Le risorse sono computer, server, dati, software e tutto ciò che va protetto. Inizia aggiungendo la prima!"}
               </p>
               {!searchQuery && typeFilter === "all" && criticalityFilter === "all" && ownerFilter === "all" && (
                 <PermissionGuard resource="assets" action="create">
@@ -400,7 +405,7 @@ export default function Assets() {
                     }}
                   >
                     <Plus className="h-4 w-4 mr-2" />
-                    Aggiungi Primo Asset
+                    Aggiungi Prima Risorsa
                   </Button>
                 </PermissionGuard>
               )}

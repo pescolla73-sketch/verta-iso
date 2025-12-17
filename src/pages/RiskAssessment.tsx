@@ -221,9 +221,9 @@ export default function RiskAssessment() {
     <div className="container mx-auto py-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Risk Assessment</h1>
+          <h1 className="text-3xl font-bold">🎯 Cosa Potrebbe Andare Storto?</h1>
           <p className="text-muted-foreground">
-            Gestione completa dei rischi ISO 27001 + NIS2
+            Identifica i rischi per la tua azienda
           </p>
         </div>
         <Badge variant="outline" className="text-sm">
@@ -234,22 +234,22 @@ export default function RiskAssessment() {
       <Alert>
         <InfoIcon className="h-4 w-4" />
         <AlertDescription>
-          Sistema di valutazione rischi conforme a ISO 27001:2022 e Direttiva NIS2 (EU 2022/2555)
+          💡 Valuta cosa potrebbe andare storto nella tua azienda per proteggerti meglio
         </AlertDescription>
       </Alert>
 
       <div className="space-y-6">
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">Valuta Nuovi Rischi</h2>
+            <h2 className="text-xl font-semibold">🔍 Valuta Nuovi Rischi</h2>
             <Button onClick={() => setShowCustomThreatDialog(true)} variant="outline">
               ✍️ Crea Minaccia Personalizzata
             </Button>
           </div>
           <Tabs defaultValue="threat-library" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="threat-library">📚 Libreria Minacce</TabsTrigger>
-              <TabsTrigger value="asset">📦 Per Asset</TabsTrigger>
+              <TabsTrigger value="threat-library">📚 Catalogo Minacce</TabsTrigger>
+              <TabsTrigger value="asset">📦 Per Risorsa</TabsTrigger>
               <TabsTrigger value="scenario">🌍 Per Scenario</TabsTrigger>
             </TabsList>
             
@@ -260,9 +260,9 @@ export default function RiskAssessment() {
             <TabsContent value="asset" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Valutazione Rischi per Asset</CardTitle>
+                  <CardTitle>🎯 Rischi per Risorsa</CardTitle>
                   <CardDescription>
-                    Seleziona un asset specifico per valutarne i rischi
+                    Seleziona una risorsa (computer, server, dati...) per valutarne i rischi
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -288,9 +288,9 @@ export default function RiskAssessment() {
             <TabsContent value="scenario" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Valutazione Rischi per Scenario</CardTitle>
+                  <CardTitle>🌍 Rischi per Scenario</CardTitle>
                   <CardDescription>
-                    Seleziona uno scenario di rischio generale
+                    Seleziona uno scenario tipico (attacco hacker, guasto, errore umano...)
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -304,7 +304,7 @@ export default function RiskAssessment() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Rischi Critici</CardTitle>
+              <CardTitle className="text-sm font-medium">🔴 Rischi Critici</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-destructive">{riskStats.critical}</div>
@@ -313,7 +313,7 @@ export default function RiskAssessment() {
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Rischi Alti</CardTitle>
+              <CardTitle className="text-sm font-medium">🟠 Rischi Alti</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-orange-500">{riskStats.high}</div>
@@ -322,7 +322,7 @@ export default function RiskAssessment() {
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Rischi Medi</CardTitle>
+              <CardTitle className="text-sm font-medium">🟡 Rischi Medi</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-yellow-500">{riskStats.medium}</div>
@@ -331,7 +331,7 @@ export default function RiskAssessment() {
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Rischi Bassi</CardTitle>
+              <CardTitle className="text-sm font-medium">🟢 Rischi Bassi</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-500">{riskStats.low}</div>
@@ -345,9 +345,9 @@ export default function RiskAssessment() {
           <CardHeader>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <CardTitle>Registro Rischi</CardTitle>
+                <CardTitle>📋 Elenco Rischi Identificati</CardTitle>
                 <CardDescription>
-                  {risks?.length || 0} rischi totali
+                  {risks?.length || 0} rischi nella tua azienda
                 </CardDescription>
               </div>
               {filteredRisks && risks && filteredRisks.length !== risks.length && (
