@@ -1627,17 +1627,25 @@ export type Database = {
           created_at: string | null
           id: string
           is_active: boolean | null
+          is_mandatory: boolean | null
           iso_reference: string[] | null
+          language: string | null
           name: string
           nis2_reference: string[] | null
           order_index: number | null
+          policy_number: string | null
           policy_statement_template: string | null
           procedures_template: string | null
           purpose_template: string | null
+          related_clauses: string[] | null
+          related_controls: string[] | null
+          responsibilities_template: string | null
           review_template: string | null
           roles_template: string | null
           scope_template: string | null
+          template_code: string | null
           updated_at: string | null
+          version: string | null
         }
         Insert: {
           category: string
@@ -1645,17 +1653,25 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_active?: boolean | null
+          is_mandatory?: boolean | null
           iso_reference?: string[] | null
+          language?: string | null
           name: string
           nis2_reference?: string[] | null
           order_index?: number | null
+          policy_number?: string | null
           policy_statement_template?: string | null
           procedures_template?: string | null
           purpose_template?: string | null
+          related_clauses?: string[] | null
+          related_controls?: string[] | null
+          responsibilities_template?: string | null
           review_template?: string | null
           roles_template?: string | null
           scope_template?: string | null
+          template_code?: string | null
           updated_at?: string | null
+          version?: string | null
         }
         Update: {
           category?: string
@@ -1663,17 +1679,25 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_active?: boolean | null
+          is_mandatory?: boolean | null
           iso_reference?: string[] | null
+          language?: string | null
           name?: string
           nis2_reference?: string[] | null
           order_index?: number | null
+          policy_number?: string | null
           policy_statement_template?: string | null
           procedures_template?: string | null
           purpose_template?: string | null
+          related_clauses?: string[] | null
+          related_controls?: string[] | null
+          responsibilities_template?: string | null
           review_template?: string | null
           roles_template?: string | null
           scope_template?: string | null
+          template_code?: string | null
           updated_at?: string | null
+          version?: string | null
         }
         Relationships: []
       }
