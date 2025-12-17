@@ -4,12 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Plus, Edit, CheckCircle, Home, Loader2, Eye, Download } from 'lucide-react';
+import { FileText, Plus, Edit, CheckCircle, Loader2, Eye, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useNavigate } from 'react-router-dom';
 import { PolicyNavigation } from '@/components/PolicyNavigation';
 import { PermissionGuard } from '@/components/PermissionGuard';
+import { PolicyTemplateSelector } from '@/components/PolicyTemplateSelector';
 
 export default function PolicyManagementPage() {
   const [templates, setTemplates] = useState<any[]>([]);
@@ -18,6 +19,28 @@ export default function PolicyManagementPage() {
   const [creating, setCreating] = useState(false);
   const [organization, setOrganization] = useState<any>(null);
   const navigate = useNavigate();
+
+  // Handle template selection - navigate to editor with pre-filled data
+  const handleSelectTemplate = (template: any) => {
+    // Navigate to policy editor with template data in state
+    navigate('/policy-editor/new', { 
+      state: { 
+        template: {
+          policy_name: template.name || template.policy_name,
+          policy_number: template.policy_number || '',
+          version: template.version || '1.0',
+          purpose: template.purpose_template || template.purpose || '',
+          scope: template.scope_template || template.scope || '',
+          policy_statement: template.policy_statement_template || template.policy_statement || '',
+          responsibilities: template.responsibilities_template || template.responsibilities || '',
+          iso_reference: template.iso_reference || [],
+          related_controls: template.related_controls || [],
+          category: template.category || 'security'
+        }
+      }
+    });
+    toast.success(`Template "${template.name || template.policy_name}" selezionato!`);
+  };
 
   useEffect(() => {
     loadData();
@@ -171,12 +194,15 @@ export default function PolicyManagementPage() {
               Gestisci policy ISO 27001:2022 + NIS2
             </p>
           </div>
-          <PermissionGuard resource="policies" action="create">
-            <Button onClick={() => navigate('/policy-editor/new')}>
-              <Plus className="h-4 w-4 mr-2" />
-              Policy Personalizzata
-            </Button>
-          </PermissionGuard>
+          <div className="flex gap-2">
+            <PolicyTemplateSelector onSelectTemplate={handleSelectTemplate} />
+            <PermissionGuard resource="policies" action="create">
+              <Button variant="outline" onClick={() => navigate('/policy-editor/new')}>
+                <Plus className="h-4 w-4 mr-2" />
+                Policy Personalizzata
+              </Button>
+            </PermissionGuard>
+          </div>
         </div>
 
         {/* Progress */}
@@ -193,12 +219,12 @@ export default function PolicyManagementPage() {
                 <div className="h-4 bg-muted rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-primary transition-all"
-                    style={{ width: `${(mandatoryCompleted / mandatoryCount) * 100}%` }}
+                    style={{ width: `${mandatoryCount > 0 ? (mandatoryCompleted / mandatoryCount) * 100 : 0}%` }}
                   />
                 </div>
               </div>
               <Badge variant={mandatoryCompleted === mandatoryCount ? 'default' : 'secondary'}>
-                {Math.round((mandatoryCompleted / mandatoryCount) * 100)}%
+                {mandatoryCount > 0 ? Math.round((mandatoryCompleted / mandatoryCount) * 100) : 0}%
               </Badge>
             </div>
           </CardContent>
