@@ -6,9 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Plus, Eye, Edit, CheckCircle, Home, ClipboardList } from 'lucide-react';
+import { FileText, Plus, Eye, Edit, CheckCircle, Home, ClipboardList, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { PermissionGuard } from '@/components/PermissionGuard';
+import { ProcedureTemplateSelector } from '@/components/ProcedureTemplateSelector';
 
 export default function ProcedureManagementPage() {
   const navigate = useNavigate();
@@ -132,6 +133,53 @@ export default function ProcedureManagementPage() {
     }
   };
 
+  const handleSelectProcedureTemplate = async (template: any) => {
+    try {
+      console.log('📋 Creating procedure from detailed template:', template.procedure_name || template.name);
+
+      if (!orgId) {
+        toast.error('Organizzazione non trovata');
+        return;
+      }
+
+      // Get organization name for template replacement
+      const { data: org } = await supabase
+        .from('organization')
+        .select('name')
+        .eq('id', orgId)
+        .single();
+
+      const orgName = org?.name || 'Organization';
+
+      const { data, error } = await supabase
+        .from('procedures')
+        .insert({
+          organization_id: orgId,
+          title: template.procedure_name || template.name,
+          category: template.category === 'mandatory' ? 'mandatory' : template.category,
+          iso_reference: template.iso_reference,
+          purpose: template.purpose_template?.replace(/{{organization_name}}/g, orgName) || '',
+          scope: template.scope_template?.replace(/{{organization_name}}/g, orgName) || '',
+          responsibilities: template.responsibilities_template?.replace(/{{organization_name}}/g, orgName) || '',
+          procedure_steps: template.steps_template?.replace(/{{organization_name}}/g, orgName) || '',
+          status: 'draft',
+          version: '1.0'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      console.log('✅ Procedure created from template:', data.procedure_id);
+      toast.success('✅ Procedura creata da template!');
+      await loadData();
+      navigate(`/procedures/${data.id}/edit`);
+    } catch (error: any) {
+      console.error('❌ Error creating procedure from template:', error);
+      toast.error('Errore: ' + error.message);
+    }
+  };
+
   const createCustomProcedure = async () => {
     try {
       console.log('✨ Creating custom procedure...');
@@ -212,12 +260,15 @@ export default function ProcedureManagementPage() {
               Gestisci procedure operative ISO 27001:2022
             </p>
           </div>
-          <PermissionGuard resource="procedures" action="create">
-            <Button onClick={createCustomProcedure}>
-              <Plus className="h-4 w-4 mr-2" />
-              Procedura Personalizzata
-            </Button>
-          </PermissionGuard>
+          <div className="flex gap-2">
+            <ProcedureTemplateSelector onSelectTemplate={handleSelectProcedureTemplate} />
+            <PermissionGuard resource="procedures" action="create">
+              <Button onClick={createCustomProcedure}>
+                <Plus className="h-4 w-4 mr-2" />
+                Procedura Personalizzata
+              </Button>
+            </PermissionGuard>
+          </div>
         </div>
 
         {/* Progress */}

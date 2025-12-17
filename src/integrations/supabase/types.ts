@@ -1746,47 +1746,77 @@ export type Database = {
         Row: {
           category: string
           created_at: string | null
+          frequency: string | null
           id: string
           is_active: boolean | null
+          is_mandatory: boolean | null
           iso_reference: string[] | null
+          language: string | null
           name: string
           order_index: number | null
+          procedure_name: string | null
+          procedure_number: string | null
+          procedure_steps: string | null
           purpose_template: string | null
           records_template: string | null
           related_policy: string | null
           responsibilities_template: string | null
           scope_template: string | null
           steps_template: string | null
+          template_code: string | null
+          template_name: string | null
+          tools_required: string | null
+          version: string | null
         }
         Insert: {
           category: string
           created_at?: string | null
+          frequency?: string | null
           id?: string
           is_active?: boolean | null
+          is_mandatory?: boolean | null
           iso_reference?: string[] | null
+          language?: string | null
           name: string
           order_index?: number | null
+          procedure_name?: string | null
+          procedure_number?: string | null
+          procedure_steps?: string | null
           purpose_template?: string | null
           records_template?: string | null
           related_policy?: string | null
           responsibilities_template?: string | null
           scope_template?: string | null
           steps_template?: string | null
+          template_code?: string | null
+          template_name?: string | null
+          tools_required?: string | null
+          version?: string | null
         }
         Update: {
           category?: string
           created_at?: string | null
+          frequency?: string | null
           id?: string
           is_active?: boolean | null
+          is_mandatory?: boolean | null
           iso_reference?: string[] | null
+          language?: string | null
           name?: string
           order_index?: number | null
+          procedure_name?: string | null
+          procedure_number?: string | null
+          procedure_steps?: string | null
           purpose_template?: string | null
           records_template?: string | null
           related_policy?: string | null
           responsibilities_template?: string | null
           scope_template?: string | null
           steps_template?: string | null
+          template_code?: string | null
+          template_name?: string | null
+          tools_required?: string | null
+          version?: string | null
         }
         Relationships: []
       }
