@@ -6,7 +6,10 @@ import OrganizationForm from "@/components/OrganizationForm";
 import { SetupWizard, WizardData, GeneratedDocuments } from "@/components/SetupWizard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Sparkles, FileEdit, CheckCircle } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Sparkles, FileEdit, CheckCircle, FileText, Settings } from "lucide-react";
 
 export default function SetupAzienda() {
   const { toast } = useToast();
@@ -16,6 +19,7 @@ export default function SetupAzienda() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [operationalAddressDifferent, setOperationalAddressDifferent] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
+  const [generatedDocs, setGeneratedDocs] = useState<GeneratedDocuments | null>(null);
 
   const [orgData, setOrgData] = useState({
     name: "",
@@ -132,6 +136,9 @@ export default function SetupAzienda() {
 
   // Handle wizard completion
   const handleWizardComplete = async (wizardData: WizardData, documents: GeneratedDocuments) => {
+    // Save generated docs for display
+    setGeneratedDocs(documents);
+    
     // Update org data with wizard results
     setOrgData(prev => ({
       ...prev,
@@ -155,8 +162,8 @@ export default function SetupAzienda() {
     setShowWizard(false);
     
     toast({
-      title: "🎉 Configurazione completata!",
-      description: "I documenti ISMS sono stati generati. Ora puoi completare i dettagli mancanti.",
+      title: "✅ Setup Completato!",
+      description: "Documenti ISMS generati automaticamente dalle tue risposte",
     });
   };
 
@@ -223,6 +230,7 @@ export default function SetupAzienda() {
       queryClient.invalidateQueries({ queryKey: ["setup-organization"] });
       setLogoFile(null);
       setErrors({});
+      setGeneratedDocs(null);
       toast({ 
         title: "Dati salvati con successo",
         description: "Le informazioni dell'organizzazione sono state aggiornate"
@@ -267,7 +275,7 @@ export default function SetupAzienda() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">🏢 Configurazione Guidata</h1>
+          <h1 className="text-3xl font-bold text-foreground">🧭 Configurazione Guidata ISMS</h1>
           <p className="text-muted-foreground mt-2">
             Rispondi a poche domande per generare automaticamente i documenti ISMS
           </p>
@@ -367,46 +375,203 @@ export default function SetupAzienda() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-3xl font-bold text-foreground">🏢 Parlaci della tua azienda</h1>
           <p className="text-muted-foreground mt-2">
-            Configura le informazioni base dell'organizzazione
+            Setup e configurazione del Sistema di Gestione (ISMS)
           </p>
         </div>
-        <Button variant="outline" onClick={() => setShowWizard(true)}>
-          <Sparkles className="h-4 w-4 mr-2" />
-          Riconfigura con Wizard
-        </Button>
+        {orgData.isms_scope && (
+          <Button variant="outline" onClick={() => setShowWizard(true)}>
+            <Sparkles className="h-4 w-4 mr-2" />
+            Rifai Wizard Guidato
+          </Button>
+        )}
       </div>
 
-      <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-        <div className="flex gap-2">
-          <span className="text-blue-600 dark:text-blue-400 font-semibold">ℹ️</span>
-          <div>
-            <h3 className="font-semibold text-blue-900 dark:text-blue-100">Campi Obbligatori</h3>
-            <p className="text-sm text-blue-800 dark:text-blue-200 mt-1">
-              I campi contrassegnati con <span className="text-destructive font-semibold">*</span> sono 
-              obbligatori per garantire la conformità ISO 27001 e la corretta generazione di documenti.
-            </p>
+      {/* Alert se documenti appena generati */}
+      {generatedDocs && (
+        <Alert className="border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800">
+          <CheckCircle className="h-4 w-4 text-green-600" />
+          <AlertTitle className="text-green-900 dark:text-green-100">Documenti Generati Automaticamente!</AlertTitle>
+          <AlertDescription className="text-green-800 dark:text-green-200">
+            Abbiamo creato i documenti "Ambito ISMS", "Contesto" e "Obiettivi" basandoci 
+            sulle tue risposte. Puoi visualizzarli e modificarli qui sotto.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Tabs: Documenti Generati vs Form Completo */}
+      <Tabs defaultValue={generatedDocs ? "documents" : "form"} className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="documents" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Documenti Generati
+          </TabsTrigger>
+          <TabsTrigger value="form" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Modifica Avanzata
+          </TabsTrigger>
+        </TabsList>
+
+        {/* TAB: Documenti Generati */}
+        <TabsContent value="documents" className="space-y-4 mt-6">
+          {/* Ambito ISMS */}
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    📋 Ambito ISMS
+                  </CardTitle>
+                  <CardDescription>
+                    Definisce cosa è coperto dal tuo sistema di sicurezza
+                  </CardDescription>
+                </div>
+                {orgData.isms_scope && orgData.isms_scope.trim() !== '' && (
+                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Completato
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {orgData.isms_scope && orgData.isms_scope.trim() !== '' ? (
+                <div className="bg-muted/50 p-4 rounded-lg whitespace-pre-wrap text-sm">
+                  {orgData.isms_scope}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>Usa il wizard per generare questo documento</p>
+                  <Button variant="outline" className="mt-4" onClick={() => setShowWizard(true)}>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Avvia Wizard
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Contesto */}
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    🌍 Contesto Organizzazione
+                  </CardTitle>
+                  <CardDescription>
+                    Fattori interni ed esterni che influenzano la sicurezza
+                  </CardDescription>
+                </div>
+                {orgData.isms_boundaries && orgData.isms_boundaries.trim() !== '' && (
+                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Completato
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {orgData.isms_boundaries && orgData.isms_boundaries.trim() !== '' ? (
+                <div className="bg-muted/50 p-4 rounded-lg whitespace-pre-wrap text-sm">
+                  {orgData.isms_boundaries}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>Usa il wizard per generare questo documento</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Obiettivi */}
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    🎯 Obiettivi Sicurezza
+                  </CardTitle>
+                  <CardDescription>
+                    Cosa vuoi ottenere con la certificazione
+                  </CardDescription>
+                </div>
+                {orgData.scope && orgData.scope.trim() !== '' && (
+                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Completato
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {orgData.scope && orgData.scope.trim() !== '' ? (
+                <div className="bg-muted/50 p-4 rounded-lg whitespace-pre-wrap text-sm">
+                  {orgData.scope}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>Usa il wizard per generare questo documento</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Info box */}
+          <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <div className="flex gap-2">
+              <span className="text-blue-600 dark:text-blue-400 font-semibold">💡</span>
+              <div>
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  Questi documenti sono stati generati automaticamente. Per modificarli, 
+                  vai alla tab <strong>"Modifica Avanzata"</strong> oppure 
+                  <Button variant="link" className="p-0 h-auto text-blue-600" onClick={() => setShowWizard(true)}>
+                    rifai il wizard
+                  </Button>.
+                </p>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </TabsContent>
 
-      <OrganizationForm
-        orgData={orgData}
-        setOrgData={setOrgData}
-        operationalAddressDifferent={operationalAddressDifferent}
-        setOperationalAddressDifferent={setOperationalAddressDifferent}
-        logoPreview={logoPreview}
-        setLogoPreview={setLogoPreview}
-        logoFile={logoFile}
-        setLogoFile={setLogoFile}
-        fileInputRef={fileInputRef}
-        onSave={() => saveMutation.mutate()}
-        isSaving={saveMutation.isPending}
-        errors={errors}
-      />
+        {/* TAB: Form Avanzato */}
+        <TabsContent value="form" className="mt-6">
+          <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-6">
+            <div className="flex gap-2">
+              <Settings className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+              <div>
+                <h3 className="font-semibold text-yellow-900 dark:text-yellow-100">Modalità Esperto</h3>
+                <p className="text-sm text-yellow-800 dark:text-yellow-200 mt-1">
+                  Modifica manualmente tutti i campi dell'organizzazione. 
+                  I campi contrassegnati con <span className="text-destructive font-semibold">*</span> sono obbligatori.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <OrganizationForm
+            orgData={orgData}
+            setOrgData={setOrgData}
+            operationalAddressDifferent={operationalAddressDifferent}
+            setOperationalAddressDifferent={setOperationalAddressDifferent}
+            logoPreview={logoPreview}
+            setLogoPreview={setLogoPreview}
+            logoFile={logoFile}
+            setLogoFile={setLogoFile}
+            fileInputRef={fileInputRef}
+            onSave={() => saveMutation.mutate()}
+            isSaving={saveMutation.isPending}
+            errors={errors}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
