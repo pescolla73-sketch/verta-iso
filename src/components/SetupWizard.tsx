@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -44,8 +45,15 @@ export interface GeneratedDocuments {
   objectives: string;
 }
 
+export interface SmartRiskSuggestion {
+  template_id: string;
+  risk_name: string;
+  relevance_score: number;
+  reason: string;
+}
+
 interface SetupWizardProps {
-  onComplete: (data: WizardData, generatedDocuments: GeneratedDocuments) => void;
+  onComplete: (data: WizardData, generatedDocuments: GeneratedDocuments, smartSuggestions: SmartRiskSuggestion[]) => void;
   onCancel: () => void;
 }
 
@@ -187,9 +195,64 @@ export function SetupWizard({ onComplete, onCancel }: SetupWizardProps) {
     return { scope, context, objectives };
   };
 
-  const handleComplete = () => {
+  const getSmartRiskSuggestions = async (): Promise<SmartRiskSuggestion[]> => {
+    try {
+      // Map industry to expected format
+      const industryMap: Record<string, string> = {
+        'IT / Software / Tech': 'tech',
+        'Finanza / Assicurazioni': 'finance',
+        'Sanità / Farmaceutico': 'health',
+        'Manifatturiero / Industria': 'manufacturing',
+        'Servizi professionali': 'services',
+        'Altro': 'other'
+      };
+
+      // Map employee count
+      const employeeMap: Record<string, string> = {
+        '1-10 persone': '1-10',
+        '11-50 persone': '11-50',
+        '51-250 persone': '51-250',
+        '251-1000 persone': '251-1000',
+        'Più di 1000 persone': '1000+'
+      };
+
+      const { data, error } = await supabase.rpc('get_recommended_risk_templates', {
+        p_locations: wizardData.locations.filter(l => l.trim() !== ''),
+        p_industry: industryMap[wizardData.industry] || 'other',
+        p_has_cloud: wizardData.hasCloud,
+        p_has_onpremise: wizardData.hasOnPremise,
+        p_has_development: wizardData.hasDevelopment,
+        p_has_personal_data: wizardData.hasPersonalData,
+        p_has_health_data: wizardData.hasHealthData,
+        p_has_financial_data: wizardData.hasFinancialData,
+        p_employee_count: employeeMap[wizardData.employeeCount] || '1-10'
+      });
+
+      if (error) {
+        console.error('Error getting smart suggestions:', error);
+        return [];
+      }
+
+      // Deduplicate by template_id, keeping highest relevance_score
+      const uniqueSuggestions = new Map<string, SmartRiskSuggestion>();
+      (data || []).forEach((item: SmartRiskSuggestion) => {
+        const existing = uniqueSuggestions.get(item.template_id);
+        if (!existing || item.relevance_score > existing.relevance_score) {
+          uniqueSuggestions.set(item.template_id, item);
+        }
+      });
+
+      return Array.from(uniqueSuggestions.values());
+    } catch (error) {
+      console.error('Error getting smart suggestions:', error);
+      return [];
+    }
+  };
+
+  const handleComplete = async () => {
     const documents = generateDocuments();
-    onComplete(wizardData, documents);
+    const smartSuggestions = await getSmartRiskSuggestions();
+    onComplete(wizardData, documents, smartSuggestions);
   };
 
   const canProceed = () => {
