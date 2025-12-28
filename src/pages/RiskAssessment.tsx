@@ -40,6 +40,7 @@ import { ScenarioSelector } from "@/components/risk/ScenarioSelector";
 import { ThreatLibraryBrowser } from "@/components/risk/ThreatLibraryBrowser";
 import { ThreatEvaluationDialog } from "@/components/risk/ThreatEvaluationDialog";
 import { CustomThreatDialog } from "@/components/risk/CustomThreatDialog";
+import { RiskTemplateSelector } from "@/components/risk/RiskTemplateSelector";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getRiskBadgeVariant, RiskCategory } from "@/utils/riskCalculation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -242,9 +243,15 @@ export default function RiskAssessment() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold">🔍 Valuta Nuovi Rischi</h2>
-            <Button onClick={() => setShowCustomThreatDialog(true)} variant="outline">
-              ✍️ Crea Minaccia Personalizzata
-            </Button>
+            <div className="flex gap-2">
+              <RiskTemplateSelector 
+                organizationId="" 
+                onRisksAdded={() => queryClient.invalidateQueries({ queryKey: ['risks'] })} 
+              />
+              <Button onClick={() => setShowCustomThreatDialog(true)} variant="outline">
+                ✍️ Crea Minaccia Personalizzata
+              </Button>
+            </div>
           </div>
           <Tabs defaultValue="threat-library" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
