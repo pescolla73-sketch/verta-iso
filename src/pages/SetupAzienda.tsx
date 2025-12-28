@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import OrganizationForm from "@/components/OrganizationForm";
-import { SetupWizard, WizardData, GeneratedDocuments } from "@/components/SetupWizard";
+import { SetupWizard, WizardData, GeneratedDocuments, SmartRiskSuggestion } from "@/components/SetupWizard";
+import { SmartRiskSuggestions } from "@/components/SmartRiskSuggestions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,6 +21,8 @@ export default function SetupAzienda() {
   const [operationalAddressDifferent, setOperationalAddressDifferent] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
   const [generatedDocs, setGeneratedDocs] = useState<GeneratedDocuments | null>(null);
+  const [showSmartSuggestions, setShowSmartSuggestions] = useState(false);
+  const [smartSuggestions, setSmartSuggestions] = useState<SmartRiskSuggestion[]>([]);
 
   const [orgData, setOrgData] = useState({
     name: "",
@@ -135,7 +138,7 @@ export default function SetupAzienda() {
   };
 
   // Handle wizard completion
-  const handleWizardComplete = async (wizardData: WizardData, documents: GeneratedDocuments) => {
+  const handleWizardComplete = async (wizardData: WizardData, documents: GeneratedDocuments, suggestions: SmartRiskSuggestion[]) => {
     // Save generated docs for display
     setGeneratedDocs(documents);
     
@@ -165,6 +168,12 @@ export default function SetupAzienda() {
       title: "✅ Setup Completato!",
       description: "Documenti ISMS generati automaticamente dalle tue risposte",
     });
+
+    // Show smart suggestions if there are any
+    if (suggestions && suggestions.length > 0) {
+      setSmartSuggestions(suggestions);
+      setShowSmartSuggestions(true);
+    }
   };
 
   // Save organization mutation
@@ -572,6 +581,20 @@ export default function SetupAzienda() {
           />
         </TabsContent>
       </Tabs>
+
+      {/* Smart Risk Suggestions Dialog */}
+      <SmartRiskSuggestions
+        open={showSmartSuggestions}
+        onClose={() => setShowSmartSuggestions(false)}
+        suggestions={smartSuggestions}
+        organizationId={organization?.id || ''}
+        onRisksAdded={() => {
+          toast({
+            title: '🎯 Rischi Aggiunti',
+            description: 'Vai a Risk Assessment per vederli e gestirli',
+          });
+        }}
+      />
     </div>
   );
 }
