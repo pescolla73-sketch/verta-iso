@@ -3,6 +3,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import OrganizationForm from "@/components/OrganizationForm";
+import { SetupWizard, WizardData, GeneratedDocuments } from "@/components/SetupWizard";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Sparkles, FileEdit, CheckCircle } from "lucide-react";
 
 export default function SetupAzienda() {
   const { toast } = useToast();
@@ -11,6 +15,7 @@ export default function SetupAzienda() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [operationalAddressDifferent, setOperationalAddressDifferent] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
 
   const [orgData, setOrgData] = useState({
     name: "",
@@ -47,7 +52,6 @@ export default function SetupAzienda() {
   const { data: organization, isLoading } = useQuery({
     queryKey: ["setup-organization"],
     queryFn: async () => {
-      // Try to get first organization
       const { data: orgs, error: fetchError } = await supabase
         .from("organization")
         .select("*")
@@ -56,7 +60,6 @@ export default function SetupAzienda() {
 
       if (fetchError) throw fetchError;
 
-      // If no organization exists, create one
       if (!orgs || orgs.length === 0) {
         const { data: newOrg, error: createError } = await supabase
           .from("organization")
@@ -71,6 +74,9 @@ export default function SetupAzienda() {
       return orgs[0];
     },
   });
+
+  // Check if organization is new (no ISMS scope set)
+  const isNewOrganization = !organization?.isms_scope && !organization?.isms_boundaries;
 
   // Load organization data into form
   useEffect(() => {
@@ -124,10 +130,39 @@ export default function SetupAzienda() {
     return newErrors;
   };
 
+  // Handle wizard completion
+  const handleWizardComplete = async (wizardData: WizardData, documents: GeneratedDocuments) => {
+    // Update org data with wizard results
+    setOrgData(prev => ({
+      ...prev,
+      name: wizardData.companyName || prev.name,
+      sector: wizardData.industry || prev.sector,
+      isms_scope: documents.scope,
+      isms_boundaries: documents.context,
+      scope: documents.objectives,
+      legal_address_city: wizardData.locations[0] || prev.legal_address_city,
+    }));
+    
+    // Handle multiple locations
+    if (wizardData.hasMultipleSites && wizardData.locations.length > 0) {
+      setOrgData(prev => ({
+        ...prev,
+        operational_address_city: wizardData.locations.slice(1).join(', '),
+      }));
+      setOperationalAddressDifferent(true);
+    }
+
+    setShowWizard(false);
+    
+    toast({
+      title: "🎉 Configurazione completata!",
+      description: "I documenti ISMS sono stati generati. Ora puoi completare i dettagli mancanti.",
+    });
+  };
+
   // Save organization mutation
   const saveMutation = useMutation({
     mutationFn: async () => {
-      // Validate form before saving
       const validationErrors = validateForm();
       if (Object.keys(validationErrors).length > 0) {
         setErrors(validationErrors);
@@ -135,20 +170,14 @@ export default function SetupAzienda() {
       }
       
       setErrors({});
-      console.log("[SetupAzienda] Starting save mutation...");
-      console.log("[SetupAzienda] Organization ID:", organization?.id);
-      console.log("[SetupAzienda] Organization data to save:", orgData);
       
       if (!organization?.id) {
-        console.error("[SetupAzienda] No organization ID found!");
         throw new Error("No organization found");
       }
 
       let logoUrl = logoPreview;
 
-      // Upload logo if a new file was selected
       if (logoFile) {
-        console.log("[SetupAzienda] Uploading logo file:", logoFile.name);
         const fileExt = logoFile.name.split('.').pop();
         const fileName = `${organization.id}-${Date.now()}.${fileExt}`;
         const filePath = `${fileName}`;
@@ -158,7 +187,6 @@ export default function SetupAzienda() {
           .upload(filePath, logoFile, { upsert: true });
 
         if (uploadError) {
-          console.error("[SetupAzienda] Logo upload error:", uploadError);
           throw uploadError;
         }
 
@@ -167,13 +195,11 @@ export default function SetupAzienda() {
           .getPublicUrl(filePath);
 
         logoUrl = publicUrl;
-        console.log("[SetupAzienda] Logo uploaded successfully:", logoUrl);
       }
 
       const updateData = { 
         ...orgData, 
         logo_url: logoUrl,
-        // Clear operational address if not different
         operational_address_street: operationalAddressDifferent ? orgData.operational_address_street : null,
         operational_address_city: operationalAddressDifferent ? orgData.operational_address_city : null,
         operational_address_zip: operationalAddressDifferent ? orgData.operational_address_zip : null,
@@ -181,26 +207,19 @@ export default function SetupAzienda() {
         operational_address_country: operationalAddressDifferent ? orgData.operational_address_country : null,
       };
 
-      console.log("[SetupAzienda] Updating organization with data:", updateData);
-
       const { data, error } = await supabase
         .from("organization")
         .update(updateData)
         .eq("id", organization.id)
         .select();
 
-      console.log("[SetupAzienda] Update response:", { data, error });
-
       if (error) {
-        console.error("[SetupAzienda] Database update error:", error);
         throw error;
       }
 
-      console.log("[SetupAzienda] Save completed successfully!");
       return data;
     },
-    onSuccess: (data) => {
-      console.log("[SetupAzienda] Save mutation success, data:", data);
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["setup-organization"] });
       setLogoFile(null);
       setErrors({});
@@ -210,14 +229,6 @@ export default function SetupAzienda() {
       });
     },
     onError: (error: any) => {
-      console.error("[SetupAzienda] Save mutation error:", error);
-      console.error("[SetupAzienda] Error details:", {
-        message: error?.message,
-        code: error?.code,
-        details: error?.details,
-        hint: error?.hint,
-      });
-      
       let errorMessage = "Si è verificato un errore durante il salvataggio dei dati";
       
       if (error?.message === "Compila tutti i campi obbligatori") {
@@ -242,7 +253,7 @@ export default function SetupAzienda() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Setup Azienda</h1>
+          <h1 className="text-3xl font-bold text-foreground">🏢 Parlaci della tua azienda</h1>
           <p className="text-muted-foreground mt-2">
             Caricamento...
           </p>
@@ -251,13 +262,122 @@ export default function SetupAzienda() {
     );
   }
 
+  // Show wizard if user chooses it
+  if (showWizard) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">🏢 Configurazione Guidata</h1>
+          <p className="text-muted-foreground mt-2">
+            Rispondi a poche domande per generare automaticamente i documenti ISMS
+          </p>
+        </div>
+        
+        <SetupWizard 
+          onComplete={handleWizardComplete}
+          onCancel={() => setShowWizard(false)}
+        />
+      </div>
+    );
+  }
+
+  // Show choice for new organizations
+  if (isNewOrganization && !orgData.isms_scope) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">🏢 Parlaci della tua azienda</h1>
+          <p className="text-muted-foreground mt-2">
+            È la prima volta? Scegli come vuoi configurare la tua organizzazione
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6 max-w-4xl">
+          <Card className="border-2 border-primary/20 hover:border-primary/50 transition-colors cursor-pointer" onClick={() => setShowWizard(true)}>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-full bg-primary/10">
+                  <Sparkles className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">✨ Configurazione Guidata</CardTitle>
+                  <CardDescription>Consigliato per iniziare</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  Rispondi a semplici domande
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  Genera automaticamente i documenti ISMS
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  ~5 minuti per completare
+                </li>
+              </ul>
+              <Button className="w-full mt-4" onClick={() => setShowWizard(true)}>
+                <Sparkles className="h-4 w-4 mr-2" />
+                Inizia la Configurazione Guidata
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="border hover:border-muted-foreground/30 transition-colors">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-full bg-muted">
+                  <FileEdit className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">📝 Compilazione Manuale</CardTitle>
+                  <CardDescription>Per utenti esperti</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                  Compila direttamente tutti i campi
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                  Controllo totale sui contenuti
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                  Richiede conoscenza ISO 27001
+                </li>
+              </ul>
+              <Button variant="outline" className="w-full mt-4" onClick={() => setOrgData(prev => ({ ...prev, isms_scope: ' ' }))}>
+                <FileEdit className="h-4 w-4 mr-2" />
+                Compila Manualmente
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Setup Azienda</h1>
-        <p className="text-muted-foreground mt-2">
-          Configura le informazioni base dell'organizzazione
-        </p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">🏢 Parlaci della tua azienda</h1>
+          <p className="text-muted-foreground mt-2">
+            Configura le informazioni base dell'organizzazione
+          </p>
+        </div>
+        <Button variant="outline" onClick={() => setShowWizard(true)}>
+          <Sparkles className="h-4 w-4 mr-2" />
+          Riconfigura con Wizard
+        </Button>
       </div>
 
       <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
