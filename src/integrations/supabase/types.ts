@@ -942,6 +942,48 @@ export type Database = {
           },
         ]
       }
+      geographic_risks: {
+        Row: {
+          city: string | null
+          coastal: boolean | null
+          created_at: string | null
+          flood_risk: string | null
+          id: string
+          landslide_risk: string | null
+          notes: string | null
+          province: string | null
+          region: string | null
+          seismic_zone: number | null
+          volcanic_risk: boolean | null
+        }
+        Insert: {
+          city?: string | null
+          coastal?: boolean | null
+          created_at?: string | null
+          flood_risk?: string | null
+          id?: string
+          landslide_risk?: string | null
+          notes?: string | null
+          province?: string | null
+          region?: string | null
+          seismic_zone?: number | null
+          volcanic_risk?: boolean | null
+        }
+        Update: {
+          city?: string | null
+          coastal?: boolean | null
+          created_at?: string | null
+          flood_risk?: string | null
+          id?: string
+          landslide_risk?: string | null
+          notes?: string | null
+          province?: string | null
+          region?: string | null
+          seismic_zone?: number | null
+          volcanic_risk?: boolean | null
+        }
+        Relationships: []
+      }
       improvement_actions: {
         Row: {
           action_code: string
@@ -2809,6 +2851,25 @@ export type Database = {
         Returns: string
       }
       generate_nc_code: { Args: { org_id: string }; Returns: string }
+      get_recommended_risk_templates: {
+        Args: {
+          p_employee_count: string
+          p_has_cloud: boolean
+          p_has_development: boolean
+          p_has_financial_data: boolean
+          p_has_health_data: boolean
+          p_has_onpremise: boolean
+          p_has_personal_data: boolean
+          p_industry: string
+          p_locations: string[]
+        }
+        Returns: {
+          reason: string
+          relevance_score: number
+          risk_name: string
+          template_id: string
+        }[]
+      }
       reset_database_for_testing: { Args: never; Returns: Json }
       user_has_role: { Args: { required_roles: string[] }; Returns: boolean }
     }
