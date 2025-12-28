@@ -1998,6 +1998,63 @@ export type Database = {
           },
         ]
       }
+      risk_templates: {
+        Row: {
+          applicable_to: string[] | null
+          category: string
+          created_at: string | null
+          description: string
+          examples: string | null
+          id: string
+          impact_default: number | null
+          likelihood_default: number | null
+          potential_impact: string
+          recommended_treatments: string[] | null
+          related_controls: string[] | null
+          risk_name: string
+          risk_score_default: number | null
+          template_code: string
+          threat_description: string
+          vulnerability_description: string | null
+        }
+        Insert: {
+          applicable_to?: string[] | null
+          category: string
+          created_at?: string | null
+          description: string
+          examples?: string | null
+          id?: string
+          impact_default?: number | null
+          likelihood_default?: number | null
+          potential_impact: string
+          recommended_treatments?: string[] | null
+          related_controls?: string[] | null
+          risk_name: string
+          risk_score_default?: number | null
+          template_code: string
+          threat_description: string
+          vulnerability_description?: string | null
+        }
+        Update: {
+          applicable_to?: string[] | null
+          category?: string
+          created_at?: string | null
+          description?: string
+          examples?: string | null
+          id?: string
+          impact_default?: number | null
+          likelihood_default?: number | null
+          potential_impact?: string
+          recommended_treatments?: string[] | null
+          related_controls?: string[] | null
+          risk_name?: string
+          risk_score_default?: number | null
+          template_code?: string
+          threat_description?: string
+          vulnerability_description?: string | null
+        }
+        Relationships: []
+      }
       risks: {
         Row: {
           affected_asset_ids: string[] | null

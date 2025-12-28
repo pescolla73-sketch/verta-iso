@@ -1,0 +1,382 @@
+-- =====================================================
+-- RISK TEMPLATES - Catalogo Rischi Comuni
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS public.risk_templates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  template_code TEXT UNIQUE NOT NULL,
+  risk_name TEXT NOT NULL,
+  category TEXT NOT NULL,
+  description TEXT NOT NULL,
+  threat_description TEXT NOT NULL,
+  vulnerability_description TEXT,
+  potential_impact TEXT NOT NULL,
+  likelihood_default INTEGER CHECK (likelihood_default BETWEEN 1 AND 5),
+  impact_default INTEGER CHECK (impact_default BETWEEN 1 AND 5),
+  risk_score_default INTEGER,
+  applicable_to TEXT[],
+  recommended_treatments TEXT[],
+  related_controls TEXT[],
+  examples TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indici
+CREATE INDEX idx_risk_templates_category ON public.risk_templates(category);
+CREATE INDEX idx_risk_templates_score ON public.risk_templates(risk_score_default DESC);
+
+-- RLS
+ALTER TABLE public.risk_templates ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Risk templates readable by all"
+  ON public.risk_templates FOR SELECT
+  USING (true);
+
+-- =====================================================
+-- POPOLA RISCHI COMUNI IT
+-- =====================================================
+
+INSERT INTO public.risk_templates (
+  template_code,
+  risk_name,
+  category,
+  description,
+  threat_description,
+  vulnerability_description,
+  potential_impact,
+  likelihood_default,
+  impact_default,
+  risk_score_default,
+  applicable_to,
+  recommended_treatments,
+  related_controls,
+  examples
+) VALUES
+-- CYBER RISKS (Critical)
+(
+  'RISK_RANSOM_001',
+  'Ransomware / Malware',
+  'cyber',
+  'Attacco ransomware che cripta dati aziendali e richiede riscatto per il ripristino',
+  'Criminali informatici che diffondono ransomware tramite email, vulnerabilità software o accessi RDP compromessi',
+  'Mancanza di backup offline, patch non aggiornate, dipendenti non formati su phishing, protezione endpoint insufficiente',
+  E'• Blocco completo operazioni aziendali (downtime)\n• Perdita permanente dati se no backup\n• Costi riscatto (media €50k-500k per PMI)\n• Danno reputazionale\n• Possibili sanzioni GDPR se dati personali\n• Costi recupero e ripristino sistemi',
+  4,
+  5,
+  20,
+  ARRAY['has_cloud', 'has_onpremise', 'has_personal_data', 'employee_count_10+'],
+  ARRAY['Backup offline immutabile', 'EDR/Antivirus next-gen', 'Formazione anti-phishing', 'Patch management', 'Segmentazione rete'],
+  ARRAY['A.5.29', 'A.5.30', 'A.8.7', 'A.8.8', 'A.8.16'],
+  'Colonial Pipeline (2021): $4.4M riscatto pagato. Azienda italiana manifatturiera (2023): 2 settimane downtime, €200k danni'
+),
+(
+  'RISK_PHISH_001',
+  'Phishing / Social Engineering',
+  'cyber',
+  'Dipendenti ingannati tramite email/chiamate fraudolente che rivelano credenziali o eseguono azioni dannose',
+  'Attaccanti che impersonano colleghi, management, clienti o fornitori per ottenere credenziali, trasferimenti denaro o installare malware',
+  'Dipendenti non formati, mancanza autenticazione multi-fattore, processi approvazione pagamenti deboli',
+  E'• Furto credenziali accesso sistemi critici\n• Bonifici fraudolenti (CEO fraud/BEC)\n• Installazione malware/ransomware\n• Accesso non autorizzato dati clienti\n• Violazioni GDPR',
+  5,
+  4,
+  20,
+  ARRAY['employee_count_10+', 'has_email'],
+  ARRAY['Formazione security awareness', 'MFA obbligatorio', 'Email filtering avanzato', 'Processo doppia approvazione pagamenti', 'Simulazioni phishing'],
+  ARRAY['A.6.1', 'A.6.2', 'A.5.16', 'A.5.17'],
+  'PMI Veneto (2022): €380k trasferiti a truffatori via CEO fraud. Media aziende: 1 dipendente su 3 clicca email phishing in simulazioni'
+),
+(
+  'RISK_BREACH_001',
+  'Data Breach / Perdita Dati',
+  'cyber',
+  'Esposizione non autorizzata di dati sensibili (clienti, dipendenti, IP) per furto, errore o configurazione errata',
+  'Hacker che sfruttano vulnerabilità, insider malintenzionati, errori configurazione cloud storage pubblico',
+  'Database non crittografati, controlli accesso deboli, configurazioni cloud pubbliche, log accessi insufficienti',
+  E'• Sanzioni GDPR fino a €20M o 4% fatturato\n• Azioni legali clienti\n• Danno reputazionale severo\n• Perdita clienti e contratti\n• Costi notifica breach (legali, PR, monitoring)\n• Furto identità clienti/dipendenti',
+  3,
+  5,
+  15,
+  ARRAY['has_personal_data', 'has_cloud', 'has_database'],
+  ARRAY['Crittografia dati at-rest e in-transit', 'Controlli accesso granulari', 'DLP (Data Loss Prevention)', 'Monitoring accessi anomali', 'Incident response plan'],
+  ARRAY['A.5.33', 'A.8.24', 'A.8.11', 'A.8.2'],
+  'Facebook (2019): 540M record esposti, €5B multa. Azienda sanitaria italiana (2021): 800k record pazienti, €100k multa Garante'
+),
+(
+  'RISK_DDOS_001',
+  'DDoS (Distributed Denial of Service)',
+  'cyber',
+  'Attacco che sovraccarica sistemi/sito web rendendoli inaccessibili a utenti legittimi',
+  'Botnet controllate da attaccanti che inviano traffico massiccio verso server/applicazioni aziendali',
+  'Infrastruttura non dimensionata per traffico anomalo, mancanza protezione DDoS, servizi critici esposti pubblicamente',
+  E'• Downtime servizi critici (ore/giorni)\n• Perdita vendite e-commerce\n• Impossibilità clienti accedere servizi\n• Costi mitigazione attacco\n• Danno reputazione\n• Perdita SLA verso clienti',
+  2,
+  4,
+  8,
+  ARRAY['has_cloud', 'has_website', 'has_ecommerce'],
+  ARRAY['Cloudflare/AWS Shield protezione DDoS', 'CDN distribution', 'Rate limiting', 'Monitoring traffico anomalo', 'Piano escalation provider'],
+  ARRAY['A.8.14', 'A.5.30'],
+  'Attacchi DDoS contro banche italiane (2023): diverse ore downtime home banking. GitHub (2018): 1.35 Tbps attacco, mitigato in 20 minuti con servizi anti-DDoS'
+),
+-- OPERATIONAL RISKS
+(
+  'RISK_BACKUP_001',
+  'Perdita Dati per Mancato Backup',
+  'operational',
+  'Perdita permanente dati critici per guasto hardware, cancellazione accidentale o disaster senza backup funzionanti',
+  'Guasti hardware (disk failure), errori umani (cancellazione), disaster naturali (incendio, alluvione)',
+  'Backup non schedulati, backup non testati, backup sullo stesso sito fisico dei dati primari, retention inadeguata',
+  E'• Perdita permanente dati business critical\n• Impossibilità ripristino operazioni\n• Perdita storico transazioni/clienti\n• Violazioni contrattuali SLA\n• Possibile chiusura attività',
+  3,
+  5,
+  15,
+  ARRAY['has_onpremise', 'has_cloud', 'has_database'],
+  ARRAY['Backup automatizzati giornalieri', 'Backup 3-2-1 rule (3 copie, 2 media, 1 offsite)', 'Test restore mensili', 'Backup immutabili', 'Replica geografica'],
+  ARRAY['A.5.29', 'A.5.30', 'A.8.13'],
+  'Pixar (1998): Quasi perso Toy Story 2 per cancellazione accidentale, salvato da backup dipendente. PMI senza backup: 60% chiude entro 6 mesi da perdita dati'
+),
+(
+  'RISK_OUTAGE_001',
+  'Interruzione Servizio Prolungata',
+  'operational',
+  'Downtime sistemi critici oltre tolleranza business per guasti, manutenzione errata o incident',
+  'Guasti hardware, errori change management, problemi provider cloud, attacchi cyber',
+  'Mancanza ridondanza, SPOF (Single Point of Failure), disaster recovery plan assente, RTO/RPO non definiti',
+  E'• Blocco produzione/vendite\n• Perdita revenue (€X per ora downtime)\n• Penali SLA clienti\n• Costi straordinario IT per recovery\n• Frustrazione clienti e dipendenti',
+  3,
+  4,
+  12,
+  ARRAY['has_cloud', 'has_onpremise', 'has_critical_systems'],
+  ARRAY['Ridondanza componenti critici', 'Disaster Recovery Plan', 'High Availability setup', 'Monitoring proattivo', 'Change management rigoroso'],
+  ARRAY['A.5.29', 'A.5.30', 'A.8.14', 'A.5.37'],
+  'AWS us-east-1 outage (2021): Migliaia di servizi down per ore. Costo medio downtime per PMI: €5k-50k per ora'
+),
+(
+  'RISK_INSIDER_001',
+  'Insider Threat (Dipendente Malintenzionato)',
+  'operational',
+  'Dipendente o ex-dipendente che intenzionalmente danneggia, ruba dati o sabota sistemi',
+  'Dipendenti scontenti, in uscita dall''azienda, corrotti da competitor o criminali',
+  'Accessi privilegiati non monitorati, nessuna separazione compiti, revoca accessi lenta alla cessazione',
+  E'• Furto proprietà intellettuale\n• Sabotaggio sistemi\n• Furto dati clienti venduti a competitor\n• Frode finanziaria\n• Danno reputazionale',
+  2,
+  4,
+  8,
+  ARRAY['has_ip_data', 'has_financial_data', 'employee_count_10+'],
+  ARRAY['Separazione compiti critici', 'Monitoring accessi privilegiati', 'Revoca immediata accessi cessati', 'Background check assunzioni', 'NDA e contratti chiari'],
+  ARRAY['A.6.1', 'A.6.4', 'A.8.2', 'A.8.3', 'A.5.18'],
+  'Tesla (2018): Ex-dipendente sabota sistema produzione e ruba gigabyte dati. Caso Edward Snowden NSA: insider access con conseguenze globali'
+),
+(
+  'RISK_SUPPLY_001',
+  'Compromissione Supply Chain',
+  'operational',
+  'Attacco o problema di sicurezza originato da fornitore/partner che ha accesso a sistemi aziendali',
+  'Hacker che compromettono fornitori IT per accedere ai loro clienti (supply chain attack)',
+  'Fornitori con sicurezza debole, accessi fornitori non monitorati, mancanza SLA sicurezza nei contratti',
+  E'• Breach dati via fornitore compromesso\n• Malware iniettato via update software\n• Accessi non autorizzati via VPN fornitore\n• Responsabilità legale per breach del fornitore',
+  2,
+  4,
+  8,
+  ARRAY['has_suppliers', 'has_cloud', 'has_outsourcing'],
+  ARRAY['Vendor security assessment', 'Clausole sicurezza in contratti', 'Accessi fornitori monitorati e segregati', 'MFA obbligatorio fornitori', 'Review periodica fornitori'],
+  ARRAY['A.5.19', 'A.5.20', 'A.5.21', 'A.5.22'],
+  'SolarWinds (2020): 18k clienti compromessi via update software. Kaseya (2021): Ransomware distribuito via MSP a 1500 aziende'
+),
+-- PHYSICAL RISKS
+(
+  'RISK_THEFT_001',
+  'Furto/Smarrimento Dispositivi',
+  'physical',
+  'Laptop, smartphone, USB o hard disk rubati o persi contenenti dati aziendali',
+  'Furti in ufficio, auto, luoghi pubblici. Smarrimento dispositivi in viaggio',
+  'Dispositivi non crittografati, remote wipe non configurato, dati sensibili su dispositivi mobili',
+  E'• Esposizione dati aziendali/clienti\n• Possibili sanzioni GDPR\n• Costi sostituzione dispositivo\n• Accesso non autorizzato se password deboli\n• Notifica breach se dati personali',
+  3,
+  3,
+  9,
+  ARRAY['has_laptops', 'has_mobile', 'has_remote_work'],
+  ARRAY['Full disk encryption (BitLocker/FileVault)', 'Remote wipe configurato', 'Strong password/PIN', 'Tracking dispositivi', 'Policy clear desk'],
+  ARRAY['A.7.7', 'A.7.8', 'A.8.1', 'A.6.7'],
+  'UK: 75k laptop rubati annualmente. Caso famoso: laptop NHS UK rubato con dati 8M pazienti non crittografati (2007)'
+),
+(
+  'RISK_FIRE_001',
+  'Incendio/Allagamento Datacenter',
+  'physical',
+  'Disaster fisico (incendio, alluvione, terremoto) che distrugge server e infrastruttura on-premise',
+  'Incendi (elettrici, colpa, incidentali), alluvioni, eventi climatici estremi, terremoti',
+  'Server on-premise senza replica geografica, datacenter senza sistemi antincendio, backup sullo stesso sito',
+  E'• Perdita totale hardware\n• Downtime prolungato (settimane)\n• Perdita dati se backup non offsite\n• Costi ricostruzione infrastruttura\n• Impossibilità operare',
+  1,
+  5,
+  5,
+  ARRAY['has_onpremise', 'has_datacenter'],
+  ARRAY['Backup geograficamente distribuito', 'Migrazione a cloud', 'Sistemi rilevazione/spegnimento incendi', 'Assicurazione adeguata', 'Hot site DR'],
+  ARRAY['A.7.1', 'A.7.4', 'A.5.29'],
+  'OVH Strasbourg (2021): Incendio distrugge datacenter, migliaia clienti perdono dati. Alluvione Germania (2021): Molti datacenter offline'
+),
+-- COMPLIANCE RISKS
+(
+  'RISK_GDPR_001',
+  'Non Conformità GDPR',
+  'compliance',
+  'Violazione regolamento GDPR per mancanza controlli adeguati su dati personali',
+  'Garante Privacy che sanziona per data breach, mancato consenso, assenza DPO, retention eccessiva, ecc.',
+  'Processi GDPR non implementati, data mapping assente, consensi non tracciati, DPIA non fatte',
+  E'• Sanzioni fino €20M o 4% fatturato globale\n• Ordini blocco trattamento dati\n• Danno reputazionale\n• Azioni legali class action\n• Costi compliance remediation',
+  3,
+  4,
+  12,
+  ARRAY['has_personal_data', 'has_health_data'],
+  ARRAY['Data mapping completo', 'Privacy policy aggiornata', 'Consensi tracciati', 'DPIA per trattamenti rischiosi', 'DPO se necessario', 'Registro trattamenti'],
+  ARRAY['A.5.33', 'A.5.34', 'A.8.10', 'A.8.11', 'A.8.12'],
+  'Google (2019): €50M multa Francia GDPR. H&M Germania (2020): €35M per sorveglianza eccessiva dipendenti. Italia: Media sanzioni €50k-500k'
+),
+(
+  'RISK_NIS2_001',
+  'Non Conformità NIS2',
+  'compliance',
+  'Violazione direttiva NIS2 per settori critici/importanti (energia, sanità, digitale, finance, ecc.)',
+  'Autorità competenti (ACN, settoriali) che sanzionano per incident non notificati, misure sicurezza inadeguate',
+  'Ignora obblighi NIS2, incident response assente, notifiche non tempestive (24h), supply chain non valutata',
+  E'• Sanzioni fino €10M o 2% fatturato\n• Responsabilità personale management\n• Ordini blocco attività\n• Esclusione appalti pubblici\n• Danno reputazionale',
+  2,
+  4,
+  8,
+  ARRAY['sector_essential', 'sector_important', 'has_critical_infrastructure'],
+  ARRAY['Valutazione applicabilità NIS2', 'Misure tecniche/organizzative adeguate', 'Incident response <24h', 'Supply chain security', 'Gestione vulnerabilità', 'Registro asset critici'],
+  ARRAY['A.5.24', 'A.5.25', 'A.5.26', 'A.5.7', 'A.8.8'],
+  'Direttiva UE 2022/2555 - Scadenza recepimento: 17 ottobre 2024. Primi enforcement attesi 2025-2026'
+),
+-- HUMAN ERROR
+(
+  'RISK_HUMAN_001',
+  'Errore Umano Configurazione',
+  'operational',
+  'Errori configurazione sistemi critici che causano vulnerability, downtime o esposizione dati',
+  'Errori amministratori IT in configurazione firewall, cloud storage, database, permessi',
+  'Mancanza procedure change, assenza peer review configurazioni, formazione IT insufficiente',
+  E'• Esposizione dati per configurazioni pubbliche\n• Downtime per misconfigurazioni\n• Vulnerability sfruttabili\n• Data breach',
+  4,
+  3,
+  12,
+  ARRAY['has_cloud', 'has_onpremise', 'has_it_team'],
+  ARRAY['Change management formale', 'Peer review configurazioni critiche', 'Infrastructure as Code', 'Config scanning automatico', 'Formazione IT continua'],
+  ARRAY['A.5.37', 'A.8.9', 'A.8.32'],
+  'Capital One (2019): 100M record esposti per errore configurazione firewall AWS. Microsoft (2022): Dati esposti per misconfiguration Azure'
+),
+(
+  'RISK_PATCH_001',
+  'Vulnerabilità Non Patched',
+  'cyber',
+  'Sistemi non aggiornati con patch sicurezza esposti a exploit noti',
+  'Attaccanti che sfruttano CVE pubblici per cui esistono già patch disponibili ma non applicate',
+  'Patch management assente, paura downtime per patching, sistemi legacy non patchabili',
+  E'• Compromissione sistemi via exploit noti\n• Ransomware via vulnerabilità\n• Accesso non autorizzato\n• Data breach',
+  4,
+  4,
+  16,
+  ARRAY['has_onpremise', 'has_servers', 'has_applications'],
+  ARRAY['Patch management automatizzato', 'Vulnerability scanning regolare', 'Patching critico <30 giorni', 'Testing pre-produzione', 'EOL systems replacement'],
+  ARRAY['A.8.8', 'A.5.37', 'A.8.19'],
+  'WannaCry (2017): Exploit EternalBlue non patchato, €4B danni globali. Equifax (2017): Breach 147M persone per Apache Struts non patchato'
+),
+(
+  'RISK_WEAK_001',
+  'Credenziali Deboli/Condivise',
+  'cyber',
+  'Password deboli, default, riutilizzate o condivise che facilitano accessi non autorizzati',
+  'Attaccanti che usano credential stuffing, brute force o password default per accedere',
+  'Nessuna password policy, utenti riutilizzano password, account condivisi, password default non cambiate',
+  E'• Accesso non autorizzato sistemi\n• Lateral movement se admin compromesso\n• Data breach\n• Difficoltà audit (chi ha fatto cosa?)',
+  4,
+  3,
+  12,
+  ARRAY['has_users', 'has_applications'],
+  ARRAY['Password policy forte (12+ char)', 'MFA obbligatorio', 'Password manager aziendale', 'Cambio password default', 'Monitoring login anomali', 'No account condivisi'],
+  ARRAY['A.5.17', 'A.5.18', 'A.8.5'],
+  'Verizon DBIR 2023: 80% breach coinvolge password deboli/rubate. Liste password leak: Milioni credenziali aziendali disponibili dark web'
+),
+-- EMERGING RISKS
+(
+  'RISK_CLOUD_001',
+  'Cloud Misconfiguration / Vendor Lock-in',
+  'cyber',
+  'Configurazioni errate cloud o dipendenza eccessiva da singolo provider che causa problemi business continuity',
+  'Errori configurazione bucket S3 pubblici, IAM permissivi. Vendor lock-in con impossibilità migrazione',
+  'Mancanza expertise cloud security, assenza policy IaC, nessuna strategia multi-cloud',
+  E'• Esposizione dati per storage pubblico\n• Costi eccessivi per lock-in\n• Downtime se problemi provider\n• Difficoltà migrazione',
+  3,
+  3,
+  9,
+  ARRAY['has_cloud', 'has_aws', 'has_azure'],
+  ARRAY['Cloud Security Posture Management', 'IaC con review', 'Principle least privilege IAM', 'Multi-cloud strategy', 'Backup portabili'],
+  ARRAY['A.5.23', 'A.8.9', 'A.5.29'],
+  'Casi famosi S3 bucket pubblici: Accenture, Verizon, Uber. OVH outage (2021): Migliaia clienti senza servizio per giorni'
+),
+(
+  'RISK_SHADOW_001',
+  'Shadow IT / Unapproved SaaS',
+  'operational',
+  'Dipendenti che usano software/servizi cloud non approvati IT esponendo dati aziendali',
+  'Dipendenti che usano Dropbox personale, Gmail, app mobile non autorizzate per comodità',
+  'Mancanza policy BYOD/SaaS, nessun controllo app utilizzate, app store aziendali assenti',
+  E'• Dati aziendali su sistemi non controllati\n• Perdita controllo accessi\n• Violazioni GDPR (data processor non valutati)\n• Impossibilità backup/audit',
+  4,
+  3,
+  12,
+  ARRAY['has_remote_work', 'employee_count_10+'],
+  ARRAY['SaaS approval process', 'CASB (Cloud Access Security Broker)', 'Policy uso SaaS chiara', 'Alternative aziendali fornite', 'MDM su dispositivi'],
+  ARRAY['A.5.23', 'A.6.7', 'A.8.1'],
+  'Studio: 80% aziende ha >20 app SaaS non note a IT. Caso: Dipendente usa Dropbox personale, perde laptop, dati clienti esposti'
+),
+(
+  'RISK_API_001',
+  'API Non Sicure / Exposed',
+  'cyber',
+  'API aziendali con autenticazione debole, vulnerabilità o esposte pubblicamente senza rate limiting',
+  'Attaccanti che scoprono API non documentate e le abusano per estrarre dati o causare DoS',
+  'API legacy senza auth, API keys hardcoded nel codice, nessun rate limiting, logging assente',
+  E'• Data breach via API scraping\n• DoS per abuso API\n• Accesso non autorizzato backend\n• Costi cloud eccessivi per abuse',
+  3,
+  3,
+  9,
+  ARRAY['has_development', 'has_apis', 'has_cloud'],
+  ARRAY['API Gateway con autenticazione', 'Rate limiting', 'API security testing', 'OAuth/JWT tokens', 'API documentation privata', 'Monitoring uso API'],
+  ARRAY['A.8.2', 'A.8.3', 'A.8.27'],
+  'OWASP API Top 10: Broken authentication #1 risk. T-Mobile (2021): API esposta usata per breach 40M clienti'
+),
+(
+  'RISK_MOBILE_001',
+  'Mobile Device Compromise',
+  'cyber',
+  'Smartphone/tablet aziendali compromessi da malware, jailbreak o app malevole',
+  'Malware mobile, app store malevole, phishing SMS, Wi-Fi pubblici non sicuri',
+  'BYOD non gestito, nessun MDM, app store aziendali assenti, dispositivi non aggiornati',
+  E'• Accesso email/dati aziendali\n• Intercettazione comunicazioni\n• Malware su rete aziendale via VPN\n• Furto credenziali MFA',
+  2,
+  3,
+  6,
+  ARRAY['has_mobile', 'has_remote_work', 'has_byod'],
+  ARRAY['MDM (Mobile Device Management)', 'App wrapping/containerization', 'Proibire jailbreak/root', 'VPN obbligatoria su mobile', 'Remote wipe', 'App store aziendale'],
+  ARRAY['A.6.7', 'A.8.1', 'A.6.1'],
+  'Pegasus spyware: compromissione totale dispositivi iOS/Android. Malware mobile in aumento: FluBot, Joker'
+),
+(
+  'RISK_AI_001',
+  'Uso Improprio AI/LLM (Data Leakage)',
+  'compliance',
+  'Dipendenti che condividono dati sensibili con ChatGPT, Copilot o altri LLM pubblici',
+  'Dipendenti che copiano codice proprietario, dati clienti o informazioni confidenziali in AI pubbliche per assistenza',
+  'Nessuna policy uso AI, dipendenti ignari rischi, alternative aziendali assenti',
+  E'• Esposizione proprietà intellettuale\n• Data breach dati clienti\n• Violazione NDA/contratti\n• Training AI su dati sensibili aziendali',
+  4,
+  3,
+  12,
+  ARRAY['has_development', 'has_ip_data', 'employee_count_10+'],
+  ARRAY['Policy uso AI chiara', 'AI aziendali approvate', 'DLP monitoring prompt AI', 'Formazione rischi AI', 'Alternatives (GitHub Copilot for Business)'],
+  ARRAY['A.5.10', 'A.6.2', 'A.8.24'],
+  'Samsung (2023): Ban ChatGPT dopo dipendenti leak codice. Caso: Avvocati USA usano ChatGPT, citano casi inesistenti in tribunale'
+);
+
+COMMENT ON TABLE public.risk_templates IS 'Catalogo rischi comuni IT - NON cancellati da reset';
