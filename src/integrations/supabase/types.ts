@@ -2224,6 +2224,7 @@ export type Database = {
         Row: {
           affected_asset_ids: string[] | null
           asset_id: string | null
+          auto_generated: boolean | null
           created_at: string | null
           description: string | null
           id: string
@@ -2247,6 +2248,7 @@ export type Database = {
           risk_type: string | null
           scope: string | null
           status: string | null
+          suggested_controls: string[] | null
           threat_id: string | null
           treatment_cost: number | null
           treatment_deadline: string | null
@@ -2261,6 +2263,7 @@ export type Database = {
         Insert: {
           affected_asset_ids?: string[] | null
           asset_id?: string | null
+          auto_generated?: boolean | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -2284,6 +2287,7 @@ export type Database = {
           risk_type?: string | null
           scope?: string | null
           status?: string | null
+          suggested_controls?: string[] | null
           threat_id?: string | null
           treatment_cost?: number | null
           treatment_deadline?: string | null
@@ -2298,6 +2302,7 @@ export type Database = {
         Update: {
           affected_asset_ids?: string[] | null
           asset_id?: string | null
+          auto_generated?: boolean | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -2321,6 +2326,7 @@ export type Database = {
           risk_type?: string | null
           scope?: string | null
           status?: string | null
+          suggested_controls?: string[] | null
           threat_id?: string | null
           treatment_cost?: number | null
           treatment_deadline?: string | null
@@ -2339,6 +2345,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "assets"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "risks_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "critical_assets_with_risks"
+            referencedColumns: ["asset_id"]
           },
           {
             foreignKeyName: "risks_organization_id_fkey"
@@ -2957,7 +2970,31 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      critical_assets_with_risks: {
+        Row: {
+          asset_id: string | null
+          asset_name: string | null
+          asset_type: string | null
+          availability_required: boolean | null
+          confidentiality: string | null
+          critical_risks: number | null
+          criticality: string | null
+          integrity_required: boolean | null
+          organization_id: string | null
+          owner: string | null
+          related_risks_count: number | null
+          untreated_risks: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assets_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       generate_audit_code: { Args: { org_id: string }; Returns: string }
@@ -2978,6 +3015,19 @@ export type Database = {
         Returns: number
       }
       generate_nc_code: { Args: { org_id: string }; Returns: string }
+      generate_risks_from_critical_asset: {
+        Args: {
+          p_asset_id: string
+          p_asset_name: string
+          p_asset_type: string
+          p_availability_required: boolean
+          p_confidentiality: string
+          p_criticality: string
+          p_integrity_required: boolean
+          p_organization_id: string
+        }
+        Returns: number
+      }
       get_recommended_risk_templates: {
         Args: {
           p_employee_count: string
