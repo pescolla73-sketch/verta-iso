@@ -342,6 +342,19 @@ export function ModernSidebar() {
         </button>
 
         <button
+          onClick={() => navigate("/compliance-calendar")}
+          className={cn(
+            "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm font-medium",
+            isActive("/compliance-calendar")
+              ? "bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md"
+              : "hover:bg-indigo-50 text-gray-700"
+          )}
+        >
+          <Calendar className="h-5 w-5" />
+          <span>📅 Calendario Compliance</span>
+        </button>
+
+        <button
           onClick={() => navigate("/guida")}
           className={cn(
             "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm font-medium",
