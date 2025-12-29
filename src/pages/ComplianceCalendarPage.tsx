@@ -10,7 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { 
   Calendar, CheckCircle, Clock, AlertTriangle, 
-  PlayCircle, FileText, Zap, AlertCircle, Sparkles
+  PlayCircle, FileText, Zap, AlertCircle, Users,
+  RefreshCw, Info
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format, isPast, differenceInDays } from 'date-fns';
@@ -49,13 +50,13 @@ export default function ComplianceCalendarPage() {
       const { data: templates, error: templatesError } = await supabase
         .from('recurring_task_templates')
         .select('*');
-      console.log('📝 Templates in DB:', templates?.length || 0);
+      console.log('Templates in DB:', templates?.length || 0);
       if (templatesError) console.error('Templates error:', templatesError);
 
       const { data: allTasks, error: tasksError } = await supabase
         .from('recurring_tasks')
         .select('*');
-      console.log('📅 Tasks in DB:', allTasks?.length || 0);
+      console.log('Tasks in DB:', allTasks?.length || 0);
       if (tasksError) console.error('Tasks error:', tasksError);
     } catch (error) {
       console.error('Debug error:', error);
@@ -70,14 +71,14 @@ export default function ComplianceCalendarPage() {
         .limit(1)
         .maybeSingle();
 
-      console.log('🏢 Organization loaded:', org?.id);
+      console.log('Organization loaded:', org?.id);
 
       if (org) {
         setOrganizationId(org.id);
         await checkAndGenerateTasks(org.id);
         loadTasks(org.id);
       } else {
-        console.warn('⚠️ No organization found');
+        console.warn('No organization found');
         setLoading(false);
       }
     } catch (error) {
@@ -88,7 +89,7 @@ export default function ComplianceCalendarPage() {
 
   const generateTasksManually = async (orgId: string) => {
     try {
-      console.log('🔧 Manual task generation fallback...');
+      console.log('Manual task generation fallback...');
       const { data: templates, error: templatesError } = await supabase
         .from('recurring_task_templates')
         .select('*');
@@ -96,7 +97,7 @@ export default function ComplianceCalendarPage() {
       if (templatesError) throw templatesError;
 
       if (!templates || templates.length === 0) {
-        console.error('❌ No templates found in database!');
+        console.error('No templates found in database!');
         toast({
           title: 'Errore Configurazione',
           description: 'Template task non trovati. Contatta supporto.',
@@ -105,7 +106,7 @@ export default function ComplianceCalendarPage() {
         return 0;
       }
 
-      console.log(`✅ Found ${templates.length} templates`);
+      console.log(`Found ${templates.length} templates`);
 
       const tasksToInsert = templates.map(template => ({
         organization_id: orgId,
@@ -126,17 +127,17 @@ export default function ComplianceCalendarPage() {
 
       if (insertError) throw insertError;
 
-      console.log(`✅ ${tasksToInsert.length} tasks generated manually`);
+      console.log(`${tasksToInsert.length} tasks generated manually`);
       return tasksToInsert.length;
     } catch (error: any) {
-      console.error('❌ Manual generation error:', error);
+      console.error('Manual generation error:', error);
       throw error;
     }
   };
 
   const checkAndGenerateTasks = async (orgId: string) => {
     try {
-      console.log('🔍 Checking tasks for org:', orgId);
+      console.log('Checking tasks for org:', orgId);
       const { data: existingTasks, error: checkError } = await supabase
         .from('recurring_tasks')
         .select('id')
@@ -144,14 +145,14 @@ export default function ComplianceCalendarPage() {
         .limit(1);
 
       if (checkError) {
-        console.error('❌ Error checking existing tasks:', checkError);
+        console.error('Error checking existing tasks:', checkError);
         throw checkError;
       }
 
-      console.log('📊 Existing tasks:', existingTasks?.length || 0);
+      console.log('Existing tasks:', existingTasks?.length || 0);
 
       if (!existingTasks || existingTasks.length === 0) {
-        console.log('🚀 Generating initial tasks...');
+        console.log('Generating initial tasks...');
         try {
           const { data, error } = await supabase.rpc('generate_initial_recurring_tasks', {
             p_organization_id: orgId,
@@ -159,54 +160,54 @@ export default function ComplianceCalendarPage() {
           });
 
           if (error) {
-            console.warn('⚠️ RPC failed, using manual generation:', error);
+            console.warn('RPC failed, using manual generation:', error);
             const count = await generateTasksManually(orgId);
             if (count && count > 0) {
               toast({
-                title: '✅ Task Generati',
+                title: 'Task Generati',
                 description: `${count} task ricorrenti creati`,
                 duration: 5000
               });
             }
           } else {
-            console.log('✅ Tasks generated via RPC:', data);
+            console.log('Tasks generated via RPC:', data);
             if (data && data > 0) {
               toast({
-                title: '✅ Task Generati',
+                title: 'Task Generati',
                 description: `${data} task ricorrenti creati automaticamente`,
                 duration: 5000
               });
             }
           }
         } catch (rpcError) {
-          console.warn('⚠️ RPC not available, using manual generation');
+          console.warn('RPC not available, using manual generation');
           const count = await generateTasksManually(orgId);
           if (count && count > 0) {
             toast({
-              title: '✅ Task Generati',
+              title: 'Task Generati',
               description: `${count} task ricorrenti creati`,
               duration: 5000
             });
           }
         }
       } else {
-        console.log('✓ Tasks already exist, skipping generation');
+        console.log('Tasks already exist, skipping generation');
       }
 
-      console.log('🔄 Updating overdue tasks...');
+      console.log('Updating overdue tasks...');
       try {
         const { data: overdueCount, error: overdueError } = await supabase.rpc('update_overdue_tasks');
         if (overdueError) {
-          console.warn('⚠️ Update overdue failed (non-critical):', overdueError);
+          console.warn('Update overdue failed (non-critical):', overdueError);
         } else {
-          console.log('✓ Overdue tasks updated:', overdueCount);
+          console.log('Overdue tasks updated:', overdueCount);
         }
       } catch (overdueError) {
-        console.warn('⚠️ Update overdue RPC not available');
+        console.warn('Update overdue RPC not available');
       }
 
     } catch (error: any) {
-      console.error('❌ Error in checkAndGenerateTasks:', error);
+      console.error('Error in checkAndGenerateTasks:', error);
       toast({
         title: 'Errore Task',
         description: error.message,
@@ -218,7 +219,7 @@ export default function ComplianceCalendarPage() {
   const loadTasks = async (orgId: string) => {
     try {
       setLoading(true);
-      console.log('📥 Loading tasks for org:', orgId);
+      console.log('Loading tasks for org:', orgId);
 
       const { data, error } = await supabase
         .from('recurring_tasks')
@@ -227,15 +228,15 @@ export default function ComplianceCalendarPage() {
         .order('due_date', { ascending: true });
 
       if (error) {
-        console.error('❌ Error loading tasks:', error);
+        console.error('Error loading tasks:', error);
         throw error;
       }
 
-      console.log('✅ Tasks loaded:', data?.length || 0, 'tasks');
+      console.log('Tasks loaded:', data?.length || 0, 'tasks');
       setTasks(data || []);
 
     } catch (error: any) {
-      console.error('❌ Error in loadTasks:', error);
+      console.error('Error in loadTasks:', error);
       toast({
         title: 'Errore',
         description: 'Impossibile caricare i task: ' + error.message,
@@ -249,11 +250,11 @@ export default function ComplianceCalendarPage() {
   const getCategoryIcon = (category: string) => {
     switch (category) {
       case 'testing': return <PlayCircle className="h-5 w-5 text-purple-600" />;
-      case 'review': return <FileText className="h-5 w-5 text-blue-600" />;
-      case 'training': return <Sparkles className="h-5 w-5 text-green-600" />;
-      case 'audit': return <AlertCircle className="h-5 w-5 text-red-600" />;
+      case 'review': return <FileText className="h-5 w-5 text-primary" />;
+      case 'training': return <Users className="h-5 w-5 text-green-600" />;
+      case 'audit': return <AlertCircle className="h-5 w-5 text-destructive" />;
       case 'maintenance': return <Zap className="h-5 w-5 text-orange-600" />;
-      default: return <Calendar className="h-5 w-5 text-gray-600" />;
+      default: return <Calendar className="h-5 w-5 text-muted-foreground" />;
     }
   };
 
@@ -271,13 +272,13 @@ export default function ComplianceCalendarPage() {
   const getPriorityBadge = (priority: string | null) => {
     switch (priority) {
       case 'critical':
-        return <Badge variant="destructive">🔴 CRITICO</Badge>;
+        return <Badge variant="destructive">CRITICO</Badge>;
       case 'high':
-        return <Badge className="bg-orange-500 hover:bg-orange-600">🟠 ALTO</Badge>;
+        return <Badge className="bg-orange-500 hover:bg-orange-600">ALTO</Badge>;
       case 'medium':
-        return <Badge className="bg-blue-500 hover:bg-blue-600">🔵 MEDIO</Badge>;
+        return <Badge className="bg-primary hover:bg-primary/90">MEDIO</Badge>;
       case 'low':
-        return <Badge variant="secondary">⚪ BASSO</Badge>;
+        return <Badge variant="secondary">BASSO</Badge>;
       default:
         return <Badge variant="outline">{priority}</Badge>;
     }
@@ -285,23 +286,23 @@ export default function ComplianceCalendarPage() {
 
   const getStatusBadge = (task: RecurringTask) => {
     if (task.status === 'completed') {
-      return <Badge className="bg-green-500 hover:bg-green-600">✅ Completato</Badge>;
+      return <Badge className="bg-green-600 hover:bg-green-700">Completato</Badge>;
     }
     if (task.status === 'overdue') {
-      return <Badge variant="destructive">⏰ SCADUTO</Badge>;
+      return <Badge variant="destructive">SCADUTO</Badge>;
     }
     if (task.status === 'in_progress') {
-      return <Badge className="bg-blue-500 hover:bg-blue-600">🔄 In Corso</Badge>;
+      return <Badge className="bg-primary hover:bg-primary/90">In Corso</Badge>;
     }
 
     const daysRemaining = differenceInDays(new Date(task.due_date), new Date());
     
     if (daysRemaining < 0) {
-      return <Badge variant="destructive">⏰ SCADUTO</Badge>;
+      return <Badge variant="destructive">SCADUTO</Badge>;
     } else if (daysRemaining <= 7) {
-      return <Badge className="bg-yellow-500 hover:bg-yellow-600">⚠️ Scade tra {daysRemaining}gg</Badge>;
+      return <Badge className="bg-yellow-500 hover:bg-yellow-600 text-foreground">Scade tra {daysRemaining}gg</Badge>;
     } else {
-      return <Badge variant="outline">📅 Tra {daysRemaining} giorni</Badge>;
+      return <Badge variant="outline">Tra {daysRemaining} giorni</Badge>;
     }
   };
 
@@ -333,7 +334,7 @@ export default function ComplianceCalendarPage() {
       if (error) throw error;
 
       toast({
-        title: '✅ Task Completato!',
+        title: 'Task Completato',
         description: `"${selectedTask.task_name}" completato. Prossima occorrenza generata automaticamente.`,
         duration: 5000
       });
@@ -387,78 +388,84 @@ export default function ComplianceCalendarPage() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            📅 Calendario Compliance
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Task ricorrenti per mantenere la certificazione ISO 27001
-          </p>
+      <div className="bg-card border-b border-border p-6 -m-6 mb-0">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-foreground">
+              Calendario Compliance
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Task ricorrenti per il mantenimento della certificazione ISO 27001
+            </p>
+          </div>
+          <Badge variant="outline" className="text-sm">
+            <Calendar className="h-4 w-4 mr-2" />
+            {format(new Date(), 'dd MMMM yyyy', { locale: it })}
+          </Badge>
         </div>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-l-4 border-l-destructive">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-red-900">
-              ⏰ Scaduti/Urgenti
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Scaduti/Urgenti
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-red-600">
+            <div className="text-3xl font-bold text-destructive">
               {overdueTasks.length + urgentTasks.length}
             </div>
-            <p className="text-xs text-red-700 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Richiedono attenzione immediata
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border-yellow-200 bg-yellow-50">
+        <Card className="border-l-4 border-l-yellow-500">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-yellow-900">
-              📆 Prossimi 30 giorni
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Prossimi 30 giorni
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-yellow-600">
               {soonTasks.length}
             </div>
-            <p className="text-xs text-yellow-700 mt-1">
-              Da programmare presto
+            <p className="text-xs text-muted-foreground mt-1">
+              Da programmare
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border-blue-200 bg-blue-50">
+        <Card className="border-l-4 border-l-primary">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-blue-900">
-              📋 Totale Attivi
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Totale Attivi
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-600">
+            <div className="text-3xl font-bold text-primary">
               {upcomingTasks.length}
             </div>
-            <p className="text-xs text-blue-700 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Task in calendario
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border-green-200 bg-green-50">
+        <Card className="border-l-4 border-l-green-600">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-green-900">
-              ✅ Completati
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Completati
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-green-600">
               {completedTasks.length}
             </div>
-            <p className="text-xs text-green-700 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Quest'anno
             </p>
           </CardContent>
@@ -489,11 +496,11 @@ export default function ComplianceCalendarPage() {
         {/* OVERDUE TASKS */}
         <TabsContent value="overdue" className="space-y-4">
           {overdueTasks.length === 0 ? (
-            <Card className="border-green-200 bg-green-50">
+            <Card className="border-green-200 bg-green-50/50">
               <CardContent className="py-12 text-center">
-                <CheckCircle className="h-12 w-12 mx-auto text-green-500 mb-4" />
+                <CheckCircle className="h-12 w-12 mx-auto text-green-600 mb-4" />
                 <h3 className="text-lg font-semibold text-green-900">
-                  🎉 Nessun Task Scaduto!
+                  Nessun Task Scaduto
                 </h3>
                 <p className="text-sm text-green-700 mt-2">
                   Ottimo lavoro! Sei in regola con tutte le scadenze.
@@ -504,7 +511,7 @@ export default function ComplianceCalendarPage() {
             <>
               <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>⚠️ Attenzione: Task Scaduti</AlertTitle>
+                <AlertTitle>Attenzione: Task Scaduti</AlertTitle>
                 <AlertDescription>
                   Hai {overdueTasks.length} task scaduti che richiedono attenzione immediata.
                   Completa questi task per rimanere conforme ISO 27001.
@@ -512,7 +519,7 @@ export default function ComplianceCalendarPage() {
               </Alert>
 
               {overdueTasks.map((task) => (
-                <Card key={task.id} className={`${getCategoryColor(task.category)} border-2`}>
+                <Card key={task.id} className={`${getCategoryColor(task.category)} border`}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-3">
@@ -537,7 +544,7 @@ export default function ComplianceCalendarPage() {
                       <div className="flex gap-4 text-sm text-muted-foreground">
                         <span>
                           <strong>Scadenza:</strong>{' '}
-                          <span className="text-red-600 font-semibold">
+                          <span className="text-destructive font-semibold">
                             {format(new Date(task.due_date), 'dd MMMM yyyy', { locale: it })}
                             <span className="ml-1">
                               ({Math.abs(differenceInDays(new Date(task.due_date), new Date()))} giorni fa)
@@ -568,13 +575,13 @@ export default function ComplianceCalendarPage() {
         <TabsContent value="upcoming" className="space-y-6">
           {urgentTasks.length > 0 && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-red-700 flex items-center gap-2">
+              <h3 className="text-lg font-semibold text-destructive flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5" />
-                ⚠️ URGENTI - Prossimi 7 giorni ({urgentTasks.length})
+                URGENTI - Prossimi 7 giorni ({urgentTasks.length})
               </h3>
               <div className="grid gap-3">
                 {urgentTasks.map((task) => (
-                  <Card key={task.id} className={`${getCategoryColor(task.category)} border-2`}>
+                  <Card key={task.id} className={`${getCategoryColor(task.category)} border`}>
                     <CardContent className="py-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -583,8 +590,8 @@ export default function ComplianceCalendarPage() {
                             <h4 className="font-semibold">{task.task_name}</h4>
                             <p className="text-sm text-muted-foreground">{task.task_description}</p>
                             <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
-                              <span>📅 {format(new Date(task.due_date), 'dd MMM yyyy', { locale: it })}</span>
-                              <span>🔁 {getFrequencyLabel(task.frequency_days)}</span>
+                              <span>{format(new Date(task.due_date), 'dd MMM yyyy', { locale: it })}</span>
+                              <span>{getFrequencyLabel(task.frequency_days)}</span>
                             </div>
                           </div>
                         </div>
@@ -607,7 +614,7 @@ export default function ComplianceCalendarPage() {
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-yellow-700 flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
-                📆 Prossimi 8-30 giorni ({soonTasks.length})
+                Prossimi 8-30 giorni ({soonTasks.length})
               </h3>
               <div className="grid gap-3">
                 {soonTasks.map((task) => (
@@ -619,8 +626,8 @@ export default function ComplianceCalendarPage() {
                           <div>
                             <h4 className="font-semibold">{task.task_name}</h4>
                             <p className="text-sm text-muted-foreground">
-                              📅 {format(new Date(task.due_date), 'dd MMM yyyy', { locale: it })}
-                              <span className="ml-2">• 🔁 {getFrequencyLabel(task.frequency_days)}</span>
+                              {format(new Date(task.due_date), 'dd MMM yyyy', { locale: it })}
+                              <span className="ml-2">• {getFrequencyLabel(task.frequency_days)}</span>
                             </p>
                           </div>
                         </div>
@@ -642,7 +649,7 @@ export default function ComplianceCalendarPage() {
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-muted-foreground flex items-center gap-2">
                 <Clock className="h-5 w-5" />
-                📋 Oltre 30 giorni ({laterTasks.length})
+                Oltre 30 giorni ({laterTasks.length})
               </h3>
               <div className="grid gap-2">
                 {laterTasks.map((task) => (
@@ -692,11 +699,11 @@ export default function ComplianceCalendarPage() {
                     <div className="flex-1">
                       <h4 className="font-semibold">{task.task_name}</h4>
                       <p className="text-sm text-muted-foreground">
-                        ✅ Completato il {task.completed_date && format(new Date(task.completed_date), 'dd MMM yyyy', { locale: it })}
+                        Completato il {task.completed_date && format(new Date(task.completed_date), 'dd MMM yyyy', { locale: it })}
                       </p>
                       {task.completion_notes && (
                         <p className="text-sm mt-1 text-muted-foreground">
-                          📝 {task.completion_notes}
+                          Note: {task.completion_notes}
                         </p>
                       )}
                     </div>
@@ -722,7 +729,7 @@ export default function ComplianceCalendarPage() {
                     <div>
                       <h4 className="font-medium">{task.task_name}</h4>
                       <p className="text-sm text-muted-foreground">
-                        📅 {format(new Date(task.due_date), 'dd MMM yyyy', { locale: it })}
+                        {format(new Date(task.due_date), 'dd MMM yyyy', { locale: it })}
                       </p>
                     </div>
                   </div>
@@ -792,12 +799,12 @@ export default function ComplianceCalendarPage() {
                         rows={4}
                       />
                       <p className="text-xs text-muted-foreground">
-                        💡 Documenta i risultati per facilitare audit e review futuri
+                        Documenta i risultati per facilitare audit e review futuri
                       </p>
                     </div>
 
                     <Alert className="bg-green-50 border-green-200">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <Info className="h-4 w-4 text-green-600" />
                       <AlertTitle className="text-green-900">
                         Cosa succede dopo?
                       </AlertTitle>
@@ -814,7 +821,10 @@ export default function ComplianceCalendarPage() {
                       size="lg"
                     >
                       {completing ? (
-                        'Completamento...'
+                        <>
+                          <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
+                          Completamento...
+                        </>
                       ) : (
                         <>
                           <CheckCircle className="h-5 w-5 mr-2" />
@@ -827,8 +837,9 @@ export default function ComplianceCalendarPage() {
 
                 {selectedTask.status === 'completed' && (
                   <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                    <h4 className="font-semibold text-sm mb-2 text-green-900">
-                      ✅ Task Completato
+                    <h4 className="font-semibold text-sm mb-2 text-green-900 flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4" />
+                      Task Completato
                     </h4>
                     <p className="text-sm text-green-800">
                       Completato il {selectedTask.completed_date && format(new Date(selectedTask.completed_date), 'dd MMMM yyyy', { locale: it })}
