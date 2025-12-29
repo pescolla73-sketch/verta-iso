@@ -2350,6 +2350,13 @@ export type Database = {
             foreignKeyName: "risks_asset_id_fkey"
             columns: ["asset_id"]
             isOneToOne: false
+            referencedRelation: "critical_assets_summary"
+            referencedColumns: ["asset_id"]
+          },
+          {
+            foreignKeyName: "risks_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
             referencedRelation: "critical_assets_with_risks"
             referencedColumns: ["asset_id"]
           },
@@ -2970,6 +2977,29 @@ export type Database = {
       }
     }
     Views: {
+      critical_assets_summary: {
+        Row: {
+          asset_id: string | null
+          asset_name: string | null
+          asset_type: string | null
+          availability_required: boolean | null
+          confidentiality: string | null
+          criticality: string | null
+          integrity_required: boolean | null
+          organization_id: string | null
+          owner: string | null
+          related_risks_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assets_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       critical_assets_with_risks: {
         Row: {
           asset_id: string | null
