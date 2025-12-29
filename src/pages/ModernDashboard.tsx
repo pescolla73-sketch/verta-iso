@@ -2,11 +2,11 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Shield,
   AlertTriangle,
@@ -16,11 +16,14 @@ import {
   Package,
   X,
   Clock,
-  Zap,
-  Sparkles,
-  Rocket,
+  ChevronRight,
   Target,
+  CheckCircle,
+  AlertCircle,
+  ArrowRight,
 } from "lucide-react";
+import { format } from "date-fns";
+import { it } from "date-fns/locale";
 
 interface CertificationStep {
   id: number;
@@ -45,7 +48,6 @@ type DashboardAlertType = "error" | "warning" | "info";
 interface DashboardAlert {
   id: string;
   type: DashboardAlertType;
-  icon: string;
   message: string;
   action: () => void;
 }
@@ -70,56 +72,56 @@ export default function ModernDashboard() {
   const certificationSteps: CertificationStep[] = [
     {
       id: 1,
-      title: "Parlaci di te",
-      description: "Definisci chi sei e cosa fai",
+      title: "Configurazione Organizzazione",
+      description: "Definizione contesto e ambito ISMS",
       path: "/setup-azienda",
       completed: true,
       estimatedTime: "15 min",
     },
     {
       id: 2,
-      title: "Le tue regole",
-      description: "Crea le policy di sicurezza",
+      title: "Policy di Sicurezza",
+      description: "Documentazione politiche ISMS",
       path: "/policies",
       completed: true,
       estimatedTime: "30 min",
     },
     {
       id: 3,
-      title: "Identifica i rischi",
-      description: "Cosa potrebbe andare storto?",
+      title: "Analisi dei Rischi",
+      description: "Valutazione e trattamento rischi",
       path: "/risk-assessment",
       completed: false,
       estimatedTime: "30 min",
     },
     {
       id: 4,
-      title: "Attiva protezioni",
-      description: "Implementa i controlli di sicurezza",
+      title: "Implementazione Controlli",
+      description: "Attuazione misure di sicurezza",
       path: "/controls",
       completed: false,
       estimatedTime: "2 ore",
     },
     {
       id: 5,
-      title: "Documenta tutto",
-      description: "Compila il registro protezioni (SoA)",
+      title: "Statement of Applicability",
+      description: "Dichiarazione di applicabilità",
       path: "/soa",
       completed: false,
       estimatedTime: "45 min",
     },
     {
       id: 6,
-      title: "Verifica internamente",
-      description: "Fai un controllo prima dell'auditor",
+      title: "Audit Interno",
+      description: "Verifica conformità interna",
       path: "/audit-interni",
       completed: false,
       estimatedTime: "1 ora",
     },
     {
       id: 7,
-      title: "Ottieni certificato",
-      description: "Audit finale e certificazione!",
+      title: "Audit di Certificazione",
+      description: "Verifica ente certificatore",
       path: "/certification-audit",
       completed: false,
       estimatedTime: "1 giorno",
@@ -127,7 +129,7 @@ export default function ModernDashboard() {
   ];
 
   useEffect(() => {
-    document.title = "Dashboard moderna ISO 27001";
+    document.title = "Dashboard ISMS - ISO 27001";
   }, []);
 
   useEffect(() => {
@@ -207,8 +209,7 @@ export default function ModernDashboard() {
         dashboardAlerts.push({
           id: "overdue-nc",
           type: "error",
-          icon: "🔴",
-          message: `${overdue} NC scadute`,
+          message: `${overdue} non-conformità scadute richiedono attenzione`,
           action: () => navigate("/non-conformity?filter=overdue"),
         });
       }
@@ -216,8 +217,7 @@ export default function ModernDashboard() {
         dashboardAlerts.push({
           id: "open-nc",
           type: "warning",
-          icon: "🟡",
-          message: `${ncs.length} NC aperte`,
+          message: `${ncs.length} non-conformità aperte`,
           action: () => navigate("/non-conformity"),
         });
       }
@@ -229,8 +229,7 @@ export default function ModernDashboard() {
         dashboardAlerts.push({
           id: "next-audit",
           type: "info",
-          icon: "📅",
-          message: `Audit tra ${daysUntil} giorni`,
+          message: `Prossimo audit tra ${daysUntil} giorni`,
           action: () => navigate("/certification-audit"),
         });
       }
@@ -255,39 +254,54 @@ export default function ModernDashboard() {
   );
 
   if (loading) {
-    return <div className="flex items-center justify-center p-8">Caricamento...</div>;
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+    <main className="min-h-screen bg-background">
       <div className="container mx-auto p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-              👋 Ciao{user ? `, ${user.email?.split("@")[0]}` : ""}! Bentornato
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Il tuo viaggio verso la certificazione ISO 27001
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            {alerts.length > 0 && (
-              <Badge variant="destructive" className="h-8 px-3">
-                🔔 {alerts.length} Alert
+        {/* Header */}
+        <div className="bg-card border-b border-border p-6 -mx-6 -mt-6 mb-0">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-foreground">
+                Sistema di Gestione Sicurezza Informazioni
+              </h1>
+              <p className="text-muted-foreground mt-1">
+                Panoramica conformità ISO 27001:2022 — {format(new Date(), 'dd MMMM yyyy', { locale: it })}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Badge 
+                variant={stats.certificationStatus === 'Certificato' ? 'default' : 'secondary'}
+                className="text-sm"
+              >
+                {stats.certificationStatus}
               </Badge>
-            )}
+            </div>
           </div>
         </div>
 
+        {/* Alerts */}
         {alerts.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto pb-2">
+          <div className="space-y-2">
             {alerts.map((alert) => (
               <Alert
                 key={alert.id}
                 variant={alert.type === "error" ? "destructive" : "default"}
-                className="flex-shrink-0 cursor-pointer hover:shadow-md transition-shadow relative pr-10"
+                className="cursor-pointer hover:bg-muted/50 transition-colors relative pr-10"
                 onClick={alert.action}
               >
+                {alert.type === "error" && <AlertTriangle className="h-4 w-4" />}
+                {alert.type === "warning" && <AlertCircle className="h-4 w-4" />}
+                {alert.type === "info" && <Calendar className="h-4 w-4" />}
+                <AlertDescription className="font-medium">
+                  {alert.message}
+                </AlertDescription>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -297,60 +311,57 @@ export default function ModernDashboard() {
                 >
                   <X className="h-4 w-4" />
                 </button>
-                <AlertDescription className="font-medium">
-                  {alert.icon} {alert.message}
-                </AlertDescription>
               </Alert>
             ))}
           </div>
         )}
 
-        <Card className="border-2 border-indigo-200 bg-gradient-to-br from-white to-indigo-50 shadow-xl">
+        {/* Certification Progress */}
+        <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-2xl flex items-center gap-2">
-                  🎯 IL TUO VIAGGIO VERSO LA CERTIFICAZIONE
+                <CardTitle className="text-xl">
+                  Stato Implementazione ISMS
                 </CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Segui questi passi per ottenere la certificazione
-                </p>
+                <CardDescription>
+                  Avanzamento verso la certificazione ISO 27001:2022
+                </CardDescription>
               </div>
               <div className="text-right">
-                <div className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                <div className="text-4xl font-bold text-primary">
                   {completionPercentage}%
                 </div>
-                <Badge variant="outline" className="mt-1">
-                  🏆 {stats.certificationStatus}
-                </Badge>
+                <p className="text-sm text-muted-foreground">
+                  {completedSteps}/{certificationSteps.length} fasi completate
+                </p>
               </div>
             </div>
-            <div className="mt-4">
-              <Progress value={completionPercentage} className="h-3" />
-            </div>
           </CardHeader>
-
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
+            <Progress value={completionPercentage} className="h-2" />
+            
+            {/* Steps indicator */}
             <div className="flex items-center justify-between">
               {certificationSteps.map((step, index) => (
                 <div key={step.id} className="flex items-center">
                   <div
                     className={`
-                    flex items-center justify-center w-10 h-10 rounded-full border-2 font-bold
-                    ${step.completed
-                      ? "bg-green-500 border-green-500 text-white"
-                      : index === completedSteps
-                        ? "bg-yellow-400 border-yellow-400 text-white animate-pulse"
-                        : "bg-gray-200 border-gray-300 text-gray-500"
-                    }
-                  `}
+                      flex items-center justify-center w-8 h-8 rounded-full border-2 text-sm font-medium
+                      ${step.completed
+                        ? "bg-green-600 border-green-600 text-white"
+                        : index === completedSteps
+                          ? "bg-primary border-primary text-primary-foreground"
+                          : "bg-muted border-border text-muted-foreground"
+                      }
+                    `}
                   >
-                    {step.completed ? "✓" : step.id}
+                    {step.completed ? <CheckCircle className="h-4 w-4" /> : step.id}
                   </div>
                   {index < certificationSteps.length - 1 && (
                     <div
-                      className={`w-12 h-1 mx-1 ${
-                        step.completed ? "bg-green-500" : "bg-gray-300"
+                      className={`w-8 md:w-12 h-0.5 mx-1 ${
+                        step.completed ? "bg-green-600" : "bg-border"
                       }`}
                     />
                   )}
@@ -358,27 +369,27 @@ export default function ModernDashboard() {
               ))}
             </div>
 
+            {/* Next Action */}
             {nextStep && (
-              <div className="mt-6 p-6 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg border-2 border-yellow-300">
+              <div className="bg-muted/50 rounded-lg p-4 border">
                 <div className="flex items-start gap-4">
-                  <div className="p-3 bg-yellow-400 rounded-full">
-                    <Zap className="h-6 w-6 text-white" />
+                  <div className="p-2 bg-primary rounded-lg">
+                    <ArrowRight className="h-5 w-5 text-primary-foreground" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-xl font-bold mb-1">👉 PROSSIMO: {nextStep.title}</h3>
-                    <p className="text-muted-foreground mb-4">{nextStep.description}</p>
-                    <div className="flex items-center gap-4">
-                      <Button
-                        size="lg"
-                        onClick={() => navigate(nextStep.path)}
-                        className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
-                      >
-                        <Rocket className="h-5 w-5 mr-2" />
-                        Inizia Ora
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Prossima Azione
+                    </p>
+                    <h3 className="text-lg font-semibold mt-1">{nextStep.title}</h3>
+                    <p className="text-muted-foreground text-sm">{nextStep.description}</p>
+                    <div className="flex items-center gap-4 mt-3">
+                      <Button onClick={() => navigate(nextStep.path)}>
+                        Procedi
+                        <ChevronRight className="h-4 w-4 ml-1" />
                       </Button>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Clock className="h-4 w-4" />
-                        ~{nextStep.estimatedTime}
+                        {nextStep.estimatedTime}
                       </div>
                     </div>
                   </div>
@@ -388,152 +399,137 @@ export default function ModernDashboard() {
           </CardContent>
         </Card>
 
+        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card
-            className="border-2 border-indigo-200 hover:shadow-lg transition-shadow cursor-pointer bg-gradient-to-br from-white to-indigo-50"
+            className="border-l-4 border-l-primary cursor-pointer hover:shadow-md transition-shadow"
             onClick={() => navigate("/controls")}
           >
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <Shield className="h-8 w-8 text-indigo-600" />
-                <Sparkles className="h-5 w-5 text-indigo-400" />
+                <Shield className="h-5 w-5 text-primary" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-indigo-600">
+              <div className="text-2xl font-bold">
                 {stats.controlsImplemented}/{stats.totalControls}
               </div>
-              <p className="text-sm text-muted-foreground mt-1">🛡️ Protezioni attive</p>
-              <div className="flex items-center gap-2 mt-2">
-                <Progress
-                  value={(stats.controlsImplemented / stats.totalControls) * 100}
-                  className="flex-1"
-                />
-                <span className="text-xs font-medium text-green-600">
-                  ⬆️ {Math.round((stats.controlsImplemented / stats.totalControls) * 100)}%
-                </span>
-              </div>
-              <Button variant="link" size="sm" className="mt-2 p-0 h-auto text-indigo-600 hover:text-indigo-700 hover:underline">
-                Vedi tutti →
-              </Button>
+              <p className="text-sm text-muted-foreground mt-1">Controlli implementati</p>
+              <Progress
+                value={(stats.controlsImplemented / stats.totalControls) * 100}
+                className="mt-2 h-1"
+              />
             </CardContent>
           </Card>
 
           <Card
-            className={`border-2 hover:shadow-lg transition-shadow cursor-pointer ${
+            className={`border-l-4 cursor-pointer hover:shadow-md transition-shadow ${
               stats.overdueNC > 0
-                ? "border-red-300 bg-gradient-to-br from-white to-red-50"
-                : "border-orange-200 bg-gradient-to-br from-white to-orange-50"
+                ? "border-l-destructive"
+                : "border-l-yellow-500"
             }`}
             onClick={() => navigate("/non-conformity")}
           >
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <AlertTriangle className="h-8 w-8 text-orange-600" />
-                {stats.overdueNC > 0 && (
-                  <Badge variant="destructive">{stats.overdueNC} rosse</Badge>
-                )}
+                <AlertTriangle className={`h-5 w-5 ${stats.overdueNC > 0 ? "text-destructive" : "text-yellow-600"}`} />
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-orange-600">{stats.openNC}</div>
-              <p className="text-sm text-muted-foreground mt-1">⚠️ Cose da sistemare</p>
+              <div className="text-2xl font-bold">{stats.openNC}</div>
+              <p className="text-sm text-muted-foreground mt-1">Non-conformità aperte</p>
               {stats.overdueNC > 0 && (
-                <p className="text-xs text-red-600 font-medium mt-1">
+                <p className="text-xs text-destructive font-medium mt-1">
                   {stats.overdueNC} scadute
                 </p>
               )}
-              <Button variant="link" size="sm" className="mt-2 p-0 h-auto text-orange-600 hover:text-orange-700 hover:underline">
-                Gestisci →
-              </Button>
             </CardContent>
           </Card>
 
           <Card
-            className="border-2 border-blue-200 hover:shadow-lg transition-shadow cursor-pointer bg-gradient-to-br from-white to-blue-50"
+            className="border-l-4 border-l-blue-500 cursor-pointer hover:shadow-md transition-shadow"
             onClick={() => navigate("/certification-audit")}
           >
             <CardHeader className="pb-2">
-              <Calendar className="h-8 w-8 text-blue-600" />
+              <div className="flex items-center justify-between">
+                <Calendar className="h-5 w-5 text-blue-600" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-lg font-bold text-blue-600">
+              <div className="text-lg font-bold">
                 {stats.nextAuditDate
-                  ? new Date(stats.nextAuditDate).toLocaleDateString("it-IT", {
-                      day: "numeric",
-                      month: "short",
-                    })
+                  ? format(new Date(stats.nextAuditDate), 'dd MMM yyyy', { locale: it })
                   : "Da pianificare"}
               </div>
-              <p className="text-sm text-muted-foreground mt-1">📅 Prossima verifica</p>
-              <Button variant="link" size="sm" className="mt-2 p-0 h-auto text-blue-600 hover:text-blue-700 hover:underline">
-                Prepara →
-              </Button>
+              <p className="text-sm text-muted-foreground mt-1">Prossimo audit</p>
             </CardContent>
           </Card>
 
           <Card
-            className="border-2 border-purple-200 hover:shadow-lg transition-shadow cursor-pointer bg-gradient-to-br from-white to-purple-50"
+            className="border-l-4 border-l-green-600 cursor-pointer hover:shadow-md transition-shadow"
             onClick={() => navigate("/certification-audit")}
           >
             <CardHeader className="pb-2">
-              <Award className="h-8 w-8 text-purple-600" />
+              <div className="flex items-center justify-between">
+                <Award className="h-5 w-5 text-green-600" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-lg font-bold text-purple-600">
-                {stats.certificationStatus === "Certificato" ? "Certificato!" : "In corso"}
+              <div className="text-lg font-bold">
+                {stats.certificationStatus === "Certificato" ? "Attivo" : "In corso"}
               </div>
-              <p className="text-sm text-muted-foreground mt-1">🎯 Il tuo obiettivo</p>
-              <p className="text-xs text-muted-foreground mt-1">Ottieni la certificazione</p>
-              <Button variant="link" size="sm" className="mt-2 p-0 h-auto text-purple-600 hover:text-purple-700 hover:underline">
-                Piano →
-              </Button>
+              <p className="text-sm text-muted-foreground mt-1">Stato certificazione</p>
             </CardContent>
           </Card>
         </div>
 
+        {/* Quick Actions */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-indigo-600" />
-              🚀 Cosa vuoi fare?
+              <Target className="h-5 w-5 text-primary" />
+              Azioni Rapide
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <Button
                 variant="outline"
-                className="h-auto py-4 justify-start hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-900"
+                className="h-auto py-4 justify-start"
                 onClick={() => navigate("/policy-editor")}
               >
-                <FileText className="h-5 w-5 mr-3 text-indigo-600" />
+                <FileText className="h-5 w-5 mr-3 text-primary" />
                 <div className="text-left">
-                  <div className="font-semibold">📝 Crea una Regola</div>
-                  <div className="text-xs text-muted-foreground">Aggiungi una policy di sicurezza</div>
+                  <div className="font-semibold">Nuova Policy</div>
+                  <div className="text-xs text-muted-foreground">Crea una policy di sicurezza</div>
                 </div>
               </Button>
 
               <Button
                 variant="outline"
-                className="h-auto py-4 justify-start hover:bg-orange-50 hover:border-orange-300 hover:text-orange-900"
+                className="h-auto py-4 justify-start"
                 onClick={() => navigate("/risk-assessment")}
               >
-                <Target className="h-5 w-5 mr-3 text-orange-600" />
+                <AlertCircle className="h-5 w-5 mr-3 text-orange-600" />
                 <div className="text-left">
-                  <div className="font-semibold">🎯 Identifica un Rischio</div>
-                  <div className="text-xs text-muted-foreground">Cosa potrebbe andare male?</div>
+                  <div className="font-semibold">Valuta Rischio</div>
+                  <div className="text-xs text-muted-foreground">Aggiungi analisi rischi</div>
                 </div>
               </Button>
 
               <Button
                 variant="outline"
-                className="h-auto py-4 justify-start hover:bg-green-50 hover:border-green-300 hover:text-green-900"
+                className="h-auto py-4 justify-start"
                 onClick={() => navigate("/assets")}
               >
                 <Package className="h-5 w-5 mr-3 text-green-600" />
                 <div className="text-left">
-                  <div className="font-semibold">💻 Registra una Risorsa</div>
-                  <div className="text-xs text-muted-foreground">Computer, server, dati importanti</div>
+                  <div className="font-semibold">Registra Asset</div>
+                  <div className="text-xs text-muted-foreground">Cataloga risorse aziendali</div>
                 </div>
               </Button>
             </div>
