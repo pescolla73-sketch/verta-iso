@@ -40,8 +40,27 @@ export default function ComplianceCalendarPage() {
   const [completing, setCompleting] = useState(false);
 
   useEffect(() => {
+    debugDatabase();
     loadOrganization();
   }, []);
+
+  const debugDatabase = async () => {
+    try {
+      const { data: templates, error: templatesError } = await supabase
+        .from('recurring_task_templates')
+        .select('*');
+      console.log('📝 Templates in DB:', templates?.length || 0);
+      if (templatesError) console.error('Templates error:', templatesError);
+
+      const { data: allTasks, error: tasksError } = await supabase
+        .from('recurring_tasks')
+        .select('*');
+      console.log('📅 Tasks in DB:', allTasks?.length || 0);
+      if (tasksError) console.error('Tasks error:', tasksError);
+    } catch (error) {
+      console.error('Debug error:', error);
+    }
+  };
 
   const loadOrganization = async () => {
     try {
@@ -51,49 +70,155 @@ export default function ComplianceCalendarPage() {
         .limit(1)
         .maybeSingle();
 
+      console.log('🏢 Organization loaded:', org?.id);
+
       if (org) {
         setOrganizationId(org.id);
         await checkAndGenerateTasks(org.id);
         loadTasks(org.id);
+      } else {
+        console.warn('⚠️ No organization found');
+        setLoading(false);
       }
     } catch (error) {
       console.error('Error loading organization:', error);
+      setLoading(false);
+    }
+  };
+
+  const generateTasksManually = async (orgId: string) => {
+    try {
+      console.log('🔧 Manual task generation fallback...');
+      const { data: templates, error: templatesError } = await supabase
+        .from('recurring_task_templates')
+        .select('*');
+
+      if (templatesError) throw templatesError;
+
+      if (!templates || templates.length === 0) {
+        console.error('❌ No templates found in database!');
+        toast({
+          title: 'Errore Configurazione',
+          description: 'Template task non trovati. Contatta supporto.',
+          variant: 'destructive'
+        });
+        return 0;
+      }
+
+      console.log(`✅ Found ${templates.length} templates`);
+
+      const tasksToInsert = templates.map(template => ({
+        organization_id: orgId,
+        template_id: template.id,
+        task_name: template.task_name,
+        task_description: template.task_description,
+        category: template.category,
+        due_date: new Date(Date.now() + (template.frequency_days || 30) * 24 * 60 * 60 * 1000)
+          .toISOString().split('T')[0],
+        priority: template.priority,
+        frequency_days: template.frequency_days,
+        status: 'pending'
+      }));
+
+      const { error: insertError } = await supabase
+        .from('recurring_tasks')
+        .insert(tasksToInsert);
+
+      if (insertError) throw insertError;
+
+      console.log(`✅ ${tasksToInsert.length} tasks generated manually`);
+      return tasksToInsert.length;
+    } catch (error: any) {
+      console.error('❌ Manual generation error:', error);
+      throw error;
     }
   };
 
   const checkAndGenerateTasks = async (orgId: string) => {
     try {
-      const { data: existingTasks } = await supabase
+      console.log('🔍 Checking tasks for org:', orgId);
+      const { data: existingTasks, error: checkError } = await supabase
         .from('recurring_tasks')
         .select('id')
         .eq('organization_id', orgId)
         .limit(1);
 
-      if (!existingTasks || existingTasks.length === 0) {
-        const { data, error } = await supabase.rpc('generate_initial_recurring_tasks', {
-          p_organization_id: orgId,
-          p_start_date: new Date().toISOString().split('T')[0]
-        });
-
-        if (error) throw error;
-
-        toast({
-          title: '✅ Task Generati',
-          description: `${data} task ricorrenti creati per la tua organizzazione`,
-          duration: 5000
-        });
+      if (checkError) {
+        console.error('❌ Error checking existing tasks:', checkError);
+        throw checkError;
       }
 
-      await supabase.rpc('update_overdue_tasks');
+      console.log('📊 Existing tasks:', existingTasks?.length || 0);
+
+      if (!existingTasks || existingTasks.length === 0) {
+        console.log('🚀 Generating initial tasks...');
+        try {
+          const { data, error } = await supabase.rpc('generate_initial_recurring_tasks', {
+            p_organization_id: orgId,
+            p_start_date: new Date().toISOString().split('T')[0]
+          });
+
+          if (error) {
+            console.warn('⚠️ RPC failed, using manual generation:', error);
+            const count = await generateTasksManually(orgId);
+            if (count && count > 0) {
+              toast({
+                title: '✅ Task Generati',
+                description: `${count} task ricorrenti creati`,
+                duration: 5000
+              });
+            }
+          } else {
+            console.log('✅ Tasks generated via RPC:', data);
+            if (data && data > 0) {
+              toast({
+                title: '✅ Task Generati',
+                description: `${data} task ricorrenti creati automaticamente`,
+                duration: 5000
+              });
+            }
+          }
+        } catch (rpcError) {
+          console.warn('⚠️ RPC not available, using manual generation');
+          const count = await generateTasksManually(orgId);
+          if (count && count > 0) {
+            toast({
+              title: '✅ Task Generati',
+              description: `${count} task ricorrenti creati`,
+              duration: 5000
+            });
+          }
+        }
+      } else {
+        console.log('✓ Tasks already exist, skipping generation');
+      }
+
+      console.log('🔄 Updating overdue tasks...');
+      try {
+        const { data: overdueCount, error: overdueError } = await supabase.rpc('update_overdue_tasks');
+        if (overdueError) {
+          console.warn('⚠️ Update overdue failed (non-critical):', overdueError);
+        } else {
+          console.log('✓ Overdue tasks updated:', overdueCount);
+        }
+      } catch (overdueError) {
+        console.warn('⚠️ Update overdue RPC not available');
+      }
 
     } catch (error: any) {
-      console.error('Error generating tasks:', error);
+      console.error('❌ Error in checkAndGenerateTasks:', error);
+      toast({
+        title: 'Errore Task',
+        description: error.message,
+        variant: 'destructive'
+      });
     }
   };
 
   const loadTasks = async (orgId: string) => {
     try {
       setLoading(true);
+      console.log('📥 Loading tasks for org:', orgId);
 
       const { data, error } = await supabase
         .from('recurring_tasks')
@@ -101,14 +226,19 @@ export default function ComplianceCalendarPage() {
         .eq('organization_id', orgId)
         .order('due_date', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error loading tasks:', error);
+        throw error;
+      }
+
+      console.log('✅ Tasks loaded:', data?.length || 0, 'tasks');
       setTasks(data || []);
 
     } catch (error: any) {
-      console.error('Error loading tasks:', error);
+      console.error('❌ Error in loadTasks:', error);
       toast({
         title: 'Errore',
-        description: 'Impossibile caricare i task',
+        description: 'Impossibile caricare i task: ' + error.message,
         variant: 'destructive'
       });
     } finally {
