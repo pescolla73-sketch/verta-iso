@@ -8,6 +8,7 @@ import { CalendarIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { logAuditEvent } from "@/utils/auditLog";
+import { generateRisksFromCriticalAsset } from "@/utils/assetRiskGenerator";
 import {
   Dialog,
   DialogContent,
@@ -214,6 +215,33 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
             newValues: assetData,
             notes: 'New asset created'
           });
+
+          // Generate risks for critical assets
+          const isCritical = values.criticality === 'Critico' || values.criticality === 'Alto';
+          if (isCritical) {
+            try {
+              const risksGenerated = await generateRisksFromCriticalAsset({
+                id: newAsset.id,
+                name: values.name,
+                asset_type: values.asset_type,
+                criticality: values.criticality,
+                confidentiality: values.confidentiality || null,
+                integrity_required: values.integrity_required,
+                availability_required: values.availability_required,
+                organization_id: organizationId,
+              });
+              
+              if (risksGenerated > 0) {
+                toast.info(`Asset critico rilevato: generati ${risksGenerated} rischi automaticamente`, {
+                  duration: 7000,
+                  description: 'Vai al Risk Assessment per visualizzarli'
+                });
+              }
+            } catch (riskError) {
+              console.error('Error generating risks:', riskError);
+              // Don't fail the asset creation if risk generation fails
+            }
+          }
         }
 
         toast.success("Asset creato con successo");
