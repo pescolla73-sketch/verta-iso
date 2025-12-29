@@ -1990,6 +1990,129 @@ export type Database = {
           },
         ]
       }
+      recurring_task_templates: {
+        Row: {
+          category: string
+          created_at: string | null
+          frequency: string
+          frequency_days: number
+          id: string
+          instructions: string | null
+          priority: string | null
+          related_module: string | null
+          responsible_role: string | null
+          task_description: string | null
+          task_name: string
+          template_code: string
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          frequency: string
+          frequency_days: number
+          id?: string
+          instructions?: string | null
+          priority?: string | null
+          related_module?: string | null
+          responsible_role?: string | null
+          task_description?: string | null
+          task_name: string
+          template_code: string
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          frequency?: string
+          frequency_days?: number
+          id?: string
+          instructions?: string | null
+          priority?: string | null
+          related_module?: string | null
+          responsible_role?: string | null
+          task_description?: string | null
+          task_name?: string
+          template_code?: string
+        }
+        Relationships: []
+      }
+      recurring_tasks: {
+        Row: {
+          assigned_to: string | null
+          category: string
+          completed_by: string | null
+          completed_date: string | null
+          completion_notes: string | null
+          created_at: string | null
+          due_date: string
+          frequency_days: number | null
+          id: string
+          next_occurrence_date: string | null
+          organization_id: string
+          priority: string | null
+          responsible_user_id: string | null
+          status: string | null
+          task_description: string | null
+          task_name: string
+          template_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          category: string
+          completed_by?: string | null
+          completed_date?: string | null
+          completion_notes?: string | null
+          created_at?: string | null
+          due_date: string
+          frequency_days?: number | null
+          id?: string
+          next_occurrence_date?: string | null
+          organization_id: string
+          priority?: string | null
+          responsible_user_id?: string | null
+          status?: string | null
+          task_description?: string | null
+          task_name: string
+          template_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          category?: string
+          completed_by?: string | null
+          completed_date?: string | null
+          completion_notes?: string | null
+          created_at?: string | null
+          due_date?: string
+          frequency_days?: number | null
+          id?: string
+          next_occurrence_date?: string | null
+          organization_id?: string
+          priority?: string | null
+          responsible_user_id?: string | null
+          status?: string | null
+          task_description?: string | null
+          task_name?: string
+          template_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_tasks_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_tasks_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_task_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       review_action_items: {
         Row: {
           action_number: number
@@ -2850,6 +2973,10 @@ export type Database = {
         Args: { action_type_param: string; org_id: string }
         Returns: string
       }
+      generate_initial_recurring_tasks: {
+        Args: { p_organization_id: string; p_start_date?: string }
+        Returns: number
+      }
       generate_nc_code: { Args: { org_id: string }; Returns: string }
       get_recommended_risk_templates: {
         Args: {
@@ -2871,6 +2998,7 @@ export type Database = {
         }[]
       }
       reset_database_for_testing: { Args: never; Returns: Json }
+      update_overdue_tasks: { Args: never; Returns: number }
       user_has_role: { Args: { required_roles: string[] }; Returns: boolean }
     }
     Enums: {
