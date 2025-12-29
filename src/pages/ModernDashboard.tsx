@@ -4,14 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Shield,
   AlertTriangle,
   Calendar,
-  Award,
   FileText,
   Package,
   X,
@@ -57,6 +54,7 @@ export default function ModernDashboard() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [dismissedAlerts, setDismissedAlerts] = useState<string[]>([]);
+  const [organizationName, setOrganizationName] = useState("Organizzazione");
 
   const [stats, setStats] = useState<DashboardStats>({
     controlsImplemented: 0,
@@ -64,10 +62,18 @@ export default function ModernDashboard() {
     openNC: 0,
     overdueNC: 0,
     nextAuditDate: null,
-    certificationStatus: "Non Certificato",
+    certificationStatus: "non_certified",
   });
 
   const [alerts, setAlerts] = useState<DashboardAlert[]>([]);
+
+  // PDCA Phase progress (simplified calculation)
+  const [phaseProgress, setPhaseProgress] = useState({
+    plan: 0,
+    do: 0,
+    check: 0,
+    act: 0,
+  });
 
   const certificationSteps: CertificationStep[] = [
     {
@@ -141,7 +147,7 @@ export default function ModernDashboard() {
     try {
       const { data: org } = await supabase
         .from("organization")
-        .select("id")
+        .select("id, name")
         .limit(1)
         .maybeSingle();
 
@@ -149,6 +155,8 @@ export default function ModernDashboard() {
         setLoading(false);
         return;
       }
+
+      setOrganizationName(org.name || "Organizzazione");
 
       const { data: controls } = await supabase
         .from("controls")
@@ -188,12 +196,21 @@ export default function ModernDashboard() {
         .limit(1)
         .maybeSingle();
 
-      let certificationStatus = "Non Certificato";
+      let certificationStatus = "non_certified";
       if (lastCert?.certificate_expiry_date) {
         const expiry = new Date(lastCert.certificate_expiry_date);
         const now = new Date();
-        certificationStatus = expiry > now ? "Certificato" : "Certificato scaduto";
+        certificationStatus = expiry > now ? "certified" : "expired";
       }
+
+      // Calculate PDCA phases based on controls
+      const controlProgress = (implemented / totalControls) * 100;
+      setPhaseProgress({
+        plan: Math.min(100, controlProgress + 30), // Setup and planning ahead
+        do: controlProgress,
+        check: Math.min(100, controlProgress * 0.7),
+        act: Math.min(100, controlProgress * 0.5),
+      });
 
       setStats({
         controlsImplemented: implemented,
@@ -213,7 +230,7 @@ export default function ModernDashboard() {
           action: () => navigate("/non-conformity?filter=overdue"),
         });
       }
-      if (ncs && ncs.length > 0) {
+      if (ncs && ncs.length > 0 && overdue === 0) {
         dashboardAlerts.push({
           id: "open-nc",
           type: "warning",
@@ -226,12 +243,14 @@ export default function ModernDashboard() {
           (new Date(nextAudit.audit_date).getTime() - new Date().getTime()) /
             (1000 * 60 * 60 * 24)
         );
-        dashboardAlerts.push({
-          id: "next-audit",
-          type: "info",
-          message: `Prossimo audit tra ${daysUntil} giorni`,
-          action: () => navigate("/certification-audit"),
-        });
+        if (daysUntil <= 30) {
+          dashboardAlerts.push({
+            id: "next-audit",
+            type: "info",
+            message: `Prossimo audit tra ${daysUntil} giorni`,
+            action: () => navigate("/certification-audit"),
+          });
+        }
       }
 
       setAlerts(dashboardAlerts.filter((a) => !dismissedAlerts.includes(a.id)));
@@ -249,148 +268,264 @@ export default function ModernDashboard() {
 
   const nextStep = certificationSteps.find((s) => !s.completed);
   const completedSteps = certificationSteps.filter((s) => s.completed).length;
-  const completionPercentage = Math.round(
+  const overallProgress = Math.round(
     (completedSteps / certificationSteps.length) * 100
   );
 
+  // Calculate days until next audit
+  const nextAuditDays = stats.nextAuditDate
+    ? Math.floor(
+        (new Date(stats.nextAuditDate).getTime() - new Date().getTime()) /
+          (1000 * 60 * 60 * 24)
+      )
+    : 0;
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="flex items-center justify-center min-h-screen bg-prof-bg">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[hsl(var(--prof-primary))]"></div>
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-background">
-      <div className="container mx-auto p-6 space-y-6">
-        {/* Header */}
-        <div className="bg-card border-b border-border p-6 -mx-6 -mt-6 mb-0">
+    <div className="min-h-screen bg-prof-bg">
+      {/* Header Professional */}
+      <div className="bg-prof-surface border-b border-prof-border">
+        <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-semibold text-foreground">
+              <h1 className="heading-prof heading-prof-xl">
                 Sistema di Gestione Sicurezza Informazioni
               </h1>
-              <p className="text-muted-foreground mt-1">
-                Panoramica conformità ISO 27001:2022 — {format(new Date(), 'dd MMMM yyyy', { locale: it })}
+              <p className="text-prof-muted mt-1">
+                Panoramica conformità ISO 27001:2022 - {format(new Date(), "dd MMMM yyyy", { locale: it })}
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <Badge 
-                variant={stats.certificationStatus === 'Certificato' ? 'default' : 'secondary'}
-                className="text-sm"
+              <span className="badge-prof badge-prof-neutral">
+                {organizationName}
+              </span>
+              <span className={stats.certificationStatus === "certified" ? "badge-prof badge-prof-success" : "badge-prof badge-prof-neutral"}>
+                {stats.certificationStatus === "certified" ? "Certificato" : "In implementazione"}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Alerts */}
+      {alerts.length > 0 && (
+        <div className="px-6 pt-4 space-y-2">
+          {alerts.map((alert) => (
+            <div
+              key={alert.id}
+              className={`alert-prof ${
+                alert.type === "error" ? "alert-prof-error" :
+                alert.type === "warning" ? "alert-prof-warning" : "alert-prof-info"
+              } cursor-pointer relative`}
+              onClick={alert.action}
+            >
+              {alert.type === "error" && <AlertTriangle className="h-5 w-5 flex-shrink-0" />}
+              {alert.type === "warning" && <AlertCircle className="h-5 w-5 flex-shrink-0" />}
+              {alert.type === "info" && <Calendar className="h-5 w-5 flex-shrink-0" />}
+              <div className="flex-1">
+                <span className="font-medium">{alert.message}</span>
+              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  dismissAlert(alert.id);
+                }}
+                className="opacity-70 hover:opacity-100 ml-2"
               >
-                {stats.certificationStatus}
-              </Badge>
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="p-6 space-y-6">
+        {/* KPI Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {/* Controlli */}
+          <div 
+            className="stat-card-prof cursor-pointer"
+            onClick={() => navigate("/controls")}
+          >
+            <div className="flex items-center justify-between">
+              <div className="stat-card-label-prof">Controlli Implementati</div>
+              <Shield className="h-5 w-5 text-prof-primary" />
+            </div>
+            <div className="stat-card-value-prof">{stats.controlsImplemented}</div>
+            <div className="stat-card-desc-prof">
+              su {stats.totalControls} controlli ISO 27001
+            </div>
+            <div className="progress-prof mt-3">
+              <div
+                className="progress-bar-prof"
+                style={{ width: `${(stats.controlsImplemented / stats.totalControls) * 100}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Non-Conformità */}
+          <div 
+            className="stat-card-prof cursor-pointer"
+            onClick={() => navigate("/non-conformity")}
+          >
+            <div className="flex items-center justify-between">
+              <div className="stat-card-label-prof">Non-Conformità Aperte</div>
+              <AlertCircle className={`h-5 w-5 ${stats.overdueNC > 0 ? "text-prof-error" : "text-prof-warning"}`} />
+            </div>
+            <div className="stat-card-value-prof">{stats.openNC}</div>
+            <div className="stat-card-desc-prof">
+              {stats.overdueNC > 0 ? `${stats.overdueNC} scadute` : "Nessuna scaduta"}
+            </div>
+          </div>
+
+          {/* Prossimo Audit */}
+          <div 
+            className="stat-card-prof cursor-pointer"
+            onClick={() => navigate("/certification-audit")}
+          >
+            <div className="flex items-center justify-between">
+              <div className="stat-card-label-prof">Prossimo Audit</div>
+              <Calendar className="h-5 w-5 text-prof-info" />
+            </div>
+            <div className="stat-card-value-prof text-2xl">
+              {nextAuditDays > 0 ? `${nextAuditDays}gg` : "N/D"}
+            </div>
+            <div className="stat-card-desc-prof">
+              {nextAuditDays > 0 ? "giorni rimanenti" : "Non pianificato"}
+            </div>
+          </div>
+
+          {/* Certificazione */}
+          <div 
+            className="stat-card-prof cursor-pointer"
+            onClick={() => navigate("/certification-audit")}
+          >
+            <div className="flex items-center justify-between">
+              <div className="stat-card-label-prof">Stato Certificazione</div>
+              <CheckCircle className={`h-5 w-5 ${stats.certificationStatus === "certified" ? "text-prof-success" : "text-prof-secondary"}`} />
+            </div>
+            <div className="stat-card-value-prof text-2xl">
+              {stats.certificationStatus === "certified" ? "Attivo" : `${overallProgress}%`}
+            </div>
+            <div className="stat-card-desc-prof">
+              {stats.certificationStatus === "certified" ? "Certificato ISO 27001" : "Avanzamento"}
             </div>
           </div>
         </div>
 
-        {/* Alerts */}
-        {alerts.length > 0 && (
-          <div className="space-y-2">
-            {alerts.map((alert) => (
-              <Alert
-                key={alert.id}
-                variant={alert.type === "error" ? "destructive" : "default"}
-                className="cursor-pointer hover:bg-muted/50 transition-colors relative pr-10"
-                onClick={alert.action}
-              >
-                {alert.type === "error" && <AlertTriangle className="h-4 w-4" />}
-                {alert.type === "warning" && <AlertCircle className="h-4 w-4" />}
-                {alert.type === "info" && <Calendar className="h-4 w-4" />}
-                <AlertDescription className="font-medium">
-                  {alert.message}
-                </AlertDescription>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    dismissAlert(alert.id);
-                  }}
-                  className="absolute right-2 top-2 opacity-70 hover:opacity-100"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </Alert>
-            ))}
-          </div>
-        )}
-
-        {/* Certification Progress */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-xl">
-                  Stato Implementazione ISMS
-                </CardTitle>
-                <CardDescription>
-                  Avanzamento verso la certificazione ISO 27001:2022
-                </CardDescription>
-              </div>
-              <div className="text-right">
-                <div className="text-4xl font-bold text-primary">
-                  {completionPercentage}%
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {completedSteps}/{certificationSteps.length} fasi completate
-                </p>
-              </div>
-            </div>
+        {/* Stato Implementazione ISMS */}
+        <Card className="card-prof !p-0 overflow-hidden">
+          <CardHeader className="p-6 pb-4">
+            <CardTitle className="heading-prof heading-prof-lg">
+              Stato Implementazione ISMS
+            </CardTitle>
+            <CardDescription className="text-prof-muted">
+              Avanzamento verso la certificazione ISO 27001:2022
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <Progress value={completionPercentage} className="h-2" />
-            
-            {/* Steps indicator */}
-            <div className="flex items-center justify-between">
-              {certificationSteps.map((step, index) => (
-                <div key={step.id} className="flex items-center">
-                  <div
-                    className={`
-                      flex items-center justify-center w-8 h-8 rounded-full border-2 text-sm font-medium
-                      ${step.completed
-                        ? "bg-green-600 border-green-600 text-white"
-                        : index === completedSteps
-                          ? "bg-primary border-primary text-primary-foreground"
-                          : "bg-muted border-border text-muted-foreground"
-                      }
-                    `}
-                  >
-                    {step.completed ? <CheckCircle className="h-4 w-4" /> : step.id}
-                  </div>
-                  {index < certificationSteps.length - 1 && (
-                    <div
-                      className={`w-8 md:w-12 h-0.5 mx-1 ${
-                        step.completed ? "bg-green-600" : "bg-border"
-                      }`}
-                    />
-                  )}
-                </div>
-              ))}
+          <CardContent className="p-6 pt-0 space-y-6">
+            {/* Progress Complessivo */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-prof-secondary">
+                  Completamento Complessivo
+                </span>
+                <span className="text-3xl font-bold text-prof-primary">
+                  {overallProgress}%
+                </span>
+              </div>
+              <div className="progress-prof">
+                <div
+                  className="progress-bar-prof"
+                  style={{ width: `${overallProgress}%` }}
+                />
+              </div>
             </div>
 
-            {/* Next Action */}
+            {/* Fasi PDCA */}
+            <div className="grid grid-cols-4 gap-4">
+              <div className="phase-indicator-prof phase-indicator-plan">
+                <div className="text-xs font-semibold text-prof-muted uppercase">
+                  Plan
+                </div>
+                <div className="text-2xl font-bold mt-1" style={{ color: "hsl(var(--prof-text))" }}>
+                  {Math.round(phaseProgress.plan)}%
+                </div>
+                <div className="text-xs text-prof-muted mt-1">
+                  Setup, Risk, Asset
+                </div>
+              </div>
+
+              <div className="phase-indicator-prof phase-indicator-do">
+                <div className="text-xs font-semibold text-prof-muted uppercase">
+                  Do
+                </div>
+                <div className="text-2xl font-bold mt-1" style={{ color: "hsl(var(--prof-text))" }}>
+                  {Math.round(phaseProgress.do)}%
+                </div>
+                <div className="text-xs text-prof-muted mt-1">
+                  Policy, Controlli
+                </div>
+              </div>
+
+              <div className="phase-indicator-prof phase-indicator-check">
+                <div className="text-xs font-semibold text-prof-muted uppercase">
+                  Check
+                </div>
+                <div className="text-2xl font-bold mt-1" style={{ color: "hsl(var(--prof-text))" }}>
+                  {Math.round(phaseProgress.check)}%
+                </div>
+                <div className="text-xs text-prof-muted mt-1">
+                  Audit, Monitoring
+                </div>
+              </div>
+
+              <div className="phase-indicator-prof phase-indicator-act">
+                <div className="text-xs font-semibold text-prof-muted uppercase">
+                  Act
+                </div>
+                <div className="text-2xl font-bold mt-1" style={{ color: "hsl(var(--prof-text))" }}>
+                  {Math.round(phaseProgress.act)}%
+                </div>
+                <div className="text-xs text-prof-muted mt-1">
+                  Review, Improve
+                </div>
+              </div>
+            </div>
+
+            {/* Prossima Azione */}
             {nextStep && (
-              <div className="bg-muted/50 rounded-lg p-4 border">
-                <div className="flex items-start gap-4">
-                  <div className="p-2 bg-primary rounded-lg">
-                    <ArrowRight className="h-5 w-5 text-primary-foreground" />
+              <div className="alert-prof alert-prof-info">
+                <ArrowRight className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <div className="font-semibold text-sm uppercase tracking-wide">
+                    Prossima Azione Richiesta
                   </div>
-                  <div className="flex-1">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      Prossima Azione
-                    </p>
-                    <h3 className="text-lg font-semibold mt-1">{nextStep.title}</h3>
-                    <p className="text-muted-foreground text-sm">{nextStep.description}</p>
-                    <div className="flex items-center gap-4 mt-3">
-                      <Button onClick={() => navigate(nextStep.path)}>
-                        Procedi
-                        <ChevronRight className="h-4 w-4 ml-1" />
-                      </Button>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Clock className="h-4 w-4" />
-                        {nextStep.estimatedTime}
-                      </div>
+                  <div className="font-medium mt-1" style={{ color: "hsl(var(--prof-text))" }}>
+                    {nextStep.title}
+                  </div>
+                  <div className="text-sm mt-1 opacity-80">
+                    {nextStep.description}
+                  </div>
+                  <div className="flex items-center gap-4 mt-3">
+                    <Button
+                      size="sm"
+                      className="btn-prof-primary"
+                      onClick={() => navigate(nextStep.path)}
+                    >
+                      Procedi
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                    <div className="flex items-center gap-2 text-sm opacity-80">
+                      <Clock className="h-4 w-4" />
+                      {nextStep.estimatedTime}
                     </div>
                   </div>
                 </div>
@@ -399,143 +534,42 @@ export default function ModernDashboard() {
           </CardContent>
         </Card>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card
-            className="border-l-4 border-l-primary cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => navigate("/controls")}
-          >
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <Shield className="h-5 w-5 text-primary" />
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {stats.controlsImplemented}/{stats.totalControls}
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">Controlli implementati</p>
-              <Progress
-                value={(stats.controlsImplemented / stats.totalControls) * 100}
-                className="mt-2 h-1"
-              />
-            </CardContent>
-          </Card>
-
-          <Card
-            className={`border-l-4 cursor-pointer hover:shadow-md transition-shadow ${
-              stats.overdueNC > 0
-                ? "border-l-destructive"
-                : "border-l-yellow-500"
-            }`}
-            onClick={() => navigate("/non-conformity")}
-          >
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <AlertTriangle className={`h-5 w-5 ${stats.overdueNC > 0 ? "text-destructive" : "text-yellow-600"}`} />
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.openNC}</div>
-              <p className="text-sm text-muted-foreground mt-1">Non-conformità aperte</p>
-              {stats.overdueNC > 0 && (
-                <p className="text-xs text-destructive font-medium mt-1">
-                  {stats.overdueNC} scadute
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card
-            className="border-l-4 border-l-blue-500 cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => navigate("/certification-audit")}
-          >
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <Calendar className="h-5 w-5 text-blue-600" />
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-lg font-bold">
-                {stats.nextAuditDate
-                  ? format(new Date(stats.nextAuditDate), 'dd MMM yyyy', { locale: it })
-                  : "Da pianificare"}
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">Prossimo audit</p>
-            </CardContent>
-          </Card>
-
-          <Card
-            className="border-l-4 border-l-green-600 cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => navigate("/certification-audit")}
-          >
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <Award className="h-5 w-5 text-green-600" />
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-lg font-bold">
-                {stats.certificationStatus === "Certificato" ? "Attivo" : "In corso"}
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">Stato certificazione</p>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5 text-primary" />
-              Azioni Rapide
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <Button
-                variant="outline"
-                className="h-auto py-4 justify-start"
-                onClick={() => navigate("/policy-editor")}
-              >
-                <FileText className="h-5 w-5 mr-3 text-primary" />
-                <div className="text-left">
-                  <div className="font-semibold">Nuova Policy</div>
-                  <div className="text-xs text-muted-foreground">Crea una policy di sicurezza</div>
-                </div>
-              </Button>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div
+            className="quick-action-card-prof"
+            onClick={() => navigate("/policy-editor")}
+          >
+            <FileText className="h-8 w-8 text-prof-primary mb-3" />
+            <h3 className="heading-prof heading-prof-sm mb-1">Nuova Policy</h3>
+            <p className="text-prof-muted text-sm">
+              Crea una policy di sicurezza
+            </p>
+          </div>
 
-              <Button
-                variant="outline"
-                className="h-auto py-4 justify-start"
-                onClick={() => navigate("/risk-assessment")}
-              >
-                <AlertCircle className="h-5 w-5 mr-3 text-orange-600" />
-                <div className="text-left">
-                  <div className="font-semibold">Valuta Rischio</div>
-                  <div className="text-xs text-muted-foreground">Aggiungi analisi rischi</div>
-                </div>
-              </Button>
+          <div
+            className="quick-action-card-prof"
+            onClick={() => navigate("/risk-assessment")}
+          >
+            <Target className="h-8 w-8 text-prof-primary mb-3" />
+            <h3 className="heading-prof heading-prof-sm mb-1">Identifica Rischio</h3>
+            <p className="text-prof-muted text-sm">
+              Valuta un nuovo rischio
+            </p>
+          </div>
 
-              <Button
-                variant="outline"
-                className="h-auto py-4 justify-start"
-                onClick={() => navigate("/assets")}
-              >
-                <Package className="h-5 w-5 mr-3 text-green-600" />
-                <div className="text-left">
-                  <div className="font-semibold">Registra Asset</div>
-                  <div className="text-xs text-muted-foreground">Cataloga risorse aziendali</div>
-                </div>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+          <div
+            className="quick-action-card-prof"
+            onClick={() => navigate("/assets")}
+          >
+            <Package className="h-8 w-8 text-prof-primary mb-3" />
+            <h3 className="heading-prof heading-prof-sm mb-1">Registra Asset</h3>
+            <p className="text-prof-muted text-sm">
+              Hardware, software, dati
+            </p>
+          </div>
+        </div>
       </div>
-    </main>
+    </div>
   );
 }
