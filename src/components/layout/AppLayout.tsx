@@ -26,11 +26,55 @@ interface AppLayoutProps {
   children: React.ReactNode;
 }
 
+interface SidebarStats {
+  openNC: number;
+  overdueNC: number;
+  implementedControls: number;
+}
+
 export function AppLayout({ children }: AppLayoutProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [isDemoMode, setIsDemoMode] = useState(false);
   const { user, signOut } = useAuth();
+  const [sidebarStats, setSidebarStats] = useState<SidebarStats>({
+    openNC: 0,
+    overdueNC: 0,
+    implementedControls: 0,
+  });
+
+  // Load sidebar stats
+  useEffect(() => {
+    const loadSidebarStats = async () => {
+      try {
+        // Load non-conformities
+        const { data: ncs } = await supabase
+          .from("non_conformities")
+          .select("id, deadline, status")
+          .in("status", ["open", "in_progress"]);
+
+        const openNC = ncs?.length || 0;
+        const overdueNC = ncs?.filter((nc) => {
+          if (!nc.deadline) return false;
+          return new Date(nc.deadline) < new Date();
+        }).length || 0;
+
+        // Load implemented controls
+        const { data: controls } = await supabase
+          .from("controls")
+          .select("id, status")
+          .eq("status", "implemented");
+
+        const implementedControls = controls?.length || 0;
+
+        setSidebarStats({ openNC, overdueNC, implementedControls });
+      } catch (error) {
+        console.error("Error loading sidebar stats:", error);
+      }
+    };
+
+    loadSidebarStats();
+  }, []);
 
   // Get current user's profile with selected organization
   const { data: profile } = useQuery({
@@ -181,29 +225,32 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className="min-h-screen flex w-full">
-      <ModernSidebar />
+      <ModernSidebar 
+        openNC={sidebarStats.openNC}
+        overdueNC={sidebarStats.overdueNC}
+        implementedControls={sidebarStats.implementedControls}
+      />
       <div className="flex-1 flex flex-col">
         {/* Development Mode Banner */}
         {isDemoMode && DEV_MODE && (
-          <div className="bg-yellow-500/20 border-b border-yellow-500/50 px-6 py-2 flex items-center gap-2 text-sm">
-            <AlertTriangle className="h-4 w-4 text-yellow-600" />
-            <span className="font-medium text-yellow-700">
-              ⚠️ MODALITÀ SVILUPPO - Utente Demo Attivo
+          <div className="bg-amber-500/20 border-b border-amber-500/50 px-6 py-2 flex items-center gap-2 text-sm">
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <span className="font-medium text-amber-700">
+              Modalita Sviluppo - Utente Demo Attivo
             </span>
           </div>
         )}
-        <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6 shadow-card">
+        <header className="h-14 border-b border-prof-border bg-prof-surface flex items-center justify-between px-6">
           <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold text-foreground">
+            <h2 className="text-base font-semibold" style={{ color: "hsl(var(--prof-text))" }}>
               Gestione ISO 27001:2022
             </h2>
             {currentOrg && (
               <>
-                <span className="text-muted-foreground">|</span>
-                <span className="text-lg font-bold text-foreground">
+                <span className="text-prof-muted">|</span>
+                <span className="text-base font-bold" style={{ color: "hsl(var(--prof-text))" }}>
                   {currentOrg.name}
                 </span>
-                <span className="text-muted-foreground">|</span>
               </>
             )}
             {/* Organization Selector */}
@@ -248,7 +295,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             <RoleBadge />
             {user ? (
               <>
-                <div className="flex items-center gap-2 text-sm text-foreground">
+                <div className="flex items-center gap-2 text-sm" style={{ color: "hsl(var(--prof-text))" }}>
                   <User className="h-4 w-4" />
                   <span>{user.email}</span>
                 </div>
@@ -276,9 +323,8 @@ export function AppLayout({ children }: AppLayoutProps) {
             </Button>
           </div>
         </header>
-        <main className="flex-1 p-6 bg-background">{children}</main>
+        <main className="flex-1 bg-prof-bg overflow-auto">{children}</main>
       </div>
     </div>
   );
 }
-
