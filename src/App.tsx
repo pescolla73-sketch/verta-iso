@@ -55,6 +55,7 @@ import SetupPasswordPage from "./pages/SetupPasswordPage";
 import FinalSecurityAuditPage from "./pages/FinalSecurityAuditPage";
 import GuidaPage from "./pages/GuidaPage";
 import AdminResetPage from "./pages/AdminResetPage";
+import ComplianceCalendarPage from "./pages/ComplianceCalendarPage";
 
 const queryClient = new QueryClient();
 
@@ -507,6 +508,14 @@ const App = () => (
                   <AdminResetPage />
                 </AppLayout>
               </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/compliance-calendar"
+            element={
+              <AppLayout>
+                <ComplianceCalendarPage />
+              </AppLayout>
             }
           />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
