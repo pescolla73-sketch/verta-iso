@@ -3079,6 +3079,7 @@ export type Database = {
       }
       reset_database_for_testing: { Args: never; Returns: Json }
       update_overdue_tasks: { Args: never; Returns: number }
+      user_belongs_to_org: { Args: { org_id: string }; Returns: boolean }
       user_has_role: { Args: { required_roles: string[] }; Returns: boolean }
     }
     Enums: {
