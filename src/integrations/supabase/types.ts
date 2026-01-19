@@ -3077,6 +3077,7 @@ export type Database = {
           template_id: string
         }[]
       }
+      is_org_admin_direct: { Args: never; Returns: boolean }
       reset_database_for_testing: { Args: never; Returns: Json }
       update_overdue_tasks: { Args: never; Returns: number }
       user_belongs_to_org: { Args: { org_id: string }; Returns: boolean }
