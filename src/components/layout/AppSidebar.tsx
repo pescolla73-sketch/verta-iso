@@ -272,22 +272,27 @@ export function AppSidebar() {
       : "hover:bg-sidebar-accent/50 text-sidebar-foreground/80 hover:text-sidebar-foreground";
 
   return (
-    <Sidebar className={isCollapsed ? "w-14" : "w-64"}>
-      <SidebarContent>
-        <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
+    <Sidebar className={isCollapsed ? "w-14" : "w-60"} collapsible="icon">
+      <SidebarContent className="overflow-x-hidden">
+        <div className="flex items-center justify-between p-3 border-b border-sidebar-border">
           {!isCollapsed && (
             <div className="flex items-center gap-2">
-              <Shield className="h-6 w-6 text-sidebar-primary" />
-              <span className="font-semibold text-sidebar-foreground">
+              <Shield className="h-5 w-5 text-sidebar-primary flex-shrink-0" />
+              <span className="font-semibold text-sidebar-foreground text-sm truncate">
                 ISO 27001
               </span>
             </div>
           )}
+          {isCollapsed && (
+            <Shield className="h-5 w-5 text-sidebar-primary mx-auto" />
+          )}
         </div>
 
         {menuSections.map((section) => (
-          <SidebarGroup key={section.label}>
-            <SidebarGroupLabel>{section.label}</SidebarGroupLabel>
+          <SidebarGroup key={section.label} className="py-1">
+            <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-sidebar-foreground/50 px-3 py-1 truncate">
+              {isCollapsed ? "" : section.label}
+            </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {section.items.map((item) => (
@@ -304,21 +309,21 @@ export function AppSidebar() {
                         showLabel={!isCollapsed}
                         badge={
                           !isCollapsed && item.badge ? (
-                            <Badge variant="secondary" className="ml-auto">
+                            <Badge variant="secondary" className="ml-auto text-[10px] px-1.5">
                               {item.badge}
                             </Badge>
                           ) : undefined
                         }
                       />
                     ) : (
-                      <SidebarMenuButton asChild>
+                      <SidebarMenuButton asChild className="h-8">
                         <NavLink to={item.url} end className={getNavCls}>
-                          <item.icon className="h-4 w-4" />
+                          <item.icon className="h-4 w-4 flex-shrink-0" />
                           {!isCollapsed && (
-                            <span className="flex-1">{item.title}</span>
+                            <span className="flex-1 truncate text-sm">{item.title}</span>
                           )}
                           {!isCollapsed && item.badge && (
-                            <Badge variant="secondary" className="ml-auto">
+                            <Badge variant="secondary" className="ml-auto text-[10px] px-1.5">
                               {item.badge}
                             </Badge>
                           )}
