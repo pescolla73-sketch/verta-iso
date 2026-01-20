@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,7 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Shield, AlertTriangle, Search, Pencil, Trash2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Shield, AlertTriangle, Search, Pencil, Trash2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -20,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { CustomThreatDialog } from "./CustomThreatDialog";
 import { logAuditEvent } from "@/utils/auditLog";
+import { useOrganization } from "@/hooks/useOrganization";
 
 interface ThreatLibraryBrowserProps {
   onSelectThreat: (threatId: string) => void;
@@ -41,6 +44,14 @@ interface Threat {
   relevant_sectors?: string[];
 }
 
+interface EvaluatedRisk {
+  id: string;
+  name: string;
+  inherent_risk_score: number;
+  inherent_risk_level: string;
+  status: string;
+}
+
 const CATEGORIES = [
   { value: "all", label: "Tutte le categorie" },
   { value: "Cyber/Technical", label: "🔐 Cyber/Technical" },
@@ -60,10 +71,14 @@ const NIS2_TYPES = [
   { value: "Integrity compromise", label: "Integrity compromise" }
 ];
 
+type EvaluationFilter = 'all' | 'to_evaluate' | 'evaluated';
+
 export function ThreatLibraryBrowser({ onSelectThreat, selectedSector }: ThreatLibraryBrowserProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [nis2Filter, setNis2Filter] = useState("all");
+  const [evaluationFilter, setEvaluationFilter] = useState<EvaluationFilter>("all");
+  const [hideEvaluated, setHideEvaluated] = useState(false);
   const [selectedThreats, setSelectedThreats] = useState<string[]>([]);
   const [editingThreat, setEditingThreat] = useState<Threat | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -71,78 +86,103 @@ export function ThreatLibraryBrowser({ onSelectThreat, selectedSector }: ThreatL
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   const queryClient = useQueryClient();
+  const { organizationId } = useOrganization();
+
+  // Fetch evaluated risks for this organization
+  const { data: evaluatedRisks = [] } = useQuery({
+    queryKey: ["evaluated-risks", organizationId],
+    queryFn: async () => {
+      if (!organizationId) return [];
+      const { data, error } = await supabase
+        .from("risks")
+        .select("id, name, inherent_risk_score, inherent_risk_level, status")
+        .eq("organization_id", organizationId);
+      
+      if (error) {
+        console.error('Error fetching evaluated risks:', error);
+        return [];
+      }
+      return data || [];
+    },
+    enabled: !!organizationId
+  });
+
+  // Create a map of threat names to their risk evaluations
+  const evaluatedThreatsMap = useMemo(() => {
+    const map = new Map<string, EvaluatedRisk>();
+    evaluatedRisks.forEach(risk => {
+      map.set(risk.name.toLowerCase(), risk);
+    });
+    return map;
+  }, [evaluatedRisks]);
+
+  const isEvaluated = (threatName: string) => {
+    return evaluatedThreatsMap.has(threatName.toLowerCase());
+  };
+
+  const getEvaluationData = (threatName: string): EvaluatedRisk | undefined => {
+    return evaluatedThreatsMap.get(threatName.toLowerCase());
+  };
 
   const { data: threats = [], isLoading, error: queryError } = useQuery({
     queryKey: ["threat-library", categoryFilter, nis2Filter, selectedSector],
     queryFn: async () => {
-      console.log('🔍 Loading threats with filters:', {
-        categoryFilter,
-        nis2Filter,
-        selectedSector
-      });
+      let query = supabase
+        .from("threat_library")
+        .select("*")
+        .order("created_at", { ascending: false });
 
-      try {
-        // Simplified query - get all threats (RLS will handle access control)
-        let query = supabase
-          .from("threat_library")
-          .select("*")
-          .order("created_at", { ascending: false });
-
-        // Apply filters
-        if (categoryFilter !== "all") {
-          query = query.eq("category", categoryFilter);
-        }
-
-        if (nis2Filter !== "all") {
-          query = query.eq("nis2_incident_type", nis2Filter);
-        }
-
-        const { data, error } = await query;
-        
-        console.log('📊 Loaded threats:', data?.length || 0);
-        
-        if (error) {
-          console.error('❌ Query error:', error);
-          console.error('💥 Error details:', {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code
-          });
-          throw error;
-        }
-
-        // Filter by sector if provided (client-side filtering)
-        if (selectedSector && data) {
-          const filtered = data.filter(t => 
-            !t.relevant_sectors || 
-            t.relevant_sectors.length === 0 || 
-            t.relevant_sectors.includes(selectedSector)
-          );
-          console.log('✅ Filtered by sector:', filtered.length);
-          return filtered;
-        }
-
-        console.log('✅ Returning all threats:', data?.length || 0);
-        return data || [];
-        
-      } catch (err) {
-        console.error('💥 Unexpected error loading threats:', err);
-        toast.error('Errore nel caricamento minacce', {
-          description: err instanceof Error ? err.message : 'Errore sconosciuto'
-        });
-        throw err;
+      if (categoryFilter !== "all") {
+        query = query.eq("category", categoryFilter);
       }
+
+      if (nis2Filter !== "all") {
+        query = query.eq("nis2_incident_type", nis2Filter);
+      }
+
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error('Query error:', error);
+        throw error;
+      }
+
+      if (selectedSector && data) {
+        return data.filter(t => 
+          !t.relevant_sectors || 
+          t.relevant_sectors.length === 0 || 
+          t.relevant_sectors.includes(selectedSector)
+        );
+      }
+
+      return data || [];
     },
     retry: 1,
     retryDelay: 1000
   });
 
-  const filteredThreats = threats.filter(threat =>
-    threat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    threat.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    threat.threat_id.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredThreats = useMemo(() => {
+    let result = threats.filter(threat =>
+      threat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      threat.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      threat.threat_id.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    if (evaluationFilter === 'evaluated') {
+      result = result.filter(t => isEvaluated(t.name));
+    } else if (evaluationFilter === 'to_evaluate') {
+      result = result.filter(t => !isEvaluated(t.name));
+    }
+
+    if (hideEvaluated) {
+      result = result.filter(t => !isEvaluated(t.name));
+    }
+
+    return result;
+  }, [threats, searchQuery, evaluationFilter, hideEvaluated, evaluatedThreatsMap]);
+
+  const evaluatedCount = threats.filter(t => isEvaluated(t.name)).length;
+  const toEvaluateCount = threats.length - evaluatedCount;
 
   const getRiskBadgeColor = (probability: number, impact: number) => {
     const score = probability * impact;
@@ -150,6 +190,15 @@ export function ThreatLibraryBrowser({ onSelectThreat, selectedSector }: ThreatL
     if (score >= 13) return "default";
     if (score >= 7) return "secondary";
     return "outline";
+  };
+
+  const getRiskLevelColor = (level: string) => {
+    switch (level?.toLowerCase()) {
+      case 'critico': return 'destructive';
+      case 'alto': return 'default';
+      case 'medio': return 'secondary';
+      default: return 'outline';
+    }
   };
 
   const toggleThreat = (threatId: string) => {
@@ -169,37 +218,28 @@ export function ThreatLibraryBrowser({ onSelectThreat, selectedSector }: ThreatL
   const handleDeleteThreat = async (threat: Threat, e: React.MouseEvent) => {
     e.stopPropagation();
     
-    console.log('🗑️ Attempting to delete threat:', threat.threat_id);
-    
     try {
-      // Check if threat is used in any risks (threat_id might not exist in all cases)
       const { data: risks, error } = await supabase
         .from('risks')
         .select('id, risk_id, name')
         .eq('threat_id', threat.threat_id);
       
-      if (error) {
-        // If column doesn't exist (42703) or other errors, allow deletion
-        console.warn('⚠️ Could not check usage, proceeding with delete:', error);
-        if (error.code !== '42703') {
-          console.error('Usage check error:', error);
-        }
+      if (error && error.code !== '42703') {
+        console.error('Usage check error:', error);
       }
       
-      // Only block if we found risks actually using it
       if (risks && risks.length > 0) {
         toast.error('Impossibile eliminare', {
-          description: `Questa minaccia è usata in ${risks.length} rischi. Elimina prima i rischi.`
+          description: `Questa minaccia è usata in ${risks.length} rischi.`
         });
         return;
       }
       
-      // Proceed with delete
       setThreatToDelete(threat);
       setShowDeleteConfirm(true);
       
     } catch (error) {
-      console.error('💥 Error in delete flow:', error);
+      console.error('Error in delete flow:', error);
       toast.error('Errore', {
         description: error instanceof Error ? error.message : 'Errore sconosciuto'
       });
@@ -216,7 +256,6 @@ export function ThreatLibraryBrowser({ onSelectThreat, selectedSector }: ThreatL
       if (error) throw error;
     },
     onSuccess: async () => {
-      // Log audit event
       if (threatToDelete) {
         await logAuditEvent({
           action: 'delete',
@@ -255,7 +294,14 @@ export function ThreatLibraryBrowser({ onSelectThreat, selectedSector }: ThreatL
                   : "Catalogo professionale di minacce basato su standard EU"}
               </CardDescription>
             </div>
-            <Badge variant="outline">{filteredThreats.length} minacce</Badge>
+            <div className="flex items-center gap-3">
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                ✓ {evaluatedCount} valutati
+              </Badge>
+              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                ⏳ {toEvaluateCount} da valutare
+              </Badge>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -270,7 +316,7 @@ export function ThreatLibraryBrowser({ onSelectThreat, selectedSector }: ThreatL
               />
             </div>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-64">
+              <SelectTrigger className="w-56">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -282,7 +328,7 @@ export function ThreatLibraryBrowser({ onSelectThreat, selectedSector }: ThreatL
               </SelectContent>
             </Select>
             <Select value={nis2Filter} onValueChange={setNis2Filter}>
-              <SelectTrigger className="w-64">
+              <SelectTrigger className="w-56">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -293,6 +339,45 @@ export function ThreatLibraryBrowser({ onSelectThreat, selectedSector }: ThreatL
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex gap-2">
+              <Button
+                variant={evaluationFilter === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setEvaluationFilter('all')}
+              >
+                Tutti ({threats.length})
+              </Button>
+              <Button
+                variant={evaluationFilter === 'to_evaluate' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setEvaluationFilter('to_evaluate')}
+                className={evaluationFilter !== 'to_evaluate' ? 'border-amber-300 text-amber-700 hover:bg-amber-50' : ''}
+              >
+                ⏳ Da Valutare ({toEvaluateCount})
+              </Button>
+              <Button
+                variant={evaluationFilter === 'evaluated' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setEvaluationFilter('evaluated')}
+                className={evaluationFilter !== 'evaluated' ? 'border-green-300 text-green-700 hover:bg-green-50' : ''}
+              >
+                ✓ Già Valutati ({evaluatedCount})
+              </Button>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Switch
+                id="hide-evaluated"
+                checked={hideEvaluated}
+                onCheckedChange={setHideEvaluated}
+              />
+              <Label htmlFor="hide-evaluated" className="text-sm text-muted-foreground cursor-pointer">
+                Nascondi rischi già valutati
+              </Label>
+            </div>
           </div>
 
           {selectedThreats.length > 0 && (
@@ -319,7 +404,7 @@ export function ThreatLibraryBrowser({ onSelectThreat, selectedSector }: ThreatL
           <Card className="border-destructive">
             <CardContent className="pt-6">
               <p className="text-center text-destructive">
-                ❌ Errore nel caricamento: {queryError instanceof Error ? queryError.message : 'Errore sconosciuto'}
+                ❌ Errore: {queryError instanceof Error ? queryError.message : 'Errore sconosciuto'}
               </p>
             </CardContent>
           </Card>
@@ -337,104 +422,135 @@ export function ThreatLibraryBrowser({ onSelectThreat, selectedSector }: ThreatL
             </CardContent>
           </Card>
         ) : (
-          filteredThreats.map((threat) => (
-            <Card 
-              key={threat.id}
-              className={`cursor-pointer transition-colors ${
-                selectedThreats.includes(threat.threat_id) ? 'border-primary bg-accent' : ''
-              }`}
-              onClick={() => toggleThreat(threat.threat_id)}
-            >
-              <CardContent className="pt-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge variant="outline" className="font-mono text-xs">
-                            {threat.threat_id}
-                          </Badge>
-                          <Badge>{threat.category}</Badge>
+          filteredThreats.map((threat) => {
+            const evaluated = isEvaluated(threat.name);
+            const evalData = getEvaluationData(threat.name);
+            
+            return (
+              <Card 
+                key={threat.id}
+                className={`cursor-pointer transition-all ${
+                  selectedThreats.includes(threat.threat_id) 
+                    ? 'border-primary bg-accent' 
+                    : evaluated 
+                      ? 'border-l-4 border-l-green-500 bg-green-50/30' 
+                      : 'hover:border-muted-foreground/30'
+                }`}
+                onClick={() => toggleThreat(threat.threat_id)}
+              >
+                <CardContent className="pt-6">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge variant="outline" className="font-mono text-xs">
+                              {threat.threat_id}
+                            </Badge>
+                            <Badge>{threat.category}</Badge>
+                            {evaluated && (
+                              <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                                Valutato
+                              </Badge>
+                            )}
+                          </div>
+                          <h3 className="font-semibold text-lg">{threat.name}</h3>
                         </div>
-                        <h3 className="font-semibold text-lg">{threat.name}</h3>
-                      </div>
-                      <Badge 
-                        variant={getRiskBadgeColor(threat.typical_probability || 3, threat.typical_impact || 3)}
-                      >
-                        {threat.typical_probability && threat.typical_impact 
-                          ? `Rischio: ${threat.typical_probability * threat.typical_impact}`
-                          : "N/A"}
-                      </Badge>
-                    </div>
-
-                    <p className="text-sm text-muted-foreground">{threat.description}</p>
-
-                    <div className="flex flex-wrap gap-2">
-                      {threat.nis2_incident_type && (
-                        <Badge variant="secondary" className="text-xs">
-                          NIS2: {threat.nis2_incident_type}
-                        </Badge>
-                      )}
-                      {threat.typical_probability && (
-                        <Badge variant="outline" className="text-xs">
-                          P: {threat.typical_probability}/5
-                        </Badge>
-                      )}
-                      {threat.typical_impact && (
-                        <Badge variant="outline" className="text-xs">
-                          I: {threat.typical_impact}/5
-                        </Badge>
-                      )}
-                    </div>
-
-                    {threat.iso27001_controls && threat.iso27001_controls.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        <span className="text-xs text-muted-foreground">Controlli ISO:</span>
-                        {threat.iso27001_controls.map((control: string) => (
-                          <Badge key={control} variant="outline" className="text-xs">
-                            {control}
+                        
+                        {evaluated && evalData ? (
+                          <div className="text-right">
+                            <Badge 
+                              variant={getRiskLevelColor(evalData.inherent_risk_level) as any}
+                              className="text-sm px-3 py-1"
+                            >
+                              Rischio: {evalData.inherent_risk_score} - {evalData.inherent_risk_level}
+                            </Badge>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Stato: {evalData.status}
+                            </p>
+                          </div>
+                        ) : (
+                          <Badge 
+                            variant={getRiskBadgeColor(threat.typical_probability || 3, threat.typical_impact || 3)}
+                          >
+                            {threat.typical_probability && threat.typical_impact 
+                              ? `Tipico: ${threat.typical_probability * threat.typical_impact}`
+                              : "N/A"}
                           </Badge>
-                        ))}
+                        )}
                       </div>
-                    )}
-                  </div>
 
-                  <div className="flex gap-2">
-                    {threat.is_custom && (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => handleEditThreat(threat, e)}
-                        >
-                          <Pencil className="h-4 w-4 mr-1" />
-                          Modifica
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={(e) => handleDeleteThreat(threat, e)}
-                        >
-                          <Trash2 className="h-4 w-4 mr-1" />
-                          Elimina
-                        </Button>
-                      </>
-                    )}
-                    <Button
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelectThreat(threat.threat_id);
-                      }}
-                    >
-                      <AlertTriangle className="h-4 w-4 mr-2" />
-                      Valuta
-                    </Button>
+                      <p className="text-sm text-muted-foreground">{threat.description}</p>
+
+                      <div className="flex flex-wrap gap-2">
+                        {threat.nis2_incident_type && (
+                          <Badge variant="secondary" className="text-xs">
+                            NIS2: {threat.nis2_incident_type}
+                          </Badge>
+                        )}
+                        {threat.typical_probability && (
+                          <Badge variant="outline" className="text-xs">
+                            P: {threat.typical_probability}/5
+                          </Badge>
+                        )}
+                        {threat.typical_impact && (
+                          <Badge variant="outline" className="text-xs">
+                            I: {threat.typical_impact}/5
+                          </Badge>
+                        )}
+                      </div>
+
+                      {threat.iso27001_controls && threat.iso27001_controls.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          <span className="text-xs text-muted-foreground">Controlli ISO:</span>
+                          {threat.iso27001_controls.map((control: string) => (
+                            <Badge key={control} variant="outline" className="text-xs">
+                              {control}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex gap-2">
+                      {threat.is_custom && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => handleEditThreat(threat, e)}
+                          >
+                            <Pencil className="h-4 w-4 mr-1" />
+                            Modifica
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={(e) => handleDeleteThreat(threat, e)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Elimina
+                          </Button>
+                        </>
+                      )}
+                      <Button
+                        size="sm"
+                        variant={evaluated ? "outline" : "default"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectThreat(threat.threat_id);
+                        }}
+                      >
+                        <AlertTriangle className="h-4 w-4 mr-2" />
+                        {evaluated ? 'Rivaluta' : 'Valuta'}
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
+                </CardContent>
+              </Card>
+            );
+          })
         )}
       </div>
 
