@@ -9,8 +9,9 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { AlertTriangle, TrendingUp, TrendingDown, Shield, CheckCircle2, Plus } from "lucide-react";
+import { AlertTriangle, TrendingUp, TrendingDown, Shield, CheckCircle2, Plus, Save } from "lucide-react";
 import { logAuditEvent } from "@/utils/auditLog";
 import { useOrganization } from "@/hooks/useOrganization";
 import { CreateTaskFromRiskDialog } from "./CreateTaskFromRiskDialog";
@@ -45,6 +46,7 @@ export function ThreatEvaluationDialog({ open, onOpenChange, threatId, initialRi
   const [operationalImpact, setOperationalImpact] = useState<number | null>(null);
   const [economicImpact, setEconomicImpact] = useState<number | null>(null);
   const [legalImpact, setLegalImpact] = useState<number | null>(null);
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [selectedControls, setSelectedControls] = useState<string[]>([]);
   const [treatmentPlan, setTreatmentPlan] = useState("");
   const [treatmentCost, setTreatmentCost] = useState("");
@@ -66,6 +68,7 @@ export function ThreatEvaluationDialog({ open, onOpenChange, threatId, initialRi
       setOperationalImpact(impact);
       setEconomicImpact(impact);
       setLegalImpact(impact);
+      setSelectedAssetId(initialRiskData.asset_id || null);
       setSelectedControls(initialRiskData.related_controls || []);
       setTreatmentPlan(initialRiskData.treatment_description || "");
       setTreatmentCost(initialRiskData.treatment_cost?.toString() || "");
@@ -104,6 +107,20 @@ export function ThreatEvaluationDialog({ open, onOpenChange, threatId, initialRi
     enabled: open
   });
 
+  // Fetch assets for dropdown
+  const { data: assets = [] } = useQuery({
+    queryKey: ["assets-dropdown"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("assets")
+        .select("id, name, asset_id, criticality")
+        .order("name");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: open
+  });
+
   const maxImpact = Math.max(operationalImpact || 0, economicImpact || 0, legalImpact || 0);
   const inherentScore = (probability || 0) * maxImpact;
   const residualScore = (residualProbability || 0) * (residualImpact || 0);
@@ -115,7 +132,21 @@ export function ThreatEvaluationDialog({ open, onOpenChange, threatId, initialRi
     return { level: "Basso", color: "outline" };
   };
 
-  const handleSubmit = async () => {
+  // Determine if we can save (minimal requirements: probability + at least one impact)
+  const canSaveAssessment = probability && (operationalImpact || economicImpact || legalImpact);
+  
+  // Determine status based on what's filled
+  const determineStatus = () => {
+    if (treatmentPlan && residualProbability && residualImpact) {
+      return 'In trattamento';
+    }
+    if (canSaveAssessment) {
+      return 'Valutato';
+    }
+    return 'Identificato';
+  };
+
+  const handleSubmit = async (quickSave = false) => {
     if (!threat) return;
 
     // Validate organization_id is available
@@ -130,32 +161,35 @@ export function ThreatEvaluationDialog({ open, onOpenChange, threatId, initialRi
     try {
       const inherentLevel = getRiskLevel(inherentScore);
       const residualLevel = getRiskLevel(residualScore);
+      const status = determineStatus();
 
       const riskData = {
         organization_id: organizationId,
         risk_type: 'scenario',
         name: threat.name,
         description: threat.description,
+        asset_id: selectedAssetId || null,
         inherent_probability: String(probability),
         inherent_impact: String(maxImpact),
         inherent_risk_score: inherentScore,
         inherent_risk_level: inherentLevel.level,
-        residual_probability: String(residualProbability),
-        residual_impact: String(residualImpact),
-        residual_risk_score: residualScore,
-        residual_risk_level: residualLevel.level,
-        treatment_strategy: "Mitigazione",
-        treatment_description: treatmentPlan,
+        residual_probability: residualProbability ? String(residualProbability) : null,
+        residual_impact: residualImpact ? String(residualImpact) : null,
+        residual_risk_score: residualScore || null,
+        residual_risk_level: residualScore ? residualLevel.level : null,
+        treatment_strategy: treatmentPlan ? "Mitigazione" : null,
+        treatment_description: treatmentPlan || null,
         treatment_cost: treatmentCost ? parseFloat(treatmentCost) : null,
         treatment_deadline: treatmentDeadline || null,
         treatment_responsible: responsible || null,
-        related_controls: selectedControls,
+        related_controls: selectedControls.length > 0 ? selectedControls : null,
         scope: 'Organizzazione',
-        status: 'Identificato'
+        status: status
       };
 
       console.log(isEditMode ? '🔍 Updating risk assessment:' : '🔍 Saving risk assessment:', riskData);
       console.log('📦 Organization ID:', organizationId, isDemoMode ? '(DEMO MODE)' : '');
+      console.log('📊 Status:', status, quickSave ? '(quick save)' : '');
 
       let data, error;
       
@@ -205,7 +239,7 @@ export function ThreatEvaluationDialog({ open, onOpenChange, threatId, initialRi
         entityName: data.name,
         oldValues: isEditMode ? initialRiskData : undefined,
         newValues: riskData,
-        notes: isEditMode ? 'Risk updated in assessment' : 'New risk created from threat evaluation'
+        notes: isEditMode ? 'Risk updated in assessment' : `New risk created (${status})`
       });
 
       console.log('🔄 Invalidating risks queries...');
@@ -214,12 +248,13 @@ export function ThreatEvaluationDialog({ open, onOpenChange, threatId, initialRi
       // Save the risk ID for task creation
       setSavedRiskId(data.id);
       
-      toast.success(isEditMode ? "✅ Rischio aggiornato!" : "✅ Rischio salvato con successo!", {
+      const statusLabel = status === 'Valutato' ? 'valutato' : status === 'In trattamento' ? 'in trattamento' : 'identificato';
+      toast.success(isEditMode ? "✅ Rischio aggiornato!" : `✅ Rischio salvato come ${statusLabel}!`, {
         description: `${data.name} - ${data.inherent_risk_level}`
       });
       
-      // Don't close if user might want to create tasks
-      if (!treatmentPlan) {
+      // Close dialog on quick save, otherwise stay for treatment
+      if (quickSave) {
         onOpenChange(false);
         resetForm();
       }
@@ -243,6 +278,7 @@ export function ThreatEvaluationDialog({ open, onOpenChange, threatId, initialRi
     setOperationalImpact(null);
     setEconomicImpact(null);
     setLegalImpact(null);
+    setSelectedAssetId(null);
     setSelectedControls([]);
     setTreatmentPlan("");
     setTreatmentCost("");
@@ -378,6 +414,34 @@ export function ThreatEvaluationDialog({ open, onOpenChange, threatId, initialRi
                         ))}
                       </RadioGroup>
                     </div>
+                  </div>
+
+                  {/* Asset Selection */}
+                  <div className="pt-4 border-t">
+                    <Label className="text-base font-semibold mb-3 block">
+                      Asset Collegato (opzionale)
+                    </Label>
+                    <Select
+                      value={selectedAssetId || "none"}
+                      onValueChange={(val) => setSelectedAssetId(val === "none" ? null : val)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Seleziona un asset..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nessun asset specifico</SelectItem>
+                        {assets.map((asset) => (
+                          <SelectItem key={asset.id} value={asset.id}>
+                            <span className="flex items-center gap-2">
+                              <Badge variant={asset.criticality === 'critico' ? 'destructive' : 'outline'} className="text-xs">
+                                {asset.asset_id}
+                              </Badge>
+                              {asset.name}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   {canProceedToTreatment && (
@@ -637,23 +701,44 @@ export function ThreatEvaluationDialog({ open, onOpenChange, threatId, initialRi
 
             <div className="flex gap-2">
               {currentStep === 'assessment' && (
-                <Button
-                  onClick={() => setCurrentStep('treatment')}
-                  disabled={!canProceedToTreatment}
-                >
-                  Tratta Rischio
-                </Button>
+                <>
+                  {/* Quick save button - save just the assessment */}
+                  <Button
+                    variant="outline"
+                    onClick={() => handleSubmit(true)}
+                    disabled={!canSaveAssessment || isSubmitting}
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    {isSubmitting ? "Salvataggio..." : "Salva Valutazione"}
+                  </Button>
+                  <Button
+                    onClick={() => setCurrentStep('treatment')}
+                    disabled={!canProceedToTreatment}
+                  >
+                    Tratta Rischio
+                  </Button>
+                </>
               )}
               {currentStep === 'treatment' && (
-                <Button
-                  onClick={() => setCurrentStep('summary')}
-                  disabled={!canProceedToSummary}
-                >
-                  Vai al Riepilogo
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleSubmit(true)}
+                    disabled={isSubmitting}
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    Salva e Chiudi
+                  </Button>
+                  <Button
+                    onClick={() => setCurrentStep('summary')}
+                    disabled={!canProceedToSummary}
+                  >
+                    Vai al Riepilogo
+                  </Button>
+                </>
               )}
               {currentStep === 'summary' && (
-                <Button onClick={handleSubmit} disabled={isSubmitting}>
+                <Button onClick={() => handleSubmit(false)} disabled={isSubmitting}>
                   {isSubmitting ? "Salvataggio..." : savedRiskId ? "Chiudi" : "Salva Valutazione"}
                 </Button>
               )}
