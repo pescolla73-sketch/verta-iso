@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { AlertTriangle, TrendingUp, TrendingDown, Shield, CheckCircle2 } from "lucide-react";
 import { logAuditEvent } from "@/utils/auditLog";
+import { useOrganization } from "@/hooks/useOrganization";
 
 interface ThreatEvaluationDialogProps {
   open: boolean;
@@ -52,6 +53,7 @@ export function ThreatEvaluationDialog({ open, onOpenChange, threatId, initialRi
   const [residualImpact, setResidualImpact] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const queryClient = useQueryClient();
+  const { organizationId, isDemoMode } = useOrganization();
 
   // Pre-fill form when editing
   useEffect(() => {
@@ -113,12 +115,21 @@ export function ThreatEvaluationDialog({ open, onOpenChange, threatId, initialRi
   const handleSubmit = async () => {
     if (!threat) return;
 
+    // Validate organization_id is available
+    if (!organizationId) {
+      toast.error("❌ Nessuna organizzazione selezionata", {
+        description: "Seleziona un'organizzazione prima di salvare il rischio"
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const inherentLevel = getRiskLevel(inherentScore);
       const residualLevel = getRiskLevel(residualScore);
 
       const riskData = {
+        organization_id: organizationId,
         risk_type: 'scenario',
         name: threat.name,
         description: threat.description,
@@ -141,14 +152,16 @@ export function ThreatEvaluationDialog({ open, onOpenChange, threatId, initialRi
       };
 
       console.log(isEditMode ? '🔍 Updating risk assessment:' : '🔍 Saving risk assessment:', riskData);
+      console.log('📦 Organization ID:', organizationId, isDemoMode ? '(DEMO MODE)' : '');
 
       let data, error;
       
       if (isEditMode) {
-        // Update existing risk
+        // Update existing risk - don't update organization_id
+        const { organization_id, ...updateData } = riskData;
         const result = await supabase
           .from("risks")
-          .update(riskData)
+          .update(updateData)
           .eq("id", initialRiskData.id)
           .select()
           .single();
