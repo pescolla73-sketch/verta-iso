@@ -60,6 +60,7 @@ export function AppSidebar() {
       label: "Panoramica",
       items: [
         { title: "Dashboard", url: "/", icon: LayoutDashboard },
+        { title: "📋 Piano d'Azione", url: "/action-plan", icon: ClipboardList },
         { title: "🎯 Percorso ISO 27001", url: "/progress", icon: TrendingUp },
       ],
     },

@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export type AuditAction = 'create' | 'update' | 'delete' | 'view' | 'export';
-export type AuditEntityType = 'control' | 'risk' | 'asset' | 'threat' | 'policy' | 'soa' | 'audit';
+export type AuditEntityType = 'control' | 'risk' | 'asset' | 'threat' | 'policy' | 'soa' | 'audit' | 'improvement_action' | 'training_record' | 'non_conformity';
 
 interface AuditLogParams {
   action: AuditAction;
