@@ -13,6 +13,7 @@ import { calculateRiskFromAnswers, getQuestionsForAsset, RiskAnswers } from "@/d
 import { scenarioCategories, getScenarioById, calculateScenarioRisk, type Scenario } from "@/data/scenarioLibrary";
 import { WizardStepper } from "../wizard/WizardStepper";
 import { logAuditEvent } from "@/utils/auditLog";
+import { useOrganization } from "@/hooks/useOrganization";
 
 interface RiskWizardProps {
   open: boolean;
@@ -29,6 +30,7 @@ export function RiskWizard({ open, onOpenChange, assetId, scenarioId, mode = 'as
   const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
   const queryClient = useQueryClient();
+  const { organizationId, isDemoMode } = useOrganization();
 
   // Fetch asset data (for asset mode)
   const { data: asset } = useQuery({
@@ -88,13 +90,24 @@ export function RiskWizard({ open, onOpenChange, assetId, scenarioId, mode = 'as
       return;
     }
 
+    // Validate organization_id is available
+    if (!organizationId) {
+      toast.error("❌ Nessuna organizzazione selezionata", {
+        description: "Seleziona un'organizzazione prima di salvare il rischio"
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
+      console.log('📦 Organization ID:', organizationId, isDemoMode ? '(DEMO MODE)' : '');
+
       if (mode === 'asset') {
         const riskData = calculateRiskFromAnswers(answers, asset?.asset_type || 'default');
         
         const riskPayload = {
+          organization_id: organizationId,
           risk_type: 'asset-specific',
           asset_id: assetId,
           scope: 'Asset singolo',
@@ -137,6 +150,7 @@ export function RiskWizard({ open, onOpenChange, assetId, scenarioId, mode = 'as
         const scenarioRisk = calculateScenarioRisk(selectedScenario!, answers);
         
         const scenarioPayload = {
+          organization_id: organizationId,
           risk_type: 'scenario',
           asset_id: null,
           affected_asset_ids: selectedAssetIds.length > 0 ? selectedAssetIds : null,
