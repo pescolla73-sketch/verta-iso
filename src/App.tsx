@@ -56,6 +56,7 @@ import FinalSecurityAuditPage from "./pages/FinalSecurityAuditPage";
 import GuidaPage from "./pages/GuidaPage";
 import AdminResetPage from "./pages/AdminResetPage";
 import ComplianceCalendarPage from "./pages/ComplianceCalendarPage";
+import GlobalActionPlanPage from "./pages/GlobalActionPlanPage";
 
 const queryClient = new QueryClient();
 
@@ -84,6 +85,14 @@ const App = () => (
                   <GuidaPage />
                 </AppLayout>
               </RequireAuth>
+            }
+          />
+          <Route
+            path="/action-plan"
+            element={
+              <AppLayout>
+                <GlobalActionPlanPage />
+              </AppLayout>
             }
           />
           <Route path="/login" element={<LoginPage />} />

@@ -10,9 +10,10 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { AlertTriangle, TrendingUp, TrendingDown, Shield, CheckCircle2 } from "lucide-react";
+import { AlertTriangle, TrendingUp, TrendingDown, Shield, CheckCircle2, Plus } from "lucide-react";
 import { logAuditEvent } from "@/utils/auditLog";
 import { useOrganization } from "@/hooks/useOrganization";
+import { CreateTaskFromRiskDialog } from "./CreateTaskFromRiskDialog";
 
 interface ThreatEvaluationDialogProps {
   open: boolean;
@@ -52,6 +53,8 @@ export function ThreatEvaluationDialog({ open, onOpenChange, threatId, initialRi
   const [residualProbability, setResidualProbability] = useState<number | null>(null);
   const [residualImpact, setResidualImpact] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showCreateTask, setShowCreateTask] = useState(false);
+  const [savedRiskId, setSavedRiskId] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { organizationId, isDemoMode } = useOrganization();
 
@@ -208,12 +211,18 @@ export function ThreatEvaluationDialog({ open, onOpenChange, threatId, initialRi
       console.log('🔄 Invalidating risks queries...');
       await queryClient.invalidateQueries({ queryKey: ["risks"] });
       
+      // Save the risk ID for task creation
+      setSavedRiskId(data.id);
+      
       toast.success(isEditMode ? "✅ Rischio aggiornato!" : "✅ Rischio salvato con successo!", {
         description: `${data.name} - ${data.inherent_risk_level}`
       });
       
-      onOpenChange(false);
-      resetForm();
+      // Don't close if user might want to create tasks
+      if (!treatmentPlan) {
+        onOpenChange(false);
+        resetForm();
+      }
     } catch (error: any) {
       console.error("💥 Error saving risk:", error);
       toast.error(`❌ Errore ${isEditMode ? "nell'aggiornamento" : "nel salvataggio"}`, {
@@ -241,6 +250,7 @@ export function ThreatEvaluationDialog({ open, onOpenChange, threatId, initialRi
     setResponsible("");
     setResidualProbability(null);
     setResidualImpact(null);
+    setSavedRiskId(null);
   };
 
   const canProceedToTreatment = probability && operationalImpact && economicImpact && legalImpact;
@@ -593,7 +603,19 @@ export function ThreatEvaluationDialog({ open, onOpenChange, threatId, initialRi
               {treatmentPlan && (
                 <Card>
                   <CardContent className="pt-6">
-                    <h4 className="font-semibold mb-2">Piano di Azione</h4>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold">Piano di Azione</h4>
+                      {savedRiskId && (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setShowCreateTask(true)}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Crea Task
+                        </Button>
+                      )}
+                    </div>
                     <p className="text-sm whitespace-pre-wrap">{treatmentPlan}</p>
                   </CardContent>
                 </Card>
@@ -632,12 +654,26 @@ export function ThreatEvaluationDialog({ open, onOpenChange, threatId, initialRi
               )}
               {currentStep === 'summary' && (
                 <Button onClick={handleSubmit} disabled={isSubmitting}>
-                  {isSubmitting ? "Salvataggio..." : "Salva Valutazione"}
+                  {isSubmitting ? "Salvataggio..." : savedRiskId ? "Chiudi" : "Salva Valutazione"}
                 </Button>
               )}
             </div>
           </div>
         </div>
+
+        {/* Create Task Dialog */}
+        <CreateTaskFromRiskDialog
+          open={showCreateTask}
+          onOpenChange={setShowCreateTask}
+          riskData={{
+            id: savedRiskId || initialRiskData?.id || "",
+            name: threat?.name || "",
+            treatmentPlan,
+            treatmentDeadline,
+            treatmentResponsible: responsible,
+            treatmentCost: treatmentCost ? parseFloat(treatmentCost) : undefined,
+          }}
+        />
       </DialogContent>
     </Dialog>
   );
