@@ -118,59 +118,54 @@ function AutoSuggestInput({
   onValueChange: (value: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [inputValue, setInputValue] = useState(field.value || "");
-
-  useEffect(() => {
-    setInputValue(field.value || "");
-  }, [field.value]);
+  const inputValue = field.value || "";
 
   const filteredSuggestions = suggestions.filter(s => 
     s.toLowerCase().includes(inputValue.toLowerCase())
   );
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onValueChange(e.target.value);
+    setOpen(true);
+  };
+
+  const handleSelect = (suggestion: string) => {
+    onValueChange(suggestion);
+    setOpen(false);
+  };
+
   return (
-    <Popover open={open && filteredSuggestions.length > 0} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <div className="relative">
-          <Input
-            placeholder={placeholder}
-            value={inputValue}
-            onChange={(e) => {
-              setInputValue(e.target.value);
-              onValueChange(e.target.value);
-              setOpen(true);
-            }}
-            onFocus={() => setOpen(true)}
-            onBlur={() => setTimeout(() => setOpen(false), 200)}
-          />
-          {filteredSuggestions.length > 0 && (
-            <Lightbulb className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-amber-500" />
-          )}
+    <div className="relative">
+      <Input
+        placeholder={placeholder}
+        value={inputValue}
+        onChange={handleInputChange}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 200)}
+      />
+      {filteredSuggestions.length > 0 && (
+        <Lightbulb className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-amber-500" />
+      )}
+      {open && filteredSuggestions.length > 0 && (
+        <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md">
+          <div className="p-2">
+            <p className="text-xs text-muted-foreground mb-1">Suggerimenti</p>
+            {filteredSuggestions.slice(0, 5).map((suggestion) => (
+              <div
+                key={suggestion}
+                className="px-2 py-1.5 cursor-pointer hover:bg-accent rounded text-sm"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  handleSelect(suggestion);
+                }}
+              >
+                {suggestion}
+              </div>
+            ))}
+          </div>
         </div>
-      </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <Command>
-          <CommandList>
-            <CommandEmpty>Nessun suggerimento</CommandEmpty>
-            <CommandGroup heading="Suggerimenti">
-              {filteredSuggestions.slice(0, 5).map((suggestion) => (
-                <CommandItem
-                  key={suggestion}
-                  value={suggestion}
-                  onSelect={() => {
-                    setInputValue(suggestion);
-                    onValueChange(suggestion);
-                    setOpen(false);
-                  }}
-                >
-                  {suggestion}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+      )}
+    </div>
   );
 }
 
