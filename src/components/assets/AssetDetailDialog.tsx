@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { AssetRisksSection } from "./AssetRisksSection";
+import { AssetTestsSection } from "./AssetTestsSection";
 
 interface AssetDetailDialogProps {
   open: boolean;
@@ -82,11 +83,12 @@ export function AssetDetailDialog({ open, onOpenChange, asset }: AssetDetailDial
         </DialogHeader>
 
         <Tabs defaultValue="info" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="info">Informazioni</TabsTrigger>
             <TabsTrigger value="security">Sicurezza</TabsTrigger>
             <TabsTrigger value="risks">Rischi</TabsTrigger>
-            <TabsTrigger value="technical">Dettagli Tecnici</TabsTrigger>
+            <TabsTrigger value="tests">Test</TabsTrigger>
+            <TabsTrigger value="technical">Dettagli</TabsTrigger>
           </TabsList>
 
           <TabsContent value="info" className="space-y-4 mt-4">
@@ -212,6 +214,13 @@ export function AssetDetailDialog({ open, onOpenChange, asset }: AssetDetailDial
               assetId={asset.id} 
               assetName={asset.name}
               relatedControls={asset.related_controls}
+            />
+          </TabsContent>
+
+          <TabsContent value="tests" className="space-y-4 mt-4">
+            <AssetTestsSection 
+              assetId={asset.id} 
+              assetName={asset.name}
             />
           </TabsContent>
 

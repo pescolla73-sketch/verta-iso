@@ -57,6 +57,7 @@ import GuidaPage from "./pages/GuidaPage";
 import AdminResetPage from "./pages/AdminResetPage";
 import ComplianceCalendarPage from "./pages/ComplianceCalendarPage";
 import GlobalActionPlanPage from "./pages/GlobalActionPlanPage";
+import TestVerificationsPage from "./pages/TestVerificationsPage";
 
 const queryClient = new QueryClient();
 
@@ -102,6 +103,14 @@ const App = () => (
             element={
               <AppLayout>
                 <Assets />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/test-verifiche"
+            element={
+              <AppLayout>
+                <TestVerificationsPage />
               </AppLayout>
             }
           />

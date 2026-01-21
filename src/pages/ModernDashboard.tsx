@@ -203,6 +203,19 @@ export default function ModernDashboard() {
         certificationStatus = expiry > now ? "certified" : "expired";
       }
 
+      // Fetch overdue/failed tests
+      const { data: overdueTests } = await supabase
+        .from("asset_tests")
+        .select("id, test_name, next_due_date")
+        .eq("is_active", true)
+        .lt("next_due_date", new Date().toISOString().split("T")[0]);
+
+      const { data: failedTests } = await supabase
+        .from("asset_test_executions")
+        .select("id, test_id")
+        .eq("result", "failed")
+        .gte("execution_date", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]);
+
       // Calculate PDCA phases based on controls
       const controlProgress = (implemented / totalControls) * 100;
       setPhaseProgress({
@@ -222,6 +235,26 @@ export default function ModernDashboard() {
       });
 
       const dashboardAlerts: DashboardAlert[] = [];
+      
+      // Test alerts
+      if (overdueTests && overdueTests.length > 0) {
+        dashboardAlerts.push({
+          id: "overdue-tests",
+          type: "error",
+          message: `${overdueTests.length} test periodici scaduti richiedono attenzione`,
+          action: () => navigate("/test-verifiche?filter=overdue"),
+        });
+      }
+      
+      if (failedTests && failedTests.length > 0) {
+        dashboardAlerts.push({
+          id: "failed-tests",
+          type: "warning",
+          message: `${failedTests.length} test falliti negli ultimi 30 giorni`,
+          action: () => navigate("/test-verifiche"),
+        });
+      }
+      
       if (overdue > 0) {
         dashboardAlerts.push({
           id: "overdue-nc",

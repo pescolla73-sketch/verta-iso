@@ -93,6 +93,11 @@ export function ModernSidebar({
           path: "/assets",
         },
         {
+          title: "Test e Verifiche",
+          icon: ClipboardCheck,
+          path: "/test-verifiche",
+        },
+        {
           title: "Valutazione Rischi",
           icon: Target,
           path: "/risk-assessment",
