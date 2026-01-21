@@ -14,27 +14,70 @@ export type Database = {
   }
   public: {
     Tables: {
+      asset_suggestions: {
+        Row: {
+          created_at: string | null
+          field_name: string
+          field_value: string
+          id: string
+          organization_id: string | null
+          updated_at: string | null
+          usage_count: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          field_name: string
+          field_value: string
+          id?: string
+          organization_id?: string | null
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          field_name?: string
+          field_value?: string
+          id?: string
+          organization_id?: string | null
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Relationships: []
+      }
       assets: {
         Row: {
           asset_id: string
+          asset_status: string | null
           asset_type: string
+          assigned_user_id: string | null
+          assigned_user_name: string | null
+          availability_level: number | null
           availability_required: boolean | null
+          brand: string | null
           category: string | null
           confidentiality: string | null
+          confidentiality_level: number | null
           created_at: string | null
           criticality: string
+          data_types: string[] | null
+          delivery_date: string | null
           department: string | null
           description: string | null
           id: string
+          integrity_level: number | null
           integrity_required: boolean | null
           license_info: string | null
           location: string | null
+          model: string | null
           name: string
           notes: string | null
           organization_id: string | null
           owner: string | null
+          processor_ram: string | null
           purchase_date: string | null
           related_controls: string[] | null
+          return_date: string | null
+          serial_number: string | null
           status: string | null
           updated_at: string | null
           vendor: string | null
@@ -43,24 +86,37 @@ export type Database = {
         }
         Insert: {
           asset_id: string
+          asset_status?: string | null
           asset_type: string
+          assigned_user_id?: string | null
+          assigned_user_name?: string | null
+          availability_level?: number | null
           availability_required?: boolean | null
+          brand?: string | null
           category?: string | null
           confidentiality?: string | null
+          confidentiality_level?: number | null
           created_at?: string | null
           criticality?: string
+          data_types?: string[] | null
+          delivery_date?: string | null
           department?: string | null
           description?: string | null
           id?: string
+          integrity_level?: number | null
           integrity_required?: boolean | null
           license_info?: string | null
           location?: string | null
+          model?: string | null
           name: string
           notes?: string | null
           organization_id?: string | null
           owner?: string | null
+          processor_ram?: string | null
           purchase_date?: string | null
           related_controls?: string[] | null
+          return_date?: string | null
+          serial_number?: string | null
           status?: string | null
           updated_at?: string | null
           vendor?: string | null
@@ -69,24 +125,37 @@ export type Database = {
         }
         Update: {
           asset_id?: string
+          asset_status?: string | null
           asset_type?: string
+          assigned_user_id?: string | null
+          assigned_user_name?: string | null
+          availability_level?: number | null
           availability_required?: boolean | null
+          brand?: string | null
           category?: string | null
           confidentiality?: string | null
+          confidentiality_level?: number | null
           created_at?: string | null
           criticality?: string
+          data_types?: string[] | null
+          delivery_date?: string | null
           department?: string | null
           description?: string | null
           id?: string
+          integrity_level?: number | null
           integrity_required?: boolean | null
           license_info?: string | null
           location?: string | null
+          model?: string | null
           name?: string
           notes?: string | null
           organization_id?: string | null
           owner?: string | null
+          processor_ram?: string | null
           purchase_date?: string | null
           related_controls?: string[] | null
+          return_date?: string | null
+          serial_number?: string | null
           status?: string | null
           updated_at?: string | null
           vendor?: string | null

@@ -219,6 +219,30 @@ export function AssetDetailDialog({ open, onOpenChange, asset }: AssetDetailDial
             <Card>
               <CardContent className="pt-6">
                 <div className="grid grid-cols-2 gap-4">
+                  {asset.brand && (
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Marca</p>
+                      <p className="text-base">{asset.brand}</p>
+                    </div>
+                  )}
+                  {asset.model && (
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Modello</p>
+                      <p className="text-base">{asset.model}</p>
+                    </div>
+                  )}
+                  {asset.serial_number && (
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Numero Seriale</p>
+                      <p className="text-base font-mono">{asset.serial_number}</p>
+                    </div>
+                  )}
+                  {asset.processor_ram && (
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Processore/RAM</p>
+                      <p className="text-base">{asset.processor_ram}</p>
+                    </div>
+                  )}
                   {asset.vendor && (
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Vendor/Fornitore</p>
@@ -231,29 +255,60 @@ export function AssetDetailDialog({ open, onOpenChange, asset }: AssetDetailDial
                       <p className="text-base">{asset.version}</p>
                     </div>
                   )}
+                  {asset.assigned_user_name && (
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Assegnatario</p>
+                      <p className="text-base">{asset.assigned_user_name}</p>
+                    </div>
+                  )}
+                  {asset.asset_status && (
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Stato Asset</p>
+                      <Badge variant={asset.asset_status === "Attivo" ? "default" : "secondary"}>
+                        {asset.asset_status}
+                      </Badge>
+                    </div>
+                  )}
+                  {asset.delivery_date && (
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Data Consegna</p>
+                      <p className="text-base">{format(new Date(asset.delivery_date), "dd/MM/yyyy")}</p>
+                    </div>
+                  )}
+                  {asset.return_date && (
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Data Riconsegna</p>
+                      <p className="text-base">{format(new Date(asset.return_date), "dd/MM/yyyy")}</p>
+                    </div>
+                  )}
                   {asset.purchase_date && (
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Data Acquisto</p>
-                      <p className="text-base">
-                        {format(new Date(asset.purchase_date), "dd/MM/yyyy")}
-                      </p>
+                      <p className="text-base">{format(new Date(asset.purchase_date), "dd/MM/yyyy")}</p>
                     </div>
                   )}
                   {asset.warranty_expiry && (
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Scadenza Garanzia</p>
-                      <p className="text-base">
-                        {format(new Date(asset.warranty_expiry), "dd/MM/yyyy")}
-                      </p>
+                      <p className="text-base">{format(new Date(asset.warranty_expiry), "dd/MM/yyyy")}</p>
                     </div>
                   )}
                 </div>
+
+                {asset.data_types && asset.data_types.length > 0 && (
+                  <div className="mt-4 pt-4 border-t">
+                    <p className="text-sm font-medium text-muted-foreground mb-2">Tipi di Dati Trattati</p>
+                    <div className="flex flex-wrap gap-2">
+                      {asset.data_types.map((dt: string) => (
+                        <Badge key={dt} variant="outline">{dt}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 
                 {asset.license_info && (
                   <div className="mt-4 pt-4 border-t">
-                    <p className="text-sm font-medium text-muted-foreground mb-2">
-                      Informazioni Licenza
-                    </p>
+                    <p className="text-sm font-medium text-muted-foreground mb-2">Informazioni Licenza</p>
                     <p className="text-base whitespace-pre-wrap">{asset.license_info}</p>
                   </div>
                 )}

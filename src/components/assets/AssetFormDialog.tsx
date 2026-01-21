@@ -1,10 +1,10 @@
-import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Lightbulb } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { logAuditEvent } from "@/utils/auditLog";
@@ -23,6 +23,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import {
   Select,
@@ -42,11 +43,21 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
+import { Slider } from "@/components/ui/slider";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 const assetFormSchema = z.object({
@@ -69,6 +80,19 @@ const assetFormSchema = z.object({
   warranty_expiry: z.date().optional(),
   status: z.string().default("Attivo"),
   notes: z.string().optional(),
+  // New ISO 27001/NIS2 fields
+  brand: z.string().optional(),
+  model: z.string().optional(),
+  processor_ram: z.string().optional(),
+  serial_number: z.string().optional(),
+  asset_status: z.string().default("Attivo"),
+  assigned_user_name: z.string().optional(),
+  delivery_date: z.date().optional(),
+  return_date: z.date().optional(),
+  data_types: z.array(z.string()).default([]),
+  confidentiality_level: z.number().min(1).max(5).default(1),
+  integrity_level: z.number().min(1).max(5).default(1),
+  availability_level: z.number().min(1).max(5).default(1),
 });
 
 type AssetFormValues = z.infer<typeof assetFormSchema>;
@@ -79,9 +103,160 @@ interface AssetFormDialogProps {
   asset?: any;
 }
 
+// Auto-suggestion input component
+function AutoSuggestInput({ 
+  field, 
+  fieldName, 
+  placeholder, 
+  suggestions,
+  onValueChange 
+}: { 
+  field: any;
+  fieldName: string;
+  placeholder: string;
+  suggestions: string[];
+  onValueChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [inputValue, setInputValue] = useState(field.value || "");
+
+  useEffect(() => {
+    setInputValue(field.value || "");
+  }, [field.value]);
+
+  const filteredSuggestions = suggestions.filter(s => 
+    s.toLowerCase().includes(inputValue.toLowerCase())
+  );
+
+  return (
+    <Popover open={open && filteredSuggestions.length > 0} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <div className="relative">
+          <Input
+            placeholder={placeholder}
+            value={inputValue}
+            onChange={(e) => {
+              setInputValue(e.target.value);
+              onValueChange(e.target.value);
+              setOpen(true);
+            }}
+            onFocus={() => setOpen(true)}
+            onBlur={() => setTimeout(() => setOpen(false), 200)}
+          />
+          {filteredSuggestions.length > 0 && (
+            <Lightbulb className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-amber-500" />
+          )}
+        </div>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+        <Command>
+          <CommandList>
+            <CommandEmpty>Nessun suggerimento</CommandEmpty>
+            <CommandGroup heading="Suggerimenti">
+              {filteredSuggestions.slice(0, 5).map((suggestion) => (
+                <CommandItem
+                  key={suggestion}
+                  value={suggestion}
+                  onSelect={() => {
+                    setInputValue(suggestion);
+                    onValueChange(suggestion);
+                    setOpen(false);
+                  }}
+                >
+                  {suggestion}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// CIA Level Slider component
+function CIALevelSlider({ 
+  value, 
+  onChange, 
+  label 
+}: { 
+  value: number; 
+  onChange: (value: number) => void;
+  label: string;
+}) {
+  const getLevelLabel = (level: number) => {
+    switch(level) {
+      case 1: return { text: "Basso", color: "bg-green-500" };
+      case 2: return { text: "Medio-Basso", color: "bg-lime-500" };
+      case 3: return { text: "Medio", color: "bg-yellow-500" };
+      case 4: return { text: "Medio-Alto", color: "bg-orange-500" };
+      case 5: return { text: "Alto", color: "bg-red-500" };
+      default: return { text: "N/A", color: "bg-gray-500" };
+    }
+  };
+
+  const levelInfo = getLevelLabel(value);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between items-center">
+        <span className="text-sm font-medium">{label}</span>
+        <Badge className={cn(levelInfo.color, "text-white")}>
+          {value} - {levelInfo.text}
+        </Badge>
+      </div>
+      <Slider
+        value={[value]}
+        onValueChange={(vals) => onChange(vals[0])}
+        min={1}
+        max={5}
+        step={1}
+        className="w-full"
+      />
+    </div>
+  );
+}
+
 export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogProps) {
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Fetch suggestions for auto-learning fields
+  const { data: suggestions } = useQuery({
+    queryKey: ["asset-suggestions"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("asset_suggestions")
+        .select("field_name, field_value")
+        .order("usage_count", { ascending: false });
+      
+      if (error) throw error;
+      
+      // Group by field_name
+      const grouped: Record<string, string[]> = {};
+      data?.forEach(s => {
+        if (!grouped[s.field_name]) grouped[s.field_name] = [];
+        grouped[s.field_name].push(s.field_value);
+      });
+      return grouped;
+    },
+  });
+
+  // Fetch organization users for assignment dropdown
+  const { data: orgUsers } = useQuery({
+    queryKey: ["organization-users"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("organization_users")
+        .select("id, user_name, user_email");
+      
+      if (error) {
+        console.log("No organization_users table or error:", error);
+        return [];
+      }
+      return data || [];
+    },
+  });
 
   const form = useForm<AssetFormValues>({
     resolver: zodResolver(assetFormSchema),
@@ -105,6 +280,19 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
       warranty_expiry: asset.warranty_expiry ? new Date(asset.warranty_expiry) : undefined,
       status: asset.status || "Attivo",
       notes: asset.notes || "",
+      // New fields
+      brand: asset.brand || "",
+      model: asset.model || "",
+      processor_ram: asset.processor_ram || "",
+      serial_number: asset.serial_number || "",
+      asset_status: asset.asset_status || "Attivo",
+      assigned_user_name: asset.assigned_user_name || "",
+      delivery_date: asset.delivery_date ? new Date(asset.delivery_date) : undefined,
+      return_date: asset.return_date ? new Date(asset.return_date) : undefined,
+      data_types: asset.data_types || [],
+      confidentiality_level: asset.confidentiality_level || 1,
+      integrity_level: asset.integrity_level || 1,
+      availability_level: asset.availability_level || 1,
     } : {
       asset_id: "",
       name: "",
@@ -123,13 +311,49 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
       license_info: "",
       status: "Attivo",
       notes: "",
+      brand: "",
+      model: "",
+      processor_ram: "",
+      serial_number: "",
+      asset_status: "Attivo",
+      assigned_user_name: "",
+      data_types: [],
+      confidentiality_level: 1,
+      integrity_level: 1,
+      availability_level: 1,
     },
   });
+
+  // Save suggestion for auto-learning
+  const saveSuggestion = async (fieldName: string, fieldValue: string, organizationId: string | null) => {
+    if (!fieldValue || fieldValue.trim() === "") return;
+    
+    try {
+      // Try to upsert - increment usage_count if exists, insert if not
+      const { error } = await supabase
+        .from("asset_suggestions")
+        .upsert({
+          organization_id: organizationId,
+          field_name: fieldName,
+          field_value: fieldValue.trim(),
+          usage_count: 1,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'organization_id,field_name,field_value'
+        });
+      
+      if (error) {
+        console.log("Could not save suggestion:", error);
+      }
+    } catch (err) {
+      console.log("Suggestion save error:", err);
+    }
+  };
 
   const onSubmit = async (values: AssetFormValues) => {
     setIsSubmitting(true);
     try {
-      // Get organization_id (first organization or null for demo)
+      // Get organization_id
       let organizationId = null;
       try {
         const { data: orgs } = await supabase
@@ -166,9 +390,27 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
         status: values.status,
         notes: values.notes || null,
         organization_id: organizationId,
+        // New fields
+        brand: values.brand || null,
+        model: values.model || null,
+        processor_ram: values.processor_ram || null,
+        serial_number: values.serial_number || null,
+        asset_status: values.asset_status,
+        assigned_user_name: values.assigned_user_name || null,
+        delivery_date: values.delivery_date ? format(values.delivery_date, "yyyy-MM-dd") : null,
+        return_date: values.return_date ? format(values.return_date, "yyyy-MM-dd") : null,
+        data_types: values.data_types,
+        confidentiality_level: values.confidentiality_level,
+        integrity_level: values.integrity_level,
+        availability_level: values.availability_level,
       };
 
-      console.log("Creating/updating asset with data:", assetData);
+      // Save auto-learning suggestions for brand, model, assigned_user_name
+      await Promise.all([
+        saveSuggestion("brand", values.brand || "", organizationId),
+        saveSuggestion("model", values.model || "", organizationId),
+        saveSuggestion("assigned_user_name", values.assigned_user_name || "", organizationId),
+      ]);
 
       if (asset) {
         const { error } = await supabase
@@ -181,7 +423,6 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
           throw error;
         }
 
-        // Log audit event for update
         await logAuditEvent({
           action: 'update',
           entityType: 'asset',
@@ -205,7 +446,6 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
           throw error;
         }
 
-        // Log audit event for create
         if (newAsset) {
           await logAuditEvent({
             action: 'create',
@@ -239,7 +479,6 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
               }
             } catch (riskError) {
               console.error('Error generating risks:', riskError);
-              // Don't fail the asset creation if risk generation fails
             }
           }
         }
@@ -248,6 +487,7 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
       }
 
       queryClient.invalidateQueries({ queryKey: ["assets"] });
+      queryClient.invalidateQueries({ queryKey: ["asset-suggestions"] });
       onOpenChange(false);
       form.reset();
     } catch (error: any) {
@@ -256,6 +496,15 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
       setIsSubmitting(false);
     }
   };
+
+  const dataTypeOptions = [
+    { value: "Personali", label: "📋 Dati Personali" },
+    { value: "Sensibili", label: "🔐 Dati Sensibili/Particolari" },
+    { value: "Finanziari", label: "💰 Dati Finanziari" },
+    { value: "Sanitari", label: "🏥 Dati Sanitari" },
+    { value: "Giudiziari", label: "⚖️ Dati Giudiziari" },
+    { value: "Aziendali", label: "🏢 Dati Aziendali Riservati" },
+  ];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -269,12 +518,15 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <Tabs defaultValue="basic">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="basic">Info Base</TabsTrigger>
+                <TabsTrigger value="technical">Dati Tecnici</TabsTrigger>
+                <TabsTrigger value="traceability">Tracciabilità</TabsTrigger>
                 <TabsTrigger value="security">Sicurezza</TabsTrigger>
-                <TabsTrigger value="technical">Dettagli Tecnici</TabsTrigger>
+                <TabsTrigger value="data-eval">Valutazione</TabsTrigger>
               </TabsList>
 
+              {/* Tab 1: Info Base */}
               <TabsContent value="basic" className="space-y-4 mt-4">
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
@@ -323,6 +575,7 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
                             <SelectItem value="Data">💾 Data/Informazioni</SelectItem>
                             <SelectItem value="Service">☁️ Servizio</SelectItem>
                             <SelectItem value="People">👥 Persone</SelectItem>
+                            <SelectItem value="Facility">🏢 Strutture</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -377,6 +630,8 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
                             <SelectItem value="Operations">Operations</SelectItem>
                             <SelectItem value="Sales">Sales</SelectItem>
                             <SelectItem value="Marketing">Marketing</SelectItem>
+                            <SelectItem value="Legal">Legal</SelectItem>
+                            <SelectItem value="R&D">R&D</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -418,6 +673,347 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
                 />
               </TabsContent>
 
+              {/* Tab 2: Dati Tecnici (NEW) */}
+              <TabsContent value="technical" className="space-y-4 mt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="brand"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Marca</FormLabel>
+                        <FormControl>
+                          <AutoSuggestInput
+                            field={field}
+                            fieldName="brand"
+                            placeholder="es. Dell, HP, Lenovo"
+                            suggestions={suggestions?.brand || []}
+                            onValueChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormDescription className="text-xs">
+                          💡 I valori inseriti verranno suggeriti automaticamente
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="model"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Modello</FormLabel>
+                        <FormControl>
+                          <AutoSuggestInput
+                            field={field}
+                            fieldName="model"
+                            placeholder="es. PowerEdge R740, ThinkPad X1"
+                            suggestions={suggestions?.model || []}
+                            onValueChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="processor_ram"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Processore / RAM</FormLabel>
+                        <FormControl>
+                          <Input placeholder="es. Intel Xeon 8-core, 32GB DDR4" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="serial_number"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Numero Seriale</FormLabel>
+                        <FormControl>
+                          <Input placeholder="es. SN-2024-ABC123" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="vendor"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Vendor/Fornitore</FormLabel>
+                        <FormControl>
+                          <Input placeholder="es. Dell, Microsoft, AWS" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="version"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Versione</FormLabel>
+                        <FormControl>
+                          <Input placeholder="es. v2.3.1" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="purchase_date"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Data Acquisto</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
+                                {field.value ? format(field.value, "PPP") : <span>Seleziona data</span>}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              initialFocus
+                              className="pointer-events-auto"
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="warranty_expiry"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Scadenza Garanzia</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
+                                {field.value ? format(field.value, "PPP") : <span>Seleziona data</span>}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              initialFocus
+                              className="pointer-events-auto"
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="license_info"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Informazioni Licenza</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Dettagli licenza, chiavi, scadenze..."
+                          className="min-h-[80px]"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </TabsContent>
+
+              {/* Tab 3: Tracciabilità (NEW) */}
+              <TabsContent value="traceability" className="space-y-4 mt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="asset_status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Stato Asset</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleziona stato" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Attivo">✅ Attivo (in uso)</SelectItem>
+                            <SelectItem value="Magazzino">📦 Magazzino</SelectItem>
+                            <SelectItem value="Dismesso">❌ Dismesso</SelectItem>
+                            <SelectItem value="Manutenzione">🔧 In manutenzione</SelectItem>
+                            <SelectItem value="In Ordine">🛒 In Ordine</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="assigned_user_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Utente Assegnato</FormLabel>
+                        <FormControl>
+                          <AutoSuggestInput
+                            field={field}
+                            fieldName="assigned_user_name"
+                            placeholder="Nome e cognome utente"
+                            suggestions={[
+                              ...(suggestions?.assigned_user_name || []),
+                              ...(orgUsers?.map(u => u.user_name || u.user_email) || [])
+                            ]}
+                            onValueChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormDescription className="text-xs">
+                          💡 Suggerimenti dai dipendenti e inserimenti precedenti
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="delivery_date"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Data Consegna</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
+                                {field.value ? format(field.value, "PPP") : <span>Seleziona data</span>}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              initialFocus
+                              className="pointer-events-auto"
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="return_date"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Data Riconsegna</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
+                                {field.value ? format(field.value, "PPP") : <span>Seleziona data</span>}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              initialFocus
+                              className="pointer-events-auto"
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Note</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Note aggiuntive sulla tracciabilità..."
+                          className="min-h-[80px]"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </TabsContent>
+
+              {/* Tab 4: Sicurezza */}
               <TabsContent value="security" className="space-y-4 mt-4">
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
@@ -449,7 +1045,7 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
                     name="confidentiality"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Confidenzialità</FormLabel>
+                        <FormLabel>Classificazione</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -514,175 +1110,102 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
                 </div>
               </TabsContent>
 
-              <TabsContent value="technical" className="space-y-4 mt-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="vendor"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Vendor/Fornitore</FormLabel>
-                        <FormControl>
-                          <Input placeholder="es. Dell, Microsoft, AWS" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="version"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Versione</FormLabel>
-                        <FormControl>
-                          <Input placeholder="es. v2.3.1" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="purchase_date"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Data Acquisto</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
+              {/* Tab 5: Valutazione del Dato (NEW) */}
+              <TabsContent value="data-eval" className="space-y-4 mt-4">
+                <div className="border rounded-lg p-4 space-y-4">
+                  <div>
+                    <FormLabel className="text-base font-semibold">Tipi di Dati Trattati</FormLabel>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Seleziona i tipi di dati gestiti da questo asset (GDPR / NIS2)
+                    </p>
+                    <FormField
+                      control={form.control}
+                      name="data_types"
+                      render={({ field }) => (
+                        <FormItem>
+                          <div className="grid grid-cols-2 gap-2">
+                            {dataTypeOptions.map((option) => (
+                              <div
+                                key={option.value}
                                 className={cn(
-                                  "w-full pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
+                                  "flex items-center space-x-2 p-3 rounded-lg border cursor-pointer transition-colors",
+                                  field.value.includes(option.value)
+                                    ? "bg-primary/10 border-primary"
+                                    : "hover:bg-muted"
                                 )}
+                                onClick={() => {
+                                  const newValue = field.value.includes(option.value)
+                                    ? field.value.filter((v: string) => v !== option.value)
+                                    : [...field.value, option.value];
+                                  field.onChange(newValue);
+                                }}
                               >
-                                {field.value ? (
-                                  format(field.value, "PPP")
-                                ) : (
-                                  <span>Seleziona data</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              initialFocus
-                              className="pointer-events-auto"
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="warranty_expiry"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Scadenza Garanzia</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  "w-full pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                              >
-                                {field.value ? (
-                                  format(field.value, "PPP")
-                                ) : (
-                                  <span>Seleziona data</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              initialFocus
-                              className="pointer-events-auto"
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Status</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Seleziona status" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="Attivo">✅ Attivo</SelectItem>
-                            <SelectItem value="Dismesso">❌ Dismesso</SelectItem>
-                            <SelectItem value="Manutenzione">🔧 In manutenzione</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                                <Checkbox
+                                  checked={field.value.includes(option.value)}
+                                  onCheckedChange={() => {}}
+                                />
+                                <span className="text-sm">{option.label}</span>
+                              </div>
+                            ))}
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
 
-                <FormField
-                  control={form.control}
-                  name="license_info"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Informazioni Licenza</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Dettagli licenza, chiavi, scadenze..."
-                          className="min-h-[80px]"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="border rounded-lg p-4 space-y-6">
+                  <div>
+                    <FormLabel className="text-base font-semibold">Valutazione CIA Dettagliata</FormLabel>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Livello di criticità per Riservatezza, Integrità e Disponibilità (1-5)
+                    </p>
+                  </div>
 
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Note</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Note aggiuntive..."
-                          className="min-h-[80px]"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <FormField
+                    control={form.control}
+                    name="confidentiality_level"
+                    render={({ field }) => (
+                      <CIALevelSlider
+                        value={field.value}
+                        onChange={field.onChange}
+                        label="🔒 Riservatezza (Confidentiality)"
+                      />
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="integrity_level"
+                    render={({ field }) => (
+                      <CIALevelSlider
+                        value={field.value}
+                        onChange={field.onChange}
+                        label="✔️ Integrità (Integrity)"
+                      />
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="availability_level"
+                    render={({ field }) => (
+                      <CIALevelSlider
+                        value={field.value}
+                        onChange={field.onChange}
+                        label="⏰ Disponibilità (Availability)"
+                      />
+                    )}
+                  />
+
+                  <div className="bg-muted/50 rounded-lg p-3 mt-4">
+                    <p className="text-sm text-muted-foreground">
+                      <strong>Punteggio CIA complessivo:</strong>{" "}
+                      {form.watch("confidentiality_level") + form.watch("integrity_level") + form.watch("availability_level")} / 15
+                    </p>
+                  </div>
+                </div>
               </TabsContent>
             </Tabs>
 
