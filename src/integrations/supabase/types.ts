@@ -44,6 +44,153 @@ export type Database = {
         }
         Relationships: []
       }
+      asset_test_executions: {
+        Row: {
+          asset_id: string | null
+          corrective_actions: string | null
+          created_at: string | null
+          evidence_files: Json | null
+          executed_by: string
+          execution_date: string
+          id: string
+          issues_found: string | null
+          notes: string | null
+          organization_id: string
+          result: string
+          test_id: string
+        }
+        Insert: {
+          asset_id?: string | null
+          corrective_actions?: string | null
+          created_at?: string | null
+          evidence_files?: Json | null
+          executed_by: string
+          execution_date?: string
+          id?: string
+          issues_found?: string | null
+          notes?: string | null
+          organization_id: string
+          result: string
+          test_id: string
+        }
+        Update: {
+          asset_id?: string | null
+          corrective_actions?: string | null
+          created_at?: string | null
+          evidence_files?: Json | null
+          executed_by?: string
+          execution_date?: string
+          id?: string
+          issues_found?: string | null
+          notes?: string | null
+          organization_id?: string
+          result?: string
+          test_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_test_executions_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_test_executions_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "critical_assets_summary"
+            referencedColumns: ["asset_id"]
+          },
+          {
+            foreignKeyName: "asset_test_executions_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "critical_assets_with_risks"
+            referencedColumns: ["asset_id"]
+          },
+          {
+            foreignKeyName: "asset_test_executions_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "asset_tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      asset_tests: {
+        Row: {
+          asset_id: string | null
+          created_at: string | null
+          description: string | null
+          frequency_days: number
+          id: string
+          instructions: string | null
+          is_active: boolean | null
+          last_execution_date: string | null
+          next_due_date: string | null
+          organization_id: string
+          responsible_person: string | null
+          test_name: string
+          test_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          asset_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          frequency_days?: number
+          id?: string
+          instructions?: string | null
+          is_active?: boolean | null
+          last_execution_date?: string | null
+          next_due_date?: string | null
+          organization_id: string
+          responsible_person?: string | null
+          test_name: string
+          test_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          asset_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          frequency_days?: number
+          id?: string
+          instructions?: string | null
+          is_active?: boolean | null
+          last_execution_date?: string | null
+          next_due_date?: string | null
+          organization_id?: string
+          responsible_person?: string | null
+          test_name?: string
+          test_type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_tests_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_tests_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "critical_assets_summary"
+            referencedColumns: ["asset_id"]
+          },
+          {
+            foreignKeyName: "asset_tests_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "critical_assets_with_risks"
+            referencedColumns: ["asset_id"]
+          },
+        ]
+      }
       assets: {
         Row: {
           asset_id: string
@@ -2777,6 +2924,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      test_type_suggestions: {
+        Row: {
+          created_at: string | null
+          id: string
+          organization_id: string | null
+          test_type: string
+          updated_at: string | null
+          usage_count: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          organization_id?: string | null
+          test_type: string
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          organization_id?: string | null
+          test_type?: string
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Relationships: []
       }
       threat_library: {
         Row: {
