@@ -322,9 +322,9 @@ export default function Assets() {
                     <TableHead>Tipo</TableHead>
                     <TableHead>ID</TableHead>
                     <TableHead>Nome</TableHead>
-                    <TableHead>Categoria</TableHead>
+                    <TableHead>Marca/Modello</TableHead>
                     <TableHead>Criticità</TableHead>
-                    <TableHead>Owner</TableHead>
+                    <TableHead>Assegnatario</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Azioni</TableHead>
                   </TableRow>
@@ -336,17 +336,42 @@ export default function Assets() {
                         <span className="text-2xl">{getTypeIcon(asset.asset_type)}</span>
                       </TableCell>
                       <TableCell className="font-mono text-sm">{asset.asset_id}</TableCell>
-                      <TableCell className="font-medium">{asset.name}</TableCell>
-                      <TableCell>{asset.category || "-"}</TableCell>
+                      <TableCell className="font-medium">
+                        <div>{asset.name}</div>
+                        {asset.serial_number && (
+                          <div className="text-xs text-muted-foreground">
+                            S/N: {asset.serial_number}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {asset.brand || asset.model ? (
+                          <div className="text-sm">
+                            {asset.brand && <span>{asset.brand}</span>}
+                            {asset.brand && asset.model && <span> </span>}
+                            {asset.model && <span className="text-muted-foreground">{asset.model}</span>}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Badge variant={getCriticalityVariant(asset.criticality)}>
                           {asset.criticality}
                         </Badge>
                       </TableCell>
-                      <TableCell>{asset.owner || "-"}</TableCell>
                       <TableCell>
-                        <Badge variant={asset.status === "Attivo" ? "default" : "secondary"}>
-                          {asset.status}
+                        {asset.assigned_user_name || asset.owner || "-"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={
+                          asset.asset_status === "Attivo" || asset.status === "Attivo" 
+                            ? "default" 
+                            : asset.asset_status === "Dismesso" 
+                              ? "destructive"
+                              : "secondary"
+                        }>
+                          {asset.asset_status || asset.status}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
