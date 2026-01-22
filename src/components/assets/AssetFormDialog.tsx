@@ -1343,33 +1343,60 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
                       control={form.control}
                       name="data_types"
                       render={({ field }) => {
-                        const dataTypes = field.value || [];
+                        // Stable reference to prevent infinite loops
+                        const currentDataTypes: string[] = Array.isArray(field.value) ? field.value : [];
+                        
+                        const handleToggle = (optionValue: string) => {
+                          const isSelected = currentDataTypes.includes(optionValue);
+                          const newValue = isSelected
+                            ? currentDataTypes.filter((v) => v !== optionValue)
+                            : [...currentDataTypes, optionValue];
+                          field.onChange(newValue);
+                        };
+                        
                         return (
                           <FormItem>
                             <div className="grid grid-cols-2 gap-2">
-                              {dataTypeOptions.map((option) => (
-                                <div
-                                  key={option.value}
-                                  className={cn(
-                                    "flex items-center space-x-2 p-3 rounded-lg border cursor-pointer transition-colors",
-                                    dataTypes.includes(option.value)
-                                      ? "bg-primary/10 border-primary"
-                                      : "hover:bg-muted"
-                                  )}
-                                  onClick={() => {
-                                    const newValue = dataTypes.includes(option.value)
-                                      ? dataTypes.filter((v: string) => v !== option.value)
-                                      : [...dataTypes, option.value];
-                                    field.onChange(newValue);
-                                  }}
-                                >
-                                  <Checkbox
-                                    checked={dataTypes.includes(option.value)}
-                                    onCheckedChange={() => {}}
-                                  />
-                                  <span className="text-sm">{option.label}</span>
-                                </div>
-                              ))}
+                              {dataTypeOptions.map((option) => {
+                                const isSelected = currentDataTypes.includes(option.value);
+                                return (
+                                  <button
+                                    type="button"
+                                    key={option.value}
+                                    className={cn(
+                                      "flex items-center space-x-2 p-3 rounded-lg border cursor-pointer transition-colors text-left",
+                                      isSelected
+                                        ? "bg-primary/10 border-primary"
+                                        : "hover:bg-muted"
+                                    )}
+                                    onClick={() => handleToggle(option.value)}
+                                  >
+                                    <div 
+                                      className={cn(
+                                        "h-4 w-4 rounded border flex items-center justify-center flex-shrink-0",
+                                        isSelected ? "bg-primary border-primary" : "border-muted-foreground"
+                                      )}
+                                    >
+                                      {isSelected && (
+                                        <svg 
+                                          className="h-3 w-3 text-primary-foreground" 
+                                          fill="none" 
+                                          viewBox="0 0 24 24" 
+                                          stroke="currentColor"
+                                        >
+                                          <path 
+                                            strokeLinecap="round" 
+                                            strokeLinejoin="round" 
+                                            strokeWidth={3} 
+                                            d="M5 13l4 4L19 7" 
+                                          />
+                                        </svg>
+                                      )}
+                                    </div>
+                                    <span className="text-sm">{option.label}</span>
+                                  </button>
+                                );
+                              })}
                             </div>
                             <FormMessage />
                           </FormItem>
