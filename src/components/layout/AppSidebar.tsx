@@ -273,28 +273,27 @@ export function AppSidebar() {
 
   return (
     <Sidebar className={isCollapsed ? "w-14" : "w-60"} collapsible="icon">
-      <SidebarContent className="overflow-x-hidden">
-        <div className="flex items-center justify-between p-3 border-b border-sidebar-border">
+      <SidebarContent className="overflow-x-hidden overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center gap-2 p-3 border-b border-sidebar-border min-h-[48px]">
+          <Shield className="h-5 w-5 text-sidebar-primary flex-shrink-0" />
           {!isCollapsed && (
-            <div className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-sidebar-primary flex-shrink-0" />
-              <span className="font-semibold text-sidebar-foreground text-sm truncate">
-                ISO 27001
-              </span>
-            </div>
-          )}
-          {isCollapsed && (
-            <Shield className="h-5 w-5 text-sidebar-primary mx-auto" />
+            <span className="font-semibold text-sidebar-foreground text-sm whitespace-nowrap">
+              ISO 27001
+            </span>
           )}
         </div>
 
+        {/* Menu sections */}
         {menuSections.map((section) => (
-          <SidebarGroup key={section.label} className="py-1">
-            <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-sidebar-foreground/50 px-3 py-1 truncate">
-              {isCollapsed ? "" : section.label}
-            </SidebarGroupLabel>
+          <SidebarGroup key={section.label} className="py-1 px-1">
+            {!isCollapsed && (
+              <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-sidebar-foreground/50 px-2 py-1 truncate">
+                {section.label}
+              </SidebarGroupLabel>
+            )}
             <SidebarGroupContent>
-              <SidebarMenu>
+              <SidebarMenu className="space-y-0.5">
                 {section.items.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     {("requiredRoles" in item) || ("resource" in item) ? (
@@ -309,21 +308,21 @@ export function AppSidebar() {
                         showLabel={!isCollapsed}
                         badge={
                           !isCollapsed && item.badge ? (
-                            <Badge variant="secondary" className="ml-auto text-[10px] px-1.5">
+                            <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 flex-shrink-0">
                               {item.badge}
                             </Badge>
                           ) : undefined
                         }
                       />
                     ) : (
-                      <SidebarMenuButton asChild className="h-8">
+                      <SidebarMenuButton asChild className="h-9 px-2">
                         <NavLink to={item.url} end className={getNavCls}>
                           <item.icon className="h-4 w-4 flex-shrink-0" />
                           {!isCollapsed && (
-                            <span className="flex-1 truncate text-sm">{item.title}</span>
+                            <span className="flex-1 truncate text-sm ml-2">{item.title}</span>
                           )}
                           {!isCollapsed && item.badge && (
-                            <Badge variant="secondary" className="ml-auto text-[10px] px-1.5">
+                            <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 flex-shrink-0">
                               {item.badge}
                             </Badge>
                           )}
