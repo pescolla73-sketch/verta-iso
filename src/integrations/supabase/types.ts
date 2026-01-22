@@ -193,6 +193,8 @@ export type Database = {
       }
       assets: {
         Row: {
+          antivirus_installed: boolean | null
+          antivirus_name: string | null
           asset_id: string
           asset_status: string | null
           asset_type: string
@@ -200,6 +202,8 @@ export type Database = {
           assigned_user_name: string | null
           availability_level: number | null
           availability_required: boolean | null
+          backup_enabled: boolean | null
+          backup_software: string | null
           brand: string | null
           category: string | null
           confidentiality: string | null
@@ -218,6 +222,7 @@ export type Database = {
           model: string | null
           name: string
           notes: string | null
+          operating_system: string | null
           organization_id: string | null
           owner: string | null
           processor_ram: string | null
@@ -226,12 +231,15 @@ export type Database = {
           return_date: string | null
           serial_number: string | null
           status: string | null
+          update_mode: string | null
           updated_at: string | null
           vendor: string | null
           version: string | null
           warranty_expiry: string | null
         }
         Insert: {
+          antivirus_installed?: boolean | null
+          antivirus_name?: string | null
           asset_id: string
           asset_status?: string | null
           asset_type: string
@@ -239,6 +247,8 @@ export type Database = {
           assigned_user_name?: string | null
           availability_level?: number | null
           availability_required?: boolean | null
+          backup_enabled?: boolean | null
+          backup_software?: string | null
           brand?: string | null
           category?: string | null
           confidentiality?: string | null
@@ -257,6 +267,7 @@ export type Database = {
           model?: string | null
           name: string
           notes?: string | null
+          operating_system?: string | null
           organization_id?: string | null
           owner?: string | null
           processor_ram?: string | null
@@ -265,12 +276,15 @@ export type Database = {
           return_date?: string | null
           serial_number?: string | null
           status?: string | null
+          update_mode?: string | null
           updated_at?: string | null
           vendor?: string | null
           version?: string | null
           warranty_expiry?: string | null
         }
         Update: {
+          antivirus_installed?: boolean | null
+          antivirus_name?: string | null
           asset_id?: string
           asset_status?: string | null
           asset_type?: string
@@ -278,6 +292,8 @@ export type Database = {
           assigned_user_name?: string | null
           availability_level?: number | null
           availability_required?: boolean | null
+          backup_enabled?: boolean | null
+          backup_software?: string | null
           brand?: string | null
           category?: string | null
           confidentiality?: string | null
@@ -296,6 +312,7 @@ export type Database = {
           model?: string | null
           name?: string
           notes?: string | null
+          operating_system?: string | null
           organization_id?: string | null
           owner?: string | null
           processor_ram?: string | null
@@ -304,6 +321,7 @@ export type Database = {
           return_date?: string | null
           serial_number?: string | null
           status?: string | null
+          update_mode?: string | null
           updated_at?: string | null
           vendor?: string | null
           version?: string | null

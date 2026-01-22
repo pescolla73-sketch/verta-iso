@@ -4,10 +4,11 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Lightbulb } from "lucide-react";
+import { CalendarIcon, Lightbulb, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { logAuditEvent } from "@/utils/auditLog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { generateRisksFromCriticalAsset } from "@/utils/assetRiskGenerator";
 import {
   Dialog,
@@ -93,6 +94,13 @@ const assetFormSchema = z.object({
   confidentiality_level: z.number().min(1).max(5).default(1),
   integrity_level: z.number().min(1).max(5).default(1),
   availability_level: z.number().min(1).max(5).default(1),
+  // New security fields
+  operating_system: z.string().optional(),
+  antivirus_installed: z.boolean().default(false),
+  antivirus_name: z.string().optional(),
+  backup_enabled: z.boolean().default(false),
+  backup_software: z.string().optional(),
+  update_mode: z.string().default("Manuale"),
 });
 
 type AssetFormValues = z.infer<typeof assetFormSchema>;
@@ -284,9 +292,16 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
         delivery_date: assetData.delivery_date ? new Date(assetData.delivery_date) : undefined,
         return_date: assetData.return_date ? new Date(assetData.return_date) : undefined,
         data_types: assetData.data_types || [],
-        confidentiality_level: assetData.confidentiality_level || 1,
-        integrity_level: assetData.integrity_level || 1,
-        availability_level: assetData.availability_level || 1,
+        confidentiality_level: assetData.confidentiality_level ?? 1,
+        integrity_level: assetData.integrity_level ?? 1,
+        availability_level: assetData.availability_level ?? 1,
+        // New security fields
+        operating_system: assetData.operating_system || "",
+        antivirus_installed: assetData.antivirus_installed ?? false,
+        antivirus_name: assetData.antivirus_name || "",
+        backup_enabled: assetData.backup_enabled ?? false,
+        backup_software: assetData.backup_software || "",
+        update_mode: assetData.update_mode || "Manuale",
       };
     }
     return {
@@ -317,6 +332,13 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
       confidentiality_level: 1,
       integrity_level: 1,
       availability_level: 1,
+      // New security fields
+      operating_system: "",
+      antivirus_installed: false,
+      antivirus_name: "",
+      backup_enabled: false,
+      backup_software: "",
+      update_mode: "Manuale",
     };
   }, []);
 
@@ -412,6 +434,13 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
         confidentiality_level: values.confidentiality_level,
         integrity_level: values.integrity_level,
         availability_level: values.availability_level,
+        // New security fields
+        operating_system: values.operating_system || null,
+        antivirus_installed: values.antivirus_installed,
+        antivirus_name: values.antivirus_name || null,
+        backup_enabled: values.backup_enabled,
+        backup_software: values.backup_software || null,
+        update_mode: values.update_mode || "Manuale",
       };
 
       // Save auto-learning suggestions for brand, model, assigned_user_name
@@ -874,6 +903,189 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
                     </FormItem>
                   )}
                 />
+
+                {/* Security fields section */}
+                <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
+                  <h4 className="font-semibold text-sm flex items-center gap-2">
+                    🛡️ Sicurezza Endpoint
+                  </h4>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="operating_system"
+                      render={({ field }) => {
+                        const obsoleteOS = ["Windows 7", "Windows XP", "Windows Vista", "Windows 8"];
+                        const isObsolete = obsoleteOS.some(os => field.value?.toLowerCase().includes(os.toLowerCase()));
+                        
+                        return (
+                          <FormItem className="col-span-2">
+                            <FormLabel>Sistema Operativo</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value || ""}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Seleziona SO" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="Windows 11">Windows 11</SelectItem>
+                                <SelectItem value="Windows 10">Windows 10</SelectItem>
+                                <SelectItem value="Windows Server 2022">Windows Server 2022</SelectItem>
+                                <SelectItem value="Windows Server 2019">Windows Server 2019</SelectItem>
+                                <SelectItem value="macOS Sonoma">macOS Sonoma</SelectItem>
+                                <SelectItem value="macOS Ventura">macOS Ventura</SelectItem>
+                                <SelectItem value="Ubuntu 24.04">Ubuntu 24.04 LTS</SelectItem>
+                                <SelectItem value="Ubuntu 22.04">Ubuntu 22.04 LTS</SelectItem>
+                                <SelectItem value="Debian 12">Debian 12</SelectItem>
+                                <SelectItem value="RHEL 9">RHEL 9</SelectItem>
+                                <SelectItem value="CentOS Stream 9">CentOS Stream 9</SelectItem>
+                                <SelectItem value="iOS">iOS</SelectItem>
+                                <SelectItem value="Android">Android</SelectItem>
+                                <SelectItem value="Windows 7">⚠️ Windows 7 (obsoleto)</SelectItem>
+                                <SelectItem value="Windows 8">⚠️ Windows 8 (obsoleto)</SelectItem>
+                                <SelectItem value="Altro">Altro</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {isObsolete && (
+                              <Alert variant="destructive" className="mt-2">
+                                <AlertTriangle className="h-4 w-4" />
+                                <AlertDescription>
+                                  ⚠️ Sistema Operativo obsoleto! Rischio sicurezza elevato. Valutare urgentemente aggiornamento.
+                                </AlertDescription>
+                              </Alert>
+                            )}
+                            <FormMessage />
+                          </FormItem>
+                        );
+                      }}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="antivirus_installed"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 p-3 border rounded-lg">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>Antivirus/EDR Installato</FormLabel>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="antivirus_name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Software Antivirus/EDR</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || ""}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Seleziona antivirus" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="Microsoft Defender">Microsoft Defender</SelectItem>
+                              <SelectItem value="CrowdStrike">CrowdStrike Falcon</SelectItem>
+                              <SelectItem value="SentinelOne">SentinelOne</SelectItem>
+                              <SelectItem value="Carbon Black">Carbon Black</SelectItem>
+                              <SelectItem value="Symantec">Symantec/Broadcom</SelectItem>
+                              <SelectItem value="McAfee">McAfee</SelectItem>
+                              <SelectItem value="Bitdefender">Bitdefender</SelectItem>
+                              <SelectItem value="Kaspersky">Kaspersky</SelectItem>
+                              <SelectItem value="ESET">ESET</SelectItem>
+                              <SelectItem value="Sophos">Sophos</SelectItem>
+                              <SelectItem value="Trend Micro">Trend Micro</SelectItem>
+                              <SelectItem value="Altro">Altro</SelectItem>
+                              <SelectItem value="Nessuno">Nessuno</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="backup_enabled"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 p-3 border rounded-lg">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>Backup Attivo</FormLabel>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="backup_software"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Software di Backup</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || ""}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Seleziona software backup" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="Veeam">Veeam</SelectItem>
+                              <SelectItem value="Acronis">Acronis</SelectItem>
+                              <SelectItem value="Commvault">Commvault</SelectItem>
+                              <SelectItem value="Veritas">Veritas NetBackup</SelectItem>
+                              <SelectItem value="AWS Backup">AWS Backup</SelectItem>
+                              <SelectItem value="Azure Backup">Azure Backup</SelectItem>
+                              <SelectItem value="Google Backup">Google Cloud Backup</SelectItem>
+                              <SelectItem value="Time Machine">Time Machine (macOS)</SelectItem>
+                              <SelectItem value="Windows Backup">Windows Backup</SelectItem>
+                              <SelectItem value="Bacula">Bacula</SelectItem>
+                              <SelectItem value="Altro">Altro</SelectItem>
+                              <SelectItem value="Nessuno">Nessuno</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="update_mode"
+                      render={({ field }) => (
+                        <FormItem className="col-span-2">
+                          <FormLabel>Modalità Aggiornamenti</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || "Manuale"}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Seleziona modalità" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="Automatico">✅ Automatico (consigliato)</SelectItem>
+                              <SelectItem value="Manuale">⚠️ Manuale</SelectItem>
+                              <SelectItem value="WSUS">WSUS/Managed</SelectItem>
+                              <SelectItem value="MDM">MDM (Mobile Device Management)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
               </TabsContent>
 
               {/* Tab 3: Tracciabilità (NEW) */}
@@ -1130,36 +1342,39 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
                     <FormField
                       control={form.control}
                       name="data_types"
-                      render={({ field }) => (
-                        <FormItem>
-                          <div className="grid grid-cols-2 gap-2">
-                            {dataTypeOptions.map((option) => (
-                              <div
-                                key={option.value}
-                                className={cn(
-                                  "flex items-center space-x-2 p-3 rounded-lg border cursor-pointer transition-colors",
-                                  field.value.includes(option.value)
-                                    ? "bg-primary/10 border-primary"
-                                    : "hover:bg-muted"
-                                )}
-                                onClick={() => {
-                                  const newValue = field.value.includes(option.value)
-                                    ? field.value.filter((v: string) => v !== option.value)
-                                    : [...field.value, option.value];
-                                  field.onChange(newValue);
-                                }}
-                              >
-                                <Checkbox
-                                  checked={field.value.includes(option.value)}
-                                  onCheckedChange={() => {}}
-                                />
-                                <span className="text-sm">{option.label}</span>
-                              </div>
-                            ))}
-                          </div>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                      render={({ field }) => {
+                        const dataTypes = field.value || [];
+                        return (
+                          <FormItem>
+                            <div className="grid grid-cols-2 gap-2">
+                              {dataTypeOptions.map((option) => (
+                                <div
+                                  key={option.value}
+                                  className={cn(
+                                    "flex items-center space-x-2 p-3 rounded-lg border cursor-pointer transition-colors",
+                                    dataTypes.includes(option.value)
+                                      ? "bg-primary/10 border-primary"
+                                      : "hover:bg-muted"
+                                  )}
+                                  onClick={() => {
+                                    const newValue = dataTypes.includes(option.value)
+                                      ? dataTypes.filter((v: string) => v !== option.value)
+                                      : [...dataTypes, option.value];
+                                    field.onChange(newValue);
+                                  }}
+                                >
+                                  <Checkbox
+                                    checked={dataTypes.includes(option.value)}
+                                    onCheckedChange={() => {}}
+                                  />
+                                  <span className="text-sm">{option.label}</span>
+                                </div>
+                              ))}
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        );
+                      }}
                     />
                   </div>
                 </div>
@@ -1177,7 +1392,7 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
                     name="confidentiality_level"
                     render={({ field }) => (
                       <CIALevelSlider
-                        value={field.value}
+                        value={field.value ?? 1}
                         onChange={field.onChange}
                         label="🔒 Riservatezza (Confidentiality)"
                       />
@@ -1189,7 +1404,7 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
                     name="integrity_level"
                     render={({ field }) => (
                       <CIALevelSlider
-                        value={field.value}
+                        value={field.value ?? 1}
                         onChange={field.onChange}
                         label="✔️ Integrità (Integrity)"
                       />
@@ -1201,7 +1416,7 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
                     name="availability_level"
                     render={({ field }) => (
                       <CIALevelSlider
-                        value={field.value}
+                        value={field.value ?? 1}
                         onChange={field.onChange}
                         label="⏰ Disponibilità (Availability)"
                       />
@@ -1211,7 +1426,7 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
                   <div className="bg-muted/50 rounded-lg p-3 mt-4">
                     <p className="text-sm text-muted-foreground">
                       <strong>Punteggio CIA complessivo:</strong>{" "}
-                      {form.watch("confidentiality_level") + form.watch("integrity_level") + form.watch("availability_level")} / 15
+                      {(form.watch("confidentiality_level") ?? 1) + (form.watch("integrity_level") ?? 1) + (form.watch("availability_level") ?? 1)} / 15
                     </p>
                   </div>
                 </div>
