@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -36,7 +37,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Server, Monitor, Database, Cloud, Users, MoreVertical, Edit, Trash2, Eye } from "lucide-react";
+import { Plus, Search, Server, Monitor, Database, Cloud, Users, MoreVertical, Edit, Trash2, Eye, Shield, ShieldX, ShieldAlert } from "lucide-react";
 import { AssetFormDialog } from "@/components/assets/AssetFormDialog";
 import { AssetDetailDialog } from "@/components/assets/AssetDetailDialog";
 import { toast } from "sonner";
@@ -49,6 +50,8 @@ export default function Assets() {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [criticalityFilter, setCriticalityFilter] = useState<string>("all");
   const [ownerFilter, setOwnerFilter] = useState<string>("all");
+  const [osFilter, setOsFilter] = useState<string>("all");
+  const [securityFilter, setSecurityFilter] = useState<string>("all");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<any>(null);
@@ -76,11 +79,40 @@ export default function Assets() {
     const matchesType = typeFilter === "all" || asset.asset_type === typeFilter;
     const matchesCriticality = criticalityFilter === "all" || asset.criticality === criticalityFilter;
     const matchesOwner = ownerFilter === "all" || asset.owner === ownerFilter;
-    return matchesSearch && matchesType && matchesCriticality && matchesOwner;
+    const matchesOS = osFilter === "all" || asset.operating_system === osFilter;
+    
+    // Security filter logic
+    let matchesSecurity = true;
+    if (securityFilter === "no-antivirus") {
+      matchesSecurity = asset.antivirus_installed === false;
+    } else if (securityFilter === "no-backup") {
+      matchesSecurity = asset.backup_enabled === false;
+    } else if (securityFilter === "obsolete-os") {
+      const obsoleteOS = ["Windows 7", "Windows XP", "Windows Vista", "Windows 8"];
+      matchesSecurity = obsoleteOS.some(os => asset.operating_system?.toLowerCase().includes(os.toLowerCase()));
+    } else if (securityFilter === "at-risk") {
+      const obsoleteOS = ["Windows 7", "Windows XP", "Windows Vista", "Windows 8"];
+      const isObsolete = obsoleteOS.some(os => asset.operating_system?.toLowerCase().includes(os.toLowerCase()));
+      matchesSecurity = !asset.antivirus_installed || !asset.backup_enabled || isObsolete;
+    }
+    
+    return matchesSearch && matchesType && matchesCriticality && matchesOwner && matchesOS && matchesSecurity;
   });
 
-  // Get unique owners for filter dropdown
+  // Get unique owners and OS values for filter dropdowns
   const uniqueOwners = [...new Set(assets?.map(a => a.owner).filter(Boolean))] as string[];
+  const uniqueOS = [...new Set(assets?.map(a => a.operating_system).filter(Boolean))] as string[];
+  
+  // Security stats
+  const securityStats = {
+    noAntivirus: assets?.filter(a => a.antivirus_installed === false).length || 0,
+    noBackup: assets?.filter(a => a.backup_enabled === false).length || 0,
+    atRisk: assets?.filter(a => {
+      const obsoleteOS = ["Windows 7", "Windows XP", "Windows Vista", "Windows 8"];
+      const isObsolete = obsoleteOS.some(os => a.operating_system?.toLowerCase().includes(os.toLowerCase()));
+      return !a.antivirus_installed || !a.backup_enabled || isObsolete;
+    }).length || 0,
+  };
 
   const assetStats = {
     Hardware: assets?.filter((a) => a.asset_type === "Hardware").length || 0,
@@ -195,7 +227,7 @@ export default function Assets() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
         <Card className="shadow-card col-span-1">
           <CardContent className="p-4">
             <div className="text-center">
@@ -225,6 +257,29 @@ export default function Assets() {
             </CardContent>
           </Card>
         ))}
+        
+        {/* Security Risk Card */}
+        <Card 
+          className={cn(
+            "shadow-card transition-smooth hover:shadow-elevated cursor-pointer",
+            securityStats.atRisk > 0 ? "border-destructive/50 bg-destructive/5" : "border-green-500/50 bg-green-50 dark:bg-green-950/20"
+          )}
+          onClick={() => setSecurityFilter(securityStats.atRisk > 0 ? "at-risk" : "all")}
+        >
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className={securityStats.atRisk > 0 ? "text-destructive" : "text-green-500"}>
+                {securityStats.atRisk > 0 ? <ShieldAlert className="h-8 w-8" /> : <Shield className="h-8 w-8" />}
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">A Rischio</p>
+                <p className={cn("text-2xl font-bold", securityStats.atRisk > 0 ? "text-destructive" : "text-green-600")}>
+                  {securityStats.atRisk}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters */}
@@ -290,7 +345,54 @@ export default function Assets() {
                   </SelectContent>
                 </Select>
               )}
-              {(typeFilter !== "all" || criticalityFilter !== "all" || ownerFilter !== "all" || searchQuery) && (
+              
+              {/* OS Filter */}
+              {uniqueOS.length > 0 && (
+                <Select value={osFilter} onValueChange={setOsFilter}>
+                  <SelectTrigger className="w-full md:w-[160px]">
+                    <SelectValue placeholder="Sistema Operativo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tutti i S.O.</SelectItem>
+                    {uniqueOS.map(os => (
+                      <SelectItem key={os} value={os}>
+                        {os}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              
+              {/* Security Status Filter */}
+              <Select value={securityFilter} onValueChange={setSecurityFilter}>
+                <SelectTrigger className="w-full md:w-[180px]">
+                  <SelectValue placeholder="Stato Sicurezza" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tutti gli stati</SelectItem>
+                  <SelectItem value="at-risk">
+                    <span className="flex items-center gap-1">
+                      <ShieldAlert className="h-3 w-3 text-destructive" />
+                      A rischio ({securityStats.atRisk})
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="no-antivirus">
+                    <span className="flex items-center gap-1">
+                      <ShieldX className="h-3 w-3 text-amber-500" />
+                      Senza Antivirus ({securityStats.noAntivirus})
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="no-backup">
+                    <span className="flex items-center gap-1">
+                      <Database className="h-3 w-3 text-amber-500" />
+                      Senza Backup ({securityStats.noBackup})
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="obsolete-os">S.O. Obsoleto</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              {(typeFilter !== "all" || criticalityFilter !== "all" || ownerFilter !== "all" || osFilter !== "all" || securityFilter !== "all" || searchQuery) && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -298,6 +400,8 @@ export default function Assets() {
                     setTypeFilter("all");
                     setCriticalityFilter("all");
                     setOwnerFilter("all");
+                    setOsFilter("all");
+                    setSecurityFilter("all");
                     setSearchQuery("");
                   }}
                 >
