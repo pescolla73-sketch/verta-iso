@@ -91,6 +91,7 @@ const assetFormSchema = z.object({
   assigned_user_name: z.string().optional(),
   delivery_date: z.date().optional(),
   return_date: z.date().optional(),
+  delivery_notes: z.string().optional(), // NEW: Delivery notes
   data_types: z.array(z.string()).default([]),
   confidentiality_level: z.number().min(1).max(5).default(1),
   integrity_level: z.number().min(1).max(5).default(1),
@@ -221,6 +222,42 @@ function CIALevelSlider({
   );
 }
 
+// Security Risk Alert Component (Intelligence Alert)
+function SecurityRiskAlert({ 
+  operatingSystem, 
+  antivirusInstalled, 
+  backupEnabled 
+}: { 
+  operatingSystem?: string; 
+  antivirusInstalled: boolean; 
+  backupEnabled: boolean; 
+}) {
+  const obsoleteOS = ["Windows 7", "Windows XP", "Windows Vista", "Windows 8"];
+  const isObsoleteOS = obsoleteOS.some(os => operatingSystem?.toLowerCase().includes(os.toLowerCase()));
+  
+  const risks: string[] = [];
+  if (isObsoleteOS) risks.push("Sistema Operativo obsoleto");
+  if (!antivirusInstalled) risks.push("Nessun Antivirus/EDR");
+  if (!backupEnabled) risks.push("Backup non attivo");
+  
+  if (risks.length === 0) return null;
+  
+  return (
+    <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+      <AlertTriangle className="h-4 w-4 text-amber-600" />
+      <AlertDescription className="text-amber-800 dark:text-amber-200">
+        <strong>⚠️ Attenzione:</strong> Questa configurazione aumenta il rischio Ransomware.
+        <ul className="list-disc ml-4 mt-1 text-sm">
+          {risks.map(risk => <li key={risk}>{risk}</li>)}
+        </ul>
+        <p className="text-xs mt-2 text-amber-700 dark:text-amber-300">
+          Verrà suggerita una probabilità di minaccia più alta nel Risk Assessment.
+        </p>
+      </AlertDescription>
+    </Alert>
+  );
+}
+
 export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogProps) {
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -292,6 +329,7 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
         assigned_user_name: assetData.assigned_user_name || "",
         delivery_date: assetData.delivery_date ? new Date(assetData.delivery_date) : undefined,
         return_date: assetData.return_date ? new Date(assetData.return_date) : undefined,
+        delivery_notes: assetData.delivery_notes || "", // NEW
         data_types: assetData.data_types || [],
         confidentiality_level: assetData.confidentiality_level ?? 1,
         integrity_level: assetData.integrity_level ?? 1,
@@ -329,6 +367,7 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
       serial_number: "",
       asset_status: "Attivo",
       assigned_user_name: "",
+      delivery_notes: "", // NEW
       data_types: [],
       confidentiality_level: 1,
       integrity_level: 1,
@@ -430,6 +469,7 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
         assigned_user_name: values.assigned_user_name || null,
         delivery_date: values.delivery_date ? format(values.delivery_date, "yyyy-MM-dd") : null,
         return_date: values.return_date ? format(values.return_date, "yyyy-MM-dd") : null,
+        delivery_notes: values.delivery_notes || null, // NEW
         data_types: values.data_types,
         confidentiality_level: values.confidentiality_level,
         integrity_level: values.integrity_level,
@@ -443,11 +483,12 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
         update_mode: values.update_mode || "Manuale",
       };
 
-      // Save auto-learning suggestions for brand, model, assigned_user_name
+      // Save auto-learning suggestions for brand, model, assigned_user_name, operating_system
       await Promise.all([
         saveSuggestion("brand", values.brand || "", organizationId),
         saveSuggestion("model", values.model || "", organizationId),
         saveSuggestion("assigned_user_name", values.assigned_user_name || "", organizationId),
+        saveSuggestion("operating_system", values.operating_system || "", organizationId),
       ]);
 
       if (asset) {
@@ -918,6 +959,9 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
                         const obsoleteOS = ["Windows 7", "Windows XP", "Windows Vista", "Windows 8"];
                         const isObsolete = obsoleteOS.some(os => field.value?.toLowerCase().includes(os.toLowerCase()));
                         
+                        // Get custom OS suggestions from database
+                        const osSuggestions = suggestions?.operating_system || [];
+                        
                         return (
                           <FormItem className="col-span-2">
                             <FormLabel>Sistema Operativo</FormLabel>
@@ -943,6 +987,10 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
                                 <SelectItem value="Android">Android</SelectItem>
                                 <SelectItem value="Windows 7">⚠️ Windows 7 (obsoleto)</SelectItem>
                                 <SelectItem value="Windows 8">⚠️ Windows 8 (obsoleto)</SelectItem>
+                                {/* Dynamic suggestions from database */}
+                                {osSuggestions.filter(os => !["Windows 11", "Windows 10", "Windows Server 2022", "Windows Server 2019", "macOS Sonoma", "macOS Ventura", "Ubuntu 24.04", "Ubuntu 22.04", "Debian 12", "RHEL 9", "CentOS Stream 9", "iOS", "Android", "Windows 7", "Windows 8", "Altro"].includes(os)).map(os => (
+                                  <SelectItem key={os} value={os}>💡 {os}</SelectItem>
+                                ))}
                                 <SelectItem value="Altro">Altro</SelectItem>
                               </SelectContent>
                             </Select>
@@ -1085,6 +1133,13 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
                       )}
                     />
                   </div>
+                  
+                  {/* INTELLIGENCE ALERT for risky configurations */}
+                  <SecurityRiskAlert 
+                    operatingSystem={form.watch("operating_system")} 
+                    antivirusInstalled={form.watch("antivirus_installed")}
+                    backupEnabled={form.watch("backup_enabled")}
+                  />
                 </div>
               </TabsContent>
 
@@ -1217,10 +1272,64 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
 
                 <FormField
                   control={form.control}
+                  name="delivery_notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>📝 Note di Consegna</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Note sulla consegna, condizioni dell'asset, accessori inclusi..."
+                          className="min-h-[80px]"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs">
+                        Registra chi ha consegnato l'asset, condizioni, accessori e note importanti
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Quick Decommission Button */}
+                {asset && (
+                  <div className="border rounded-lg p-4 bg-muted/30 space-y-3">
+                    <h4 className="font-semibold text-sm">⚡ Azioni Rapide</h4>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          form.setValue("asset_status", "Dismesso");
+                          form.setValue("return_date", new Date());
+                          toast.info("Asset segnato come dismesso. Ricorda di salvare.");
+                        }}
+                      >
+                        ❌ Segna come Dismesso
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          form.setValue("asset_status", "Magazzino");
+                          form.setValue("return_date", new Date());
+                          toast.info("Asset rimesso in magazzino. Ricorda di salvare.");
+                        }}
+                      >
+                        📦 Rimetti in Magazzino
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <FormField
+                  control={form.control}
                   name="notes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Note</FormLabel>
+                      <FormLabel>Note Generali</FormLabel>
                       <FormControl>
                         <Textarea
                           placeholder="Note aggiuntive sulla tracciabilità..."

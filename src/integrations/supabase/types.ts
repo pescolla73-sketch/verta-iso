@@ -212,6 +212,7 @@ export type Database = {
           criticality: string
           data_types: string[] | null
           delivery_date: string | null
+          delivery_notes: string | null
           department: string | null
           description: string | null
           id: string
@@ -257,6 +258,7 @@ export type Database = {
           criticality?: string
           data_types?: string[] | null
           delivery_date?: string | null
+          delivery_notes?: string | null
           department?: string | null
           description?: string | null
           id?: string
@@ -302,6 +304,7 @@ export type Database = {
           criticality?: string
           data_types?: string[] | null
           delivery_date?: string | null
+          delivery_notes?: string | null
           department?: string | null
           description?: string | null
           id?: string
