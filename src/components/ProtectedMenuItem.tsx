@@ -54,7 +54,7 @@ export function ProtectedMenuItem({
       onClick={handleClick}
       disabled={!hasAccess}
       className={cn(
-        "w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+        "w-full flex items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors h-9 min-h-[36px]",
         hasAccess
           ? "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground cursor-pointer"
           : "text-muted-foreground opacity-60 cursor-not-allowed",
@@ -69,11 +69,11 @@ export function ProtectedMenuItem({
         )}
       />
       {showLabel && (
-        <span className="flex-1 text-left truncate">{label}</span>
+        <span className="flex-1 text-left truncate text-sm ml-0.5">{label}</span>
       )}
       {showLabel && badge}
       {!hasAccess && (
-        <Lock className="h-3 w-3 text-destructive flex-shrink-0" />
+        <Lock className="h-3 w-3 text-destructive flex-shrink-0 ml-auto" />
       )}
     </button>
   );

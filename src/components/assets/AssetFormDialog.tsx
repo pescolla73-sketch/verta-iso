@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { logAuditEvent } from "@/utils/auditLog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { generateRisksFromCriticalAsset } from "@/utils/assetRiskGenerator";
+import { useOrganization } from "@/hooks/useOrganization";
 import {
   Dialog,
   DialogContent,
@@ -355,6 +356,15 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
     }
   }, [open, asset, form, getDefaultValues]);
 
+  // Use stable watch for CIA score calculation (prevents infinite re-renders)
+  const watchedConfidentialityLevel = useWatch({ control: form.control, name: "confidentiality_level" });
+  const watchedIntegrityLevel = useWatch({ control: form.control, name: "integrity_level" });
+  const watchedAvailabilityLevel = useWatch({ control: form.control, name: "availability_level" });
+
+  const ciaScore = useMemo(() => {
+    return (watchedConfidentialityLevel ?? 1) + (watchedIntegrityLevel ?? 1) + (watchedAvailabilityLevel ?? 1);
+  }, [watchedConfidentialityLevel, watchedIntegrityLevel, watchedAvailabilityLevel]);
+
   // Save suggestion for auto-learning
   const saveSuggestion = async (fieldName: string, fieldValue: string, organizationId: string | null) => {
     if (!fieldValue || fieldValue.trim() === "") return;
@@ -381,24 +391,14 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
     }
   };
 
+  // Use the organization hook for proper demo mode support
+  const { organizationId: orgId, isDemoMode } = useOrganization();
+
   const onSubmit = async (values: AssetFormValues) => {
     setIsSubmitting(true);
     try {
-      // Get organization_id
-      let organizationId = null;
-      try {
-        const { data: orgs } = await supabase
-          .from("organization")
-          .select("id")
-          .limit(1)
-          .single();
-        
-        if (orgs) {
-          organizationId = orgs.id;
-        }
-      } catch (err) {
-        console.log("No organization found, creating asset without org reference");
-      }
+      // Use the organization ID from the hook (handles demo mode automatically)
+      const organizationId = orgId;
 
       const assetData = {
         asset_id: values.asset_id,
@@ -1426,7 +1426,7 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
                   <div className="bg-muted/50 rounded-lg p-3 mt-4">
                     <p className="text-sm text-muted-foreground">
                       <strong>Punteggio CIA complessivo:</strong>{" "}
-                      {(form.watch("confidentiality_level") ?? 1) + (form.watch("integrity_level") ?? 1) + (form.watch("availability_level") ?? 1)} / 15
+                      {ciaScore} / 15
                     </p>
                   </div>
                 </div>
