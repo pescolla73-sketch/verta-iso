@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -253,42 +253,43 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
     },
   });
 
-  const form = useForm<AssetFormValues>({
-    resolver: zodResolver(assetFormSchema),
-    defaultValues: asset ? {
-      asset_id: asset.asset_id,
-      name: asset.name,
-      description: asset.description || "",
-      asset_type: asset.asset_type,
-      category: asset.category || "",
-      criticality: asset.criticality,
-      confidentiality: asset.confidentiality || "Interno",
-      integrity_required: asset.integrity_required ?? true,
-      availability_required: asset.availability_required ?? true,
-      owner: asset.owner || "",
-      department: asset.department || "",
-      location: asset.location || "",
-      vendor: asset.vendor || "",
-      version: asset.version || "",
-      license_info: asset.license_info || "",
-      purchase_date: asset.purchase_date ? new Date(asset.purchase_date) : undefined,
-      warranty_expiry: asset.warranty_expiry ? new Date(asset.warranty_expiry) : undefined,
-      status: asset.status || "Attivo",
-      notes: asset.notes || "",
-      // New fields
-      brand: asset.brand || "",
-      model: asset.model || "",
-      processor_ram: asset.processor_ram || "",
-      serial_number: asset.serial_number || "",
-      asset_status: asset.asset_status || "Attivo",
-      assigned_user_name: asset.assigned_user_name || "",
-      delivery_date: asset.delivery_date ? new Date(asset.delivery_date) : undefined,
-      return_date: asset.return_date ? new Date(asset.return_date) : undefined,
-      data_types: asset.data_types || [],
-      confidentiality_level: asset.confidentiality_level || 1,
-      integrity_level: asset.integrity_level || 1,
-      availability_level: asset.availability_level || 1,
-    } : {
+  const getDefaultValues = useCallback((assetData?: any): AssetFormValues => {
+    if (assetData) {
+      return {
+        asset_id: assetData.asset_id || "",
+        name: assetData.name || "",
+        description: assetData.description || "",
+        asset_type: assetData.asset_type || "",
+        category: assetData.category || "",
+        criticality: assetData.criticality || "Medio",
+        confidentiality: assetData.confidentiality || "Interno",
+        integrity_required: assetData.integrity_required ?? true,
+        availability_required: assetData.availability_required ?? true,
+        owner: assetData.owner || "",
+        department: assetData.department || "",
+        location: assetData.location || "",
+        vendor: assetData.vendor || "",
+        version: assetData.version || "",
+        license_info: assetData.license_info || "",
+        purchase_date: assetData.purchase_date ? new Date(assetData.purchase_date) : undefined,
+        warranty_expiry: assetData.warranty_expiry ? new Date(assetData.warranty_expiry) : undefined,
+        status: assetData.status || "Attivo",
+        notes: assetData.notes || "",
+        brand: assetData.brand || "",
+        model: assetData.model || "",
+        processor_ram: assetData.processor_ram || "",
+        serial_number: assetData.serial_number || "",
+        asset_status: assetData.asset_status || "Attivo",
+        assigned_user_name: assetData.assigned_user_name || "",
+        delivery_date: assetData.delivery_date ? new Date(assetData.delivery_date) : undefined,
+        return_date: assetData.return_date ? new Date(assetData.return_date) : undefined,
+        data_types: assetData.data_types || [],
+        confidentiality_level: assetData.confidentiality_level || 1,
+        integrity_level: assetData.integrity_level || 1,
+        availability_level: assetData.availability_level || 1,
+      };
+    }
+    return {
       asset_id: "",
       name: "",
       description: "",
@@ -316,8 +317,21 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
       confidentiality_level: 1,
       integrity_level: 1,
       availability_level: 1,
-    },
+    };
+  }, []);
+
+  const form = useForm<AssetFormValues>({
+    resolver: zodResolver(assetFormSchema),
+    defaultValues: getDefaultValues(asset),
+    mode: "onChange",
   });
+
+  // Reset form when dialog opens or asset changes
+  useEffect(() => {
+    if (open) {
+      form.reset(getDefaultValues(asset));
+    }
+  }, [open, asset, form, getDefaultValues]);
 
   // Save suggestion for auto-learning
   const saveSuggestion = async (fieldName: string, fieldValue: string, organizationId: string | null) => {
@@ -558,7 +572,7 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Tipo *</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Seleziona tipo" />
@@ -612,7 +626,7 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Dipartimento</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Seleziona dipartimento" />
@@ -871,7 +885,7 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Stato Asset</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || "Attivo"}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Seleziona stato" />
@@ -1017,7 +1031,7 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Criticità *</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || "Medio"}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Seleziona criticità" />
@@ -1041,7 +1055,7 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Classificazione</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || "Interno"}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Seleziona livello" />
