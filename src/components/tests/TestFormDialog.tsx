@@ -7,15 +7,62 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { addDays, format } from "date-fns";
-import { Loader2 } from "lucide-react";
+import { Loader2, Lightbulb, Shield, Database, AlertTriangle } from "lucide-react";
+import { AutoCombobox } from "@/components/ui/auto-combobox";
 
 interface TestFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   test?: any;
 }
+
+// Predefined test templates based on asset configuration
+const getSmartTestSuggestions = (asset: any) => {
+  const suggestions: { name: string; type: string; description: string; frequency: number }[] = [];
+  
+  if (asset?.backup_enabled) {
+    suggestions.push({
+      name: `Test ripristino Backup - ${asset.name}`,
+      type: "Prova ripristino Backup",
+      description: "Verifica periodica della capacità di ripristino dei dati dal backup",
+      frequency: 90,
+    });
+  }
+  
+  if (asset?.antivirus_installed) {
+    suggestions.push({
+      name: `Verifica Antivirus - ${asset.name}`,
+      type: "Verifica Antivirus",
+      description: "Controllo aggiornamenti e scansione completa antivirus",
+      frequency: 30,
+    });
+  }
+  
+  if (asset?.asset_type?.toLowerCase().includes("ups") || asset?.name?.toLowerCase().includes("ups")) {
+    suggestions.push({
+      name: `Test autonomia UPS - ${asset.name}`,
+      type: "Test UPS",
+      description: "Verifica autonomia e capacità di commutazione UPS",
+      frequency: 180,
+    });
+  }
+  
+  if (asset?.asset_type?.toLowerCase().includes("server") || asset?.name?.toLowerCase().includes("server")) {
+    suggestions.push({
+      name: `Controllo log sicurezza - ${asset.name}`,
+      type: "Audit Log",
+      description: "Revisione log di sicurezza e accessi",
+      frequency: 30,
+    });
+  }
+  
+  return suggestions;
+};
 
 const TestFormDialog: React.FC<TestFormDialogProps> = ({ open, onOpenChange, test }) => {
   const queryClient = useQueryClient();
@@ -28,20 +75,33 @@ const TestFormDialog: React.FC<TestFormDialogProps> = ({ open, onOpenChange, tes
     description: "",
     frequency_days: 30,
     responsible_person: "",
+    responsible_role_id: "",
     instructions: "",
   });
 
-  const [typeSuggestions, setTypeSuggestions] = useState<string[]>([]);
-  const [showTypeSuggestions, setShowTypeSuggestions] = useState(false);
+  const [smartSuggestions, setSmartSuggestions] = useState<ReturnType<typeof getSmartTestSuggestions>>([]);
 
-  // Fetch assets
+  // Fetch assets with configuration details
   const { data: assets = [] } = useQuery({
-    queryKey: ["assets-list"],
+    queryKey: ["assets-list-detailed"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("assets")
-        .select("id, name, asset_id, asset_type")
+        .select("id, name, asset_id, asset_type, backup_enabled, antivirus_installed, criticality")
         .order("name");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Fetch roles/mansioni
+  const { data: roles = [] } = useQuery({
+    queryKey: ["roles-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("roles")
+        .select("id, role_name, role_code, description")
+        .order("role_name");
       if (error) throw error;
       return data || [];
     },
@@ -74,6 +134,18 @@ const TestFormDialog: React.FC<TestFormDialogProps> = ({ open, onOpenChange, tes
     },
   });
 
+  // Update smart suggestions when asset changes
+  useEffect(() => {
+    if (formData.asset_id) {
+      const selectedAsset = assets.find((a: any) => a.id === formData.asset_id);
+      if (selectedAsset) {
+        setSmartSuggestions(getSmartTestSuggestions(selectedAsset));
+      }
+    } else {
+      setSmartSuggestions([]);
+    }
+  }, [formData.asset_id, assets]);
+
   useEffect(() => {
     if (test) {
       setFormData({
@@ -83,6 +155,7 @@ const TestFormDialog: React.FC<TestFormDialogProps> = ({ open, onOpenChange, tes
         description: test.description || "",
         frequency_days: test.frequency_days || 30,
         responsible_person: test.responsible_person || "",
+        responsible_role_id: test.responsible_role_id || "",
         instructions: test.instructions || "",
       });
     } else {
@@ -93,22 +166,24 @@ const TestFormDialog: React.FC<TestFormDialogProps> = ({ open, onOpenChange, tes
         description: "",
         frequency_days: 30,
         responsible_person: "",
+        responsible_role_id: "",
         instructions: "",
       });
     }
   }, [test, open]);
 
-  // Filter type suggestions based on input
-  useEffect(() => {
-    if (formData.test_type.length > 0) {
-      const filtered = testTypeSuggestionsData
-        .map((s: any) => s.test_type)
-        .filter((t: string) => t.toLowerCase().includes(formData.test_type.toLowerCase()));
-      setTypeSuggestions(filtered);
-    } else {
-      setTypeSuggestions(testTypeSuggestionsData.map((s: any) => s.test_type));
-    }
-  }, [formData.test_type, testTypeSuggestionsData]);
+  // Get all type suggestions
+  const allTypeSuggestions = [
+    ...testTypeSuggestionsData.map((s: any) => s.test_type),
+    "Prova ripristino Backup",
+    "Verifica Antivirus",
+    "Test UPS",
+    "Audit Log",
+    "Vulnerability Scan",
+    "Penetration Test",
+    "Business Continuity Test",
+    "Disaster Recovery Test",
+  ].filter((value, index, self) => self.indexOf(value) === index);
 
   // Save test type suggestion
   const saveTypeSuggestion = async (testType: string) => {
@@ -134,10 +209,16 @@ const TestFormDialog: React.FC<TestFormDialogProps> = ({ open, onOpenChange, tes
     mutationFn: async (data: typeof formData) => {
       const nextDueDate = addDays(new Date(), data.frequency_days);
 
-      const payload = {
-        ...data,
+      const payload: any = {
+        test_name: data.test_name,
+        test_type: data.test_type,
+        description: data.description,
+        frequency_days: data.frequency_days,
+        responsible_person: data.responsible_person,
+        instructions: data.instructions,
         organization_id: organization?.id,
         asset_id: data.asset_id || null,
+        responsible_role_id: data.responsible_role_id || null,
         next_due_date: format(nextDueDate, "yyyy-MM-dd"),
         updated_at: new Date().toISOString(),
       };
@@ -159,6 +240,7 @@ const TestFormDialog: React.FC<TestFormDialogProps> = ({ open, onOpenChange, tes
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["asset-tests"] });
       queryClient.invalidateQueries({ queryKey: ["test-type-suggestions"] });
+      queryClient.invalidateQueries({ queryKey: ["scheduler-tests"] });
       toast.success(isEditing ? "Test aggiornato con successo" : "Test creato con successo");
       onOpenChange(false);
     },
@@ -176,6 +258,17 @@ const TestFormDialog: React.FC<TestFormDialogProps> = ({ open, onOpenChange, tes
     mutation.mutate(formData);
   };
 
+  const applySuggestion = (suggestion: ReturnType<typeof getSmartTestSuggestions>[0]) => {
+    setFormData({
+      ...formData,
+      test_name: suggestion.name,
+      test_type: suggestion.type,
+      description: suggestion.description,
+      frequency_days: suggestion.frequency,
+    });
+    toast.success("Suggerimento applicato!");
+  };
+
   const frequencyOptions = [
     { value: 7, label: "Settimanale (7 giorni)" },
     { value: 14, label: "Bisettimanale (14 giorni)" },
@@ -184,6 +277,8 @@ const TestFormDialog: React.FC<TestFormDialogProps> = ({ open, onOpenChange, tes
     { value: 180, label: "Semestrale (180 giorni)" },
     { value: 365, label: "Annuale (365 giorni)" },
   ];
+
+  const selectedAsset = assets.find((a: any) => a.id === formData.asset_id);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -196,6 +291,79 @@ const TestFormDialog: React.FC<TestFormDialogProps> = ({ open, onOpenChange, tes
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Asset Selection with Config Info */}
+          <div className="space-y-2">
+            <Label htmlFor="asset_id">Asset Coinvolto</Label>
+            <Select
+              value={formData.asset_id}
+              onValueChange={(value) => setFormData({ ...formData, asset_id: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleziona asset (opzionale)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Nessun asset specifico</SelectItem>
+                {assets.map((asset: any) => (
+                  <SelectItem key={asset.id} value={asset.id}>
+                    <div className="flex items-center gap-2">
+                      {asset.name} ({asset.asset_id})
+                      {asset.criticality?.toLowerCase() === "critical" && (
+                        <Badge variant="destructive" className="text-xs">Critico</Badge>
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Asset Config Summary */}
+          {selectedAsset && (
+            <Card className="bg-muted/50">
+              <CardContent className="pt-4">
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant={selectedAsset.backup_enabled ? "default" : "secondary"} className="gap-1">
+                    <Database className="h-3 w-3" />
+                    Backup: {selectedAsset.backup_enabled ? "Sì" : "No"}
+                  </Badge>
+                  <Badge variant={selectedAsset.antivirus_installed ? "default" : "secondary"} className="gap-1">
+                    <Shield className="h-3 w-3" />
+                    Antivirus: {selectedAsset.antivirus_installed ? "Sì" : "No"}
+                  </Badge>
+                  {selectedAsset.criticality && (
+                    <Badge variant="outline">Criticità: {selectedAsset.criticality}</Badge>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Smart Suggestions */}
+          {smartSuggestions.length > 0 && !isEditing && (
+            <Alert className="border-primary/50 bg-primary/5">
+              <Lightbulb className="h-4 w-4 text-primary" />
+              <AlertDescription>
+                <div className="space-y-2">
+                  <p className="font-medium">Test suggeriti per questo asset:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {smartSuggestions.map((suggestion, index) => (
+                      <Button
+                        key={index}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => applySuggestion(suggestion)}
+                        className="text-xs"
+                      >
+                        {suggestion.type}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="test_name">Nome Test *</Label>
@@ -207,57 +375,18 @@ const TestFormDialog: React.FC<TestFormDialogProps> = ({ open, onOpenChange, tes
               />
             </div>
 
-            <div className="space-y-2 relative">
+            <div className="space-y-2">
               <Label htmlFor="test_type">Tipo Test *</Label>
-              <Input
-                id="test_type"
+              <AutoCombobox
                 value={formData.test_type}
-                onChange={(e) => setFormData({ ...formData, test_type: e.target.value })}
-                onFocus={() => setShowTypeSuggestions(true)}
-                onBlur={() => setTimeout(() => setShowTypeSuggestions(false), 200)}
-                placeholder="Es. Prova ripristino Backup"
+                onValueChange={(value) => setFormData({ ...formData, test_type: value })}
+                suggestions={allTypeSuggestions}
+                placeholder="Seleziona o digita tipo..."
               />
-              {showTypeSuggestions && typeSuggestions.length > 0 && (
-                <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-40 overflow-y-auto">
-                  {typeSuggestions.map((suggestion) => (
-                    <button
-                      key={suggestion}
-                      type="button"
-                      className="w-full px-3 py-2 text-left hover:bg-accent text-sm"
-                      onClick={() => {
-                        setFormData({ ...formData, test_type: suggestion });
-                        setShowTypeSuggestions(false);
-                      }}
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="asset_id">Asset Coinvolto</Label>
-              <Select
-                value={formData.asset_id}
-                onValueChange={(value) => setFormData({ ...formData, asset_id: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleziona asset (opzionale)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Nessun asset specifico</SelectItem>
-                  {assets.map((asset: any) => (
-                    <SelectItem key={asset.id} value={asset.id}>
-                      {asset.name} ({asset.asset_id})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
             <div className="space-y-2">
               <Label htmlFor="frequency_days">Frequenza</Label>
               <Select
@@ -276,10 +405,30 @@ const TestFormDialog: React.FC<TestFormDialogProps> = ({ open, onOpenChange, tes
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="responsible_role_id">Mansione Responsabile</Label>
+              <Select
+                value={formData.responsible_role_id}
+                onValueChange={(value) => setFormData({ ...formData, responsible_role_id: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona mansione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Nessuna mansione</SelectItem>
+                  {roles.map((role: any) => (
+                    <SelectItem key={role.id} value={role.id}>
+                      {role.role_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="responsible_person">Responsabile Esecuzione</Label>
+            <Label htmlFor="responsible_person">Responsabile Esecuzione (opzionale)</Label>
             <Input
               id="responsible_person"
               value={formData.responsible_person}
