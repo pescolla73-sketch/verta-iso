@@ -47,23 +47,28 @@ import {
   XCircle,
   Building2,
   Briefcase,
+  FileText,
+  Download,
 } from "lucide-react";
 import { format, addDays, isAfter, isBefore, parseISO } from "date-fns";
 import { it } from "date-fns/locale";
+import { toast } from "sonner";
+import { generateSecurityAuditReport } from "@/utils/securityAuditReport";
 
 const OBSOLETE_OS = ["Windows 7", "Windows XP", "Windows Vista", "Windows 8", "Windows Server 2008", "Windows Server 2003"];
 
 export default function SecurityStatusPage() {
   const [departmentFilter, setDepartmentFilter] = useState<string>("");
   const [roleFilter, setRoleFilter] = useState<string>("");
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
-  // Fetch organization
-  const { data: organization } = useQuery<{ id: string; name: string } | null>({
-    queryKey: ["organization"],
+  // Fetch organization with full data for report
+  const { data: organization } = useQuery({
+    queryKey: ["organization-full"],
     queryFn: async () => {
       const { data } = await supabase
         .from("organization")
-        .select("id, name")
+        .select("*")
         .limit(1)
         .maybeSingle();
       return data;
@@ -261,6 +266,56 @@ export default function SecurityStatusPage() {
     setRoleFilter("");
   };
 
+  const handleGenerateReport = async () => {
+    if (!organization) {
+      toast.error("Organizzazione non trovata");
+      return;
+    }
+
+    setIsGeneratingReport(true);
+    try {
+      const selectedRoleName = roleFilter ? roles.find(r => r.id === roleFilter)?.role_name : undefined;
+      
+      await generateSecurityAuditReport(
+        {
+          name: organization.name,
+          piva: (organization as any).piva,
+          sector: (organization as any).sector,
+          scope: (organization as any).scope,
+          isms_scope: (organization as any).isms_scope,
+          website: (organization as any).website,
+          contact_phone: (organization as any).contact_phone,
+          contact_email: (organization as any).contact_email,
+          legal_address_street: (organization as any).legal_address_street,
+          legal_address_city: (organization as any).legal_address_city,
+          legal_address_zip: (organization as any).legal_address_zip,
+          legal_address_province: (organization as any).legal_address_province,
+          legal_address_country: (organization as any).legal_address_country,
+          ciso: (organization as any).ciso,
+          ceo: (organization as any).ceo,
+        },
+        {
+          assets: filteredAssets,
+          tests: filteredTests,
+          trainings: trainings,
+          risks: filteredRisks,
+          roles: roles,
+          filters: {
+            department: departmentFilter || undefined,
+            role: roleFilter || undefined,
+            roleName: selectedRoleName,
+          },
+        }
+      );
+      toast.success("Report generato con successo!");
+    } catch (error) {
+      console.error("Errore generazione report:", error);
+      toast.error("Errore durante la generazione del report");
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
+
   const isLoading = assetsLoading || testsLoading || trainingsLoading || risksLoading;
 
   if (isLoading) {
@@ -284,9 +339,28 @@ export default function SecurityStatusPage() {
             Panoramica operativa della sicurezza IT aziendale
           </p>
         </div>
-        <Badge variant="outline" className="text-sm w-fit">
-          Aggiornato: {format(new Date(), "dd/MM/yyyy HH:mm", { locale: it })}
-        </Badge>
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={handleGenerateReport}
+            disabled={isGeneratingReport}
+            className="bg-primary hover:bg-primary/90"
+          >
+            {isGeneratingReport ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Generazione...
+              </>
+            ) : (
+              <>
+                <FileText className="h-4 w-4 mr-2" />
+                Genera Audit Report
+              </>
+            )}
+          </Button>
+          <Badge variant="outline" className="text-sm">
+            {format(new Date(), "dd/MM/yyyy HH:mm", { locale: it })}
+          </Badge>
+        </div>
       </div>
 
       {/* Filters */}
