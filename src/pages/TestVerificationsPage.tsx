@@ -16,6 +16,7 @@ import { Plus, Play, ClipboardCheck, AlertTriangle, Clock, CheckCircle, XCircle,
 import TestFormDialog from "@/components/tests/TestFormDialog";
 import TestExecutionDialog from "@/components/tests/TestExecutionDialog";
 import TestHistoryDialog from "@/components/tests/TestHistoryDialog";
+import TestSchedulerDashboard from "@/components/tests/TestSchedulerDashboard";
 
 const TestVerificationsPage = () => {
   const queryClient = useQueryClient();
@@ -240,11 +241,21 @@ const TestVerificationsPage = () => {
       )}
 
       {/* Main Content Tabs */}
-      <Tabs defaultValue="tests">
+      <Tabs defaultValue="scheduler">
         <TabsList>
+          <TabsTrigger value="scheduler">Scadenziario</TabsTrigger>
           <TabsTrigger value="tests">Test Pianificati</TabsTrigger>
           <TabsTrigger value="history">Storico Esecuzioni</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="scheduler" className="space-y-4">
+          <TestSchedulerDashboard 
+            onExecuteTest={(test) => {
+              setSelectedTest(test);
+              setExecutionDialogOpen(true);
+            }}
+          />
+        </TabsContent>
 
         <TabsContent value="tests" className="space-y-4">
           {/* Filters */}
