@@ -428,56 +428,76 @@ export default function Assets() {
                     <TableHead>Nome</TableHead>
                     <TableHead>Marca/Modello</TableHead>
                     <TableHead>Criticità</TableHead>
+                    <TableHead>Sicurezza</TableHead>
                     <TableHead>Assegnatario</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Azioni</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredAssets.map((asset) => (
-                    <TableRow key={asset.id} className="cursor-pointer hover:bg-muted/50">
-                      <TableCell>
-                        <span className="text-2xl">{getTypeIcon(asset.asset_type)}</span>
-                      </TableCell>
-                      <TableCell className="font-mono text-sm">{asset.asset_id}</TableCell>
-                      <TableCell className="font-medium">
-                        <div>{asset.name}</div>
-                        {asset.serial_number && (
-                          <div className="text-xs text-muted-foreground">
-                            S/N: {asset.serial_number}
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {asset.brand || asset.model ? (
-                          <div className="text-sm">
-                            {asset.brand && <span>{asset.brand}</span>}
-                            {asset.brand && asset.model && <span> </span>}
-                            {asset.model && <span className="text-muted-foreground">{asset.model}</span>}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={getCriticalityVariant(asset.criticality)}>
-                          {asset.criticality}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {asset.assigned_user_name || asset.owner || "-"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={
-                          asset.asset_status === "Attivo" || asset.status === "Attivo" 
-                            ? "default" 
-                            : asset.asset_status === "Dismesso" 
-                              ? "destructive"
-                              : "secondary"
-                        }>
-                          {asset.asset_status || asset.status}
-                        </Badge>
-                      </TableCell>
+                  {filteredAssets.map((asset) => {
+                    // Calculate security risk for this asset
+                    const obsoleteOS = ["Windows 7", "Windows XP", "Windows Vista", "Windows 8"];
+                    const isObsoleteOS = obsoleteOS.some(os => asset.operating_system?.toLowerCase().includes(os.toLowerCase()));
+                    const hasSecurityRisk = !asset.antivirus_installed || !asset.backup_enabled || isObsoleteOS;
+                    
+                    return (
+                      <TableRow key={asset.id} className="cursor-pointer hover:bg-muted/50">
+                        <TableCell>
+                          <span className="text-2xl">{getTypeIcon(asset.asset_type)}</span>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">{asset.asset_id}</TableCell>
+                        <TableCell className="font-medium">
+                          <div>{asset.name}</div>
+                          {asset.serial_number && (
+                            <div className="text-xs text-muted-foreground">
+                              S/N: {asset.serial_number}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {asset.brand || asset.model ? (
+                            <div className="text-sm">
+                              {asset.brand && <span>{asset.brand}</span>}
+                              {asset.brand && asset.model && <span> </span>}
+                              {asset.model && <span className="text-muted-foreground">{asset.model}</span>}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={getCriticalityVariant(asset.criticality)}>
+                            {asset.criticality}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {hasSecurityRisk ? (
+                            <Badge variant="destructive" className="gap-1">
+                              <ShieldAlert className="h-3 w-3" />
+                              ⚠️ A rischio
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="gap-1 text-green-600 border-green-500">
+                              <Shield className="h-3 w-3" />
+                              OK
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {asset.assigned_user_name || asset.owner || "-"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={
+                            asset.asset_status === "Attivo" || asset.status === "Attivo" 
+                              ? "default" 
+                              : asset.asset_status === "Dismesso" 
+                                ? "destructive"
+                                : "secondary"
+                          }>
+                            {asset.asset_status || asset.status}
+                          </Badge>
+                        </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -505,9 +525,10 @@ export default function Assets() {
                             </PermissionGuard>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

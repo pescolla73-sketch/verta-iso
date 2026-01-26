@@ -4,7 +4,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Lightbulb, AlertTriangle } from "lucide-react";
+import { CalendarIcon, Lightbulb, AlertTriangle, Check, ChevronsUpDown, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { logAuditEvent } from "@/utils/auditLog";
@@ -113,7 +113,136 @@ interface AssetFormDialogProps {
   asset?: any;
 }
 
-// Auto-suggestion input component
+// Enhanced Combobox component with free-text input
+function AutoCombobox({ 
+  value, 
+  onValueChange, 
+  suggestions = [],
+  placeholder = "Seleziona o digita...",
+  emptyText = "Nessun suggerimento",
+  disabled = false
+}: { 
+  value: string;
+  onValueChange: (value: string) => void;
+  suggestions: string[];
+  placeholder?: string;
+  emptyText?: string;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [inputValue, setInputValue] = useState(value || "");
+
+  // Update inputValue when external value changes
+  useEffect(() => {
+    setInputValue(value || "");
+  }, [value]);
+
+  // Filter suggestions based on input
+  const filteredSuggestions = useMemo(() => {
+    if (!inputValue) return suggestions;
+    return suggestions.filter((s) =>
+      s.toLowerCase().includes(inputValue.toLowerCase())
+    );
+  }, [inputValue, suggestions]);
+
+  // Check if the current input is already in suggestions
+  const isNewValue = inputValue.trim() !== "" && 
+    !suggestions.some((s) => s.toLowerCase() === inputValue.toLowerCase().trim());
+
+  const handleSelect = (selectedValue: string) => {
+    onValueChange(selectedValue);
+    setInputValue(selectedValue);
+    setOpen(false);
+  };
+
+  const handleInputChange = (newValue: string) => {
+    setInputValue(newValue);
+  };
+
+  const handleInputBlur = () => {
+    // Commit the typed value when blurring
+    if (inputValue.trim() !== "" && inputValue.trim() !== value) {
+      onValueChange(inputValue.trim());
+    }
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between font-normal"
+          disabled={disabled}
+        >
+          <span className={cn(!value && "text-muted-foreground")}>
+            {value || placeholder}
+          </span>
+          <div className="flex items-center gap-1 ml-2 shrink-0">
+            {suggestions.length > 0 && (
+              <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
+            )}
+            <ChevronsUpDown className="h-4 w-4 opacity-50" />
+          </div>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+        <Command shouldFilter={false}>
+          <CommandInput
+            placeholder={placeholder}
+            value={inputValue}
+            onValueChange={handleInputChange}
+            onBlur={handleInputBlur}
+          />
+          <CommandList>
+            {filteredSuggestions.length === 0 && !isNewValue && (
+              <CommandEmpty>{emptyText}</CommandEmpty>
+            )}
+            
+            {/* Option to add new value */}
+            {isNewValue && (
+              <CommandGroup heading="Nuovo valore">
+                <CommandItem
+                  value={inputValue}
+                  onSelect={() => handleSelect(inputValue.trim())}
+                  className="text-primary"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Aggiungi "{inputValue.trim()}"
+                </CommandItem>
+              </CommandGroup>
+            )}
+            
+            {/* Existing suggestions */}
+            {filteredSuggestions.length > 0 && (
+              <CommandGroup heading="Suggerimenti">
+                {filteredSuggestions.slice(0, 10).map((suggestion) => (
+                  <CommandItem
+                    key={suggestion}
+                    value={suggestion}
+                    onSelect={() => handleSelect(suggestion)}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        value === suggestion ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    <Lightbulb className="mr-2 h-3.5 w-3.5 text-amber-500" />
+                    {suggestion}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// Legacy wrapper for compatibility
 function AutoSuggestInput({ 
   field, 
   fieldName, 
@@ -127,55 +256,13 @@ function AutoSuggestInput({
   suggestions: string[];
   onValueChange: (value: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const inputValue = field.value || "";
-
-  const filteredSuggestions = suggestions.filter(s => 
-    s.toLowerCase().includes(inputValue.toLowerCase())
-  );
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onValueChange(e.target.value);
-    setOpen(true);
-  };
-
-  const handleSelect = (suggestion: string) => {
-    onValueChange(suggestion);
-    setOpen(false);
-  };
-
   return (
-    <div className="relative">
-      <Input
-        placeholder={placeholder}
-        value={inputValue}
-        onChange={handleInputChange}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 200)}
-      />
-      {filteredSuggestions.length > 0 && (
-        <Lightbulb className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-amber-500" />
-      )}
-      {open && filteredSuggestions.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md">
-          <div className="p-2">
-            <p className="text-xs text-muted-foreground mb-1">Suggerimenti</p>
-            {filteredSuggestions.slice(0, 5).map((suggestion) => (
-              <div
-                key={suggestion}
-                className="px-2 py-1.5 cursor-pointer hover:bg-accent rounded text-sm"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleSelect(suggestion);
-                }}
-              >
-                {suggestion}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
+    <AutoCombobox
+      value={field.value || ""}
+      onValueChange={onValueChange}
+      suggestions={suggestions}
+      placeholder={placeholder}
+    />
   );
 }
 
@@ -483,12 +570,13 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
         update_mode: values.update_mode || "Manuale",
       };
 
-      // Save auto-learning suggestions for brand, model, assigned_user_name, operating_system
+      // Save auto-learning suggestions for brand, model, assigned_user_name, operating_system, antivirus_name
       await Promise.all([
         saveSuggestion("brand", values.brand || "", organizationId),
         saveSuggestion("model", values.model || "", organizationId),
         saveSuggestion("assigned_user_name", values.assigned_user_name || "", organizationId),
         saveSuggestion("operating_system", values.operating_system || "", organizationId),
+        saveSuggestion("antivirus_name", values.antivirus_name || "", organizationId),
       ]);
 
       if (asset) {
@@ -959,46 +1047,34 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
                         const obsoleteOS = ["Windows 7", "Windows XP", "Windows Vista", "Windows 8"];
                         const isObsolete = obsoleteOS.some(os => field.value?.toLowerCase().includes(os.toLowerCase()));
                         
-                        // Get custom OS suggestions from database
-                        const osSuggestions = suggestions?.operating_system || [];
+                        // Combine predefined OS with custom suggestions from database
+                        const predefinedOS = [
+                          "Windows 11", "Windows 10", "Windows Server 2022", "Windows Server 2019",
+                          "macOS Sonoma", "macOS Ventura", "Ubuntu 24.04", "Ubuntu 22.04",
+                          "Debian 12", "RHEL 9", "CentOS Stream 9", "iOS", "Android",
+                          "Windows 7", "Windows 8"
+                        ];
+                        const customOS = (suggestions?.operating_system || []).filter(
+                          os => !predefinedOS.includes(os)
+                        );
+                        const allOSOptions = [...predefinedOS, ...customOS];
                         
                         return (
                           <FormItem className="col-span-2">
                             <FormLabel>Sistema Operativo</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value || ""}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Seleziona SO" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="Windows 11">Windows 11</SelectItem>
-                                <SelectItem value="Windows 10">Windows 10</SelectItem>
-                                <SelectItem value="Windows Server 2022">Windows Server 2022</SelectItem>
-                                <SelectItem value="Windows Server 2019">Windows Server 2019</SelectItem>
-                                <SelectItem value="macOS Sonoma">macOS Sonoma</SelectItem>
-                                <SelectItem value="macOS Ventura">macOS Ventura</SelectItem>
-                                <SelectItem value="Ubuntu 24.04">Ubuntu 24.04 LTS</SelectItem>
-                                <SelectItem value="Ubuntu 22.04">Ubuntu 22.04 LTS</SelectItem>
-                                <SelectItem value="Debian 12">Debian 12</SelectItem>
-                                <SelectItem value="RHEL 9">RHEL 9</SelectItem>
-                                <SelectItem value="CentOS Stream 9">CentOS Stream 9</SelectItem>
-                                <SelectItem value="iOS">iOS</SelectItem>
-                                <SelectItem value="Android">Android</SelectItem>
-                                <SelectItem value="Windows 7">⚠️ Windows 7 (obsoleto)</SelectItem>
-                                <SelectItem value="Windows 8">⚠️ Windows 8 (obsoleto)</SelectItem>
-                                {/* Dynamic suggestions from database */}
-                                {osSuggestions.filter(os => !["Windows 11", "Windows 10", "Windows Server 2022", "Windows Server 2019", "macOS Sonoma", "macOS Ventura", "Ubuntu 24.04", "Ubuntu 22.04", "Debian 12", "RHEL 9", "CentOS Stream 9", "iOS", "Android", "Windows 7", "Windows 8", "Altro"].includes(os)).map(os => (
-                                  <SelectItem key={os} value={os}>💡 {os}</SelectItem>
-                                ))}
-                                <SelectItem value="Altro">Altro</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <FormControl>
+                              <AutoCombobox
+                                value={field.value || ""}
+                                onValueChange={field.onChange}
+                                suggestions={allOSOptions}
+                                placeholder="Seleziona o digita SO..."
+                              />
+                            </FormControl>
                             {isObsolete && (
                               <Alert variant="destructive" className="mt-2">
                                 <AlertTriangle className="h-4 w-4" />
                                 <AlertDescription>
-                                  ⚠️ Sistema Operativo obsoleto! Rischio sicurezza elevato. Valutare urgentemente aggiornamento.
+                                  ⚠️ Sistema Operativo obsoleto! Rischio sicurezza elevato.
                                 </AlertDescription>
                               </Alert>
                             )}
@@ -1029,34 +1105,33 @@ export function AssetFormDialog({ open, onOpenChange, asset }: AssetFormDialogPr
                     <FormField
                       control={form.control}
                       name="antivirus_name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Software Antivirus/EDR</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value || ""}>
+                      render={({ field }) => {
+                        // Combine predefined AV with custom suggestions
+                        const predefinedAV = [
+                          "Microsoft Defender", "CrowdStrike Falcon", "SentinelOne", 
+                          "Carbon Black", "Symantec", "McAfee", "Bitdefender",
+                          "Kaspersky", "ESET", "Sophos", "Trend Micro"
+                        ];
+                        const customAV = (suggestions?.antivirus_name || []).filter(
+                          av => !predefinedAV.includes(av)
+                        );
+                        const allAVOptions = [...predefinedAV, ...customAV];
+                        
+                        return (
+                          <FormItem>
+                            <FormLabel>Software Antivirus/EDR</FormLabel>
                             <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Seleziona antivirus" />
-                              </SelectTrigger>
+                              <AutoCombobox
+                                value={field.value || ""}
+                                onValueChange={field.onChange}
+                                suggestions={allAVOptions}
+                                placeholder="Seleziona o digita antivirus..."
+                              />
                             </FormControl>
-                            <SelectContent>
-                              <SelectItem value="Microsoft Defender">Microsoft Defender</SelectItem>
-                              <SelectItem value="CrowdStrike">CrowdStrike Falcon</SelectItem>
-                              <SelectItem value="SentinelOne">SentinelOne</SelectItem>
-                              <SelectItem value="Carbon Black">Carbon Black</SelectItem>
-                              <SelectItem value="Symantec">Symantec/Broadcom</SelectItem>
-                              <SelectItem value="McAfee">McAfee</SelectItem>
-                              <SelectItem value="Bitdefender">Bitdefender</SelectItem>
-                              <SelectItem value="Kaspersky">Kaspersky</SelectItem>
-                              <SelectItem value="ESET">ESET</SelectItem>
-                              <SelectItem value="Sophos">Sophos</SelectItem>
-                              <SelectItem value="Trend Micro">Trend Micro</SelectItem>
-                              <SelectItem value="Altro">Altro</SelectItem>
-                              <SelectItem value="Nessuno">Nessuno</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                            <FormMessage />
+                          </FormItem>
+                        );
+                      }}
                     />
 
                     <FormField
