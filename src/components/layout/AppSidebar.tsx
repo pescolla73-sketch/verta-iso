@@ -60,6 +60,7 @@ export function AppSidebar() {
       label: "Panoramica",
       items: [
         { title: "Dashboard", url: "/", icon: LayoutDashboard },
+        { title: "🛡️ Situazione Sicurezza", url: "/security-status", icon: Shield },
         { title: "📋 Piano d'Azione", url: "/action-plan", icon: ClipboardList },
         { title: "🎯 Percorso ISO 27001", url: "/progress", icon: TrendingUp },
       ],
@@ -91,6 +92,11 @@ export function AppSidebar() {
           icon: Box,
           resource: "assets",
           action: "read",
+        },
+        {
+          title: "Test & Verifiche",
+          url: "/test-verifiche",
+          icon: ClipboardCheck,
         },
         {
           title: "Controlli",
