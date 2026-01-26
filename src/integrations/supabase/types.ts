@@ -131,6 +131,7 @@ export type Database = {
           next_due_date: string | null
           organization_id: string
           responsible_person: string | null
+          responsible_role_id: string | null
           test_name: string
           test_type: string
           updated_at: string | null
@@ -147,6 +148,7 @@ export type Database = {
           next_due_date?: string | null
           organization_id: string
           responsible_person?: string | null
+          responsible_role_id?: string | null
           test_name: string
           test_type: string
           updated_at?: string | null
@@ -163,6 +165,7 @@ export type Database = {
           next_due_date?: string | null
           organization_id?: string
           responsible_person?: string | null
+          responsible_role_id?: string | null
           test_name?: string
           test_type?: string
           updated_at?: string | null
@@ -188,6 +191,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "critical_assets_with_risks"
             referencedColumns: ["asset_id"]
+          },
+          {
+            foreignKeyName: "asset_tests_responsible_role_id_fkey"
+            columns: ["responsible_role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
           },
         ]
       }
