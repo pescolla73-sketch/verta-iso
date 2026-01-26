@@ -58,7 +58,7 @@ import AdminResetPage from "./pages/AdminResetPage";
 import ComplianceCalendarPage from "./pages/ComplianceCalendarPage";
 import GlobalActionPlanPage from "./pages/GlobalActionPlanPage";
 import TestVerificationsPage from "./pages/TestVerificationsPage";
-
+import SecurityStatusPage from "./pages/SecurityStatusPage";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -533,6 +533,14 @@ const App = () => (
             element={
               <AppLayout>
                 <ComplianceCalendarPage />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/security-status"
+            element={
+              <AppLayout>
+                <SecurityStatusPage />
               </AppLayout>
             }
           />
